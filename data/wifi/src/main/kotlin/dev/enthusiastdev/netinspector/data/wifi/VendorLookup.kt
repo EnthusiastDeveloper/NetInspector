@@ -33,11 +33,17 @@ class VendorLookup
         fun vendorFor(bssid: String): String? {
             val ouiHex = bssid.replace(":", "").take(OUI_HEX_LENGTH).uppercase()
             if (ouiHex.length != OUI_HEX_LENGTH) return null
+            // IEEE never assigns a vendor OUI with the locally-administered bit set (bit 1 of
+            // the first octet) - a hit here would be coincidental, not a real identification.
+            // Common for phone-hotspot and MAC-randomized BSSIDs.
+            val firstOctet = ouiHex.substring(0, 2).toInt(16)
+            if (firstOctet and LOCALLY_ADMINISTERED_BIT != 0) return null
             return vendorsByOuiHex[ouiHex]
         }
 
         private companion object {
             const val ASSET_FILE_NAME = "oui_vendors.tsv"
             const val OUI_HEX_LENGTH = 6
+            const val LOCALLY_ADMINISTERED_BIT = 0x02
         }
     }

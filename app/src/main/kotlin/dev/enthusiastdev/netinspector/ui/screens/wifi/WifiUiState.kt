@@ -4,9 +4,12 @@ import dev.enthusiastdev.netinspector.core.model.wifi.AccessPoint
 import dev.enthusiastdev.netinspector.core.model.wifi.ScanBudget
 import java.time.Instant
 
-/** design §6.1 - unlike the dashboard's [dev.enthusiastdev.netinspector.ui.screens.connection.LocationAccessState],
- * there's no "services disabled" analogue here: `NEARBY_WIFI_DEVICES` is the only gate (C-03). */
-enum class WifiAccessState { GRANTED, PERMISSION_NEEDED }
+/** design §4.1, C-03 - the same gate as the dashboard's
+ * [dev.enthusiastdev.netinspector.ui.screens.connection.LocationAccessState]: `getScanResults()`/
+ * `startScan()` require `ACCESS_FINE_LOCATION` plus system location mode, not
+ * `NEARBY_WIFI_DEVICES` as first assumed. Kept as its own enum (not shared with the
+ * dashboard's) since the two screens run independent permission checks. */
+enum class WifiAccessState { GRANTED, PERMISSION_NEEDED, SERVICES_DISABLED }
 
 sealed interface WifiUiState {
     data object Loading : WifiUiState

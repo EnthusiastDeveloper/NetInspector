@@ -1,7 +1,12 @@
 package dev.enthusiastdev.netinspector.ui
 
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.displayCutout
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.union
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffold
@@ -81,7 +86,11 @@ fun NetInspectorApp() {
                     }
                 },
             ) {
-                NavHost(navController = navController, startDestination = ConnectionRoute) {
+                NavHost(
+                    navController = navController,
+                    startDestination = ConnectionRoute,
+                    modifier = Modifier.windowInsetsPadding(WindowInsets.statusBars.union(WindowInsets.displayCutout)),
+                ) {
                     composable<ConnectionRoute> { ConnectionDestination() }
                     composable<WifiRoute> { WifiDestination() }
                     composable<DevicesRoute> {

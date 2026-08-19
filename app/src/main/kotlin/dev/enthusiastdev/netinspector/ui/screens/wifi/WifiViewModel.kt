@@ -3,6 +3,7 @@ package dev.enthusiastdev.netinspector.ui.screens.wifi
 import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
+import android.location.LocationManager
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -82,9 +83,12 @@ class WifiViewModel
         fun informationElements(bssid: String) = wifiScanRepository.informationElements(bssid)
 
         private fun currentWifiAccessState(): WifiAccessState {
-            val granted =
-                ContextCompat.checkSelfPermission(context, Manifest.permission.NEARBY_WIFI_DEVICES) ==
+            val hasPermission =
+                ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) ==
                     PackageManager.PERMISSION_GRANTED
-            return if (granted) WifiAccessState.GRANTED else WifiAccessState.PERMISSION_NEEDED
+            if (!hasPermission) return WifiAccessState.PERMISSION_NEEDED
+
+            val locationEnabled = context.getSystemService(LocationManager::class.java)?.isLocationEnabled == true
+            return if (locationEnabled) WifiAccessState.GRANTED else WifiAccessState.SERVICES_DISABLED
         }
     }

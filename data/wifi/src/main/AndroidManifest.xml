@@ -10,13 +10,12 @@
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
     <uses-permission android:name="android.permission.CHANGE_WIFI_STATE" />
 
-    <!-- COARSE deliberately not declared alongside - see the matching comment in :app's
-         manifest (C-04): COARSE can't satisfy this check at this targetSdk anyway. -->
+    <!-- Gates both the dashboard's WifiInfo unredaction (C-04) and getScanResults()/
+         startScan() (C-03) - see the matching comment in :app's manifest. COARSE
+         deliberately not declared alongside: it can't satisfy this check at this
+         targetSdk anyway. -->
     <uses-permission
         android:name="android.permission.ACCESS_FINE_LOCATION"
         tools:ignore="CoarseFineLocation" />
-    <uses-permission
-        android:name="android.permission.NEARBY_WIFI_DEVICES"
-        android:usesPermissionFlags="neverForLocation" />
 
 </manifest>

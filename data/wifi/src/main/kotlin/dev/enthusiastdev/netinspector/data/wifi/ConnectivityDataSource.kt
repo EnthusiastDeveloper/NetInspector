@@ -144,7 +144,7 @@ private fun primaryChannelSpan(frequencyMhz: Int): ChannelSpan? {
     )
 }
 
-/** `WifiInfo.getSSID()` returns `<unknown ssid>` without NEARBY_WIFI_DEVICES (C-03), and
+/** `WifiInfo.getSSID()` returns `<unknown ssid>` without `ACCESS_FINE_LOCATION` (C-04), and
  * legitimate SSIDs come quoted unless non-UTF-8. Both are normalized away here so the UI layer
  * only has to reason about "known SSID" vs "unknown" (permission vs. hidden is a UI concern -
  * see the Phase 1 risk note in the implementation plan). */

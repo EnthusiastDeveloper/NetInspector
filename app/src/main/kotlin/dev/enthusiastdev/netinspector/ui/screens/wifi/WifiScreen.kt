@@ -126,7 +126,7 @@ private fun WifiListPane(
                 WifiHeader(apCount = state.accessPoints.size, lastUpdated = state.lastUpdated, budget = state.budget)
             }
             if (state.wifiAccess != WifiAccessState.GRANTED) {
-                item { NearbyWifiAccessCard(state.wifiAccess, onWifiAccessChanged) }
+                item { WifiLocationAccessCard(state.wifiAccess, onWifiAccessChanged) }
             }
             item {
                 WifiFilterSortBar(
