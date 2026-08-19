@@ -1,6 +1,10 @@
 build:
   maxIssues: 0
 
+complexity:
+  LongParameterList:
+    ignoreAnnotated: ['Composable'] # state + several callbacks is the normal Compose screen shape
+
 style:
   MagicNumber:
     active: false # network/RF code is full of legitimate constants (channel widths, ports, MHz bounds)

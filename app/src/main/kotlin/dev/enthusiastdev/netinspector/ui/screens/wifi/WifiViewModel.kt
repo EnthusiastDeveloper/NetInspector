@@ -1,0 +1,90 @@
+package dev.enthusiastdev.netinspector.ui.screens.wifi
+
+import android.Manifest
+import android.content.Context
+import android.content.pm.PackageManager
+import androidx.core.content.ContextCompat
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
+import dev.enthusiastdev.netinspector.core.model.wifi.ScanOutcome
+import dev.enthusiastdev.netinspector.data.wifi.WifiScanRepository
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
+import javax.inject.Inject
+
+@HiltViewModel
+class WifiViewModel
+    @Inject
+    constructor(
+        private val wifiScanRepository: WifiScanRepository,
+        @ApplicationContext private val context: Context,
+    ) : ViewModel() {
+        // Drives the throttle countdown and the permission-state check - neither has its own
+        // change signal to collect, so this just re-samples both once a second.
+        private val ticker =
+            flow {
+                while (true) {
+                    emit(Unit)
+                    delay(1_000)
+                }
+            }
+
+        val uiState: StateFlow<WifiUiState> =
+            combine(wifiScanRepository.accessPoints, ticker) { accessPoints, _ -> accessPoints }
+                .map { accessPoints ->
+                    WifiUiState.Content(
+                        accessPoints = accessPoints,
+                        wifiAccess = currentWifiAccessState(),
+                        budget = wifiScanRepository.budget(),
+                        lastUpdated = accessPoints.maxOfOrNull { it.lastSeen },
+                    )
+                }.stateIn(
+                    scope = viewModelScope,
+                    started = SharingStarted.WhileSubscribed(5_000),
+                    initialValue = WifiUiState.Loading,
+                )
+
+        /** design §6.1 - "one [active scan] on screen entry": called from `ON_RESUME`, which
+         * covers first entry and also re-arming after a permission grant (nothing else would
+         * otherwise trigger a fresh broadcast once access is newly granted). A denied or
+         * still-missing permission is a silent no-op here - the card below drives that flow. */
+        fun onResumed() {
+            if (currentWifiAccessState() != WifiAccessState.GRANTED) return
+            viewModelScope.launch { wifiScanRepository.requestScan(isUserInitiated = false) }
+        }
+
+        private val _isRefreshing = MutableStateFlow(false)
+        val isRefreshing: StateFlow<Boolean> = _isRefreshing.asStateFlow()
+
+        /** design §6.1 - the explicit pull-to-refresh scan; dips into the two reserved
+         * tokens if the non-reserved ones are already spent. `isRefreshing` is purely a spinner
+         * affordance sized to a typical scan's completion time - the header's "results as of"
+         * timestamp remains the actual freshness signal regardless of this flag. */
+        fun onRefresh() {
+            viewModelScope.launch {
+                _isRefreshing.value = true
+                val outcome = wifiScanRepository.requestScan(isUserInitiated = true)
+                if (outcome is ScanOutcome.Started) delay(3_000)
+                _isRefreshing.value = false
+            }
+        }
+
+        fun informationElements(bssid: String) = wifiScanRepository.informationElements(bssid)
+
+        private fun currentWifiAccessState(): WifiAccessState {
+            val granted =
+                ContextCompat.checkSelfPermission(context, Manifest.permission.NEARBY_WIFI_DEVICES) ==
+                    PackageManager.PERMISSION_GRANTED
+            return if (granted) WifiAccessState.GRANTED else WifiAccessState.PERMISSION_NEEDED
+        }
+    }

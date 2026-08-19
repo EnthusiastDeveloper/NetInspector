@@ -39,6 +39,8 @@ import dev.enthusiastdev.netinspector.ui.screens.connection.ConnectionScreen
 import dev.enthusiastdev.netinspector.ui.screens.connection.ConnectionViewModel
 import dev.enthusiastdev.netinspector.ui.screens.tools.ToolsScreen
 import dev.enthusiastdev.netinspector.ui.screens.tools.ping.PingRoute
+import dev.enthusiastdev.netinspector.ui.screens.wifi.WifiScreen
+import dev.enthusiastdev.netinspector.ui.screens.wifi.WifiViewModel
 
 @Composable
 fun NetInspectorApp() {
@@ -81,9 +83,7 @@ fun NetInspectorApp() {
             ) {
                 NavHost(navController = navController, startDestination = ConnectionRoute) {
                     composable<ConnectionRoute> { ConnectionDestination() }
-                    composable<WifiRoute> {
-                        PlaceholderScreen(stringResource(R.string.destination_wifi))
-                    }
+                    composable<WifiRoute> { WifiDestination() }
                     composable<DevicesRoute> {
                         PlaceholderScreen(stringResource(R.string.destination_devices))
                     }
@@ -110,5 +110,25 @@ private fun ConnectionDestination() {
     ConnectionScreen(
         uiState = connectionUiState,
         onLocationAccessChanged = connectionViewModel::refreshLocationAccess,
+    )
+}
+
+@Composable
+private fun WifiDestination() {
+    val wifiViewModel: WifiViewModel = hiltViewModel()
+    val wifiUiState by wifiViewModel.uiState.collectAsState()
+    val isRefreshing by wifiViewModel.isRefreshing.collectAsState()
+    // Covers first entry (design §6.1: "one [active scan] on screen entry") and re-arming
+    // after a permission grant, which fires no callback of its own to observe.
+    LifecycleResumeEffect(Unit) {
+        wifiViewModel.onResumed()
+        onPauseOrDispose {}
+    }
+    WifiScreen(
+        uiState = wifiUiState,
+        isRefreshing = isRefreshing,
+        onRefresh = wifiViewModel::onRefresh,
+        onWifiAccessChanged = wifiViewModel::onResumed,
+        informationElementsFor = wifiViewModel::informationElements,
     )
 }

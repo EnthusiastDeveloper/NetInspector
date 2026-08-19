@@ -1,16 +1,29 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
 
     <!-- Required on every supported level (design §4). -->
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+    <uses-permission android:name="android.permission.CHANGE_WIFI_STATE" />
 
     <!-- Unredacts the *connected* network's SSID/BSSID on the dashboard only - not the
          scan-results permission (design §4, C-04). Requested lazily from the dashboard,
-         not at first launch. NEARBY_WIFI_DEVICES is added when Phase 3 builds AP scanning;
-         it is a different permission gating a different API and isn't needed yet. -->
-    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+         not at first launch. COARSE is deliberately not requested alongside it: C-04's AOSP
+         trace shows `LocationPermissionChecker` requires FINE specifically at this targetSdk
+         (COARSE only satisfies it for targetSdk < 29), so declaring COARSE would offer a
+         fallback that can't actually unredact anything. -->
+    <uses-permission
+        android:name="android.permission.ACCESS_FINE_LOCATION"
+        tools:ignore="CoarseFineLocation" />
+
+    <!-- Gates getScanResults() at this minSdk (C-03) - the only gate, unrelated to
+         ACCESS_FINE_LOCATION above. neverForLocation declares we don't derive physical
+         location from scan results, which is true (design's non-goals). -->
+    <uses-permission
+        android:name="android.permission.NEARBY_WIFI_DEVICES"
+        android:usesPermissionFlags="neverForLocation" />
 
     <application
         android:name=".NetInspectorApplication"

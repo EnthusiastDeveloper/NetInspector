@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <!-- This module's own APIs require these directly (ConnectivityManager.NetworkCallback,
+         ScanGovernor). The runtime-request rationale for the dangerous ones lives with the
+         identical declarations in :app's manifest - this is just lint visibility for a
+         library-scoped analysis, not a second source of truth. -->
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+    <uses-permission android:name="android.permission.CHANGE_WIFI_STATE" />
+
+    <!-- COARSE deliberately not declared alongside - see the matching comment in :app's
+         manifest (C-04): COARSE can't satisfy this check at this targetSdk anyway. -->
+    <uses-permission
+        android:name="android.permission.ACCESS_FINE_LOCATION"
+        tools:ignore="CoarseFineLocation" />
+    <uses-permission
+        android:name="android.permission.NEARBY_WIFI_DEVICES"
+        android:usesPermissionFlags="neverForLocation" />
+
+</manifest>

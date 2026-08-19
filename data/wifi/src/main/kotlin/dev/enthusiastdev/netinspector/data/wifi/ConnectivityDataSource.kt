@@ -155,4 +155,4 @@ private fun String.normalizedSsid(): String? =
         else -> this
     }
 
-private fun String.normalizedBssid(): String? = if (this == "02:00:00:00:00:00") null else this
+internal fun String.normalizedBssid(): String? = if (this == "02:00:00:00:00:00") null else this
