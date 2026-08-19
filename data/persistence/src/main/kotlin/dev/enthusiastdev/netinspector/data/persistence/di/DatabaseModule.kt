@@ -8,7 +8,16 @@ import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
+import dev.enthusiastdev.netinspector.data.persistence.MIGRATION_1_2
 import dev.enthusiastdev.netinspector.data.persistence.NetInspectorDatabase
+import dev.enthusiastdev.netinspector.data.persistence.diagnostics.DefaultDiagnosticRunRepository
+import dev.enthusiastdev.netinspector.data.persistence.diagnostics.DiagnosticRunDao
+import dev.enthusiastdev.netinspector.data.persistence.diagnostics.DiagnosticRunRepository
+import dev.enthusiastdev.netinspector.data.persistence.scan.DefaultScanHistoryRepository
+import dev.enthusiastdev.netinspector.data.persistence.scan.KnownApDao
+import dev.enthusiastdev.netinspector.data.persistence.scan.ScanHistoryRepository
+import dev.enthusiastdev.netinspector.data.persistence.scan.ScanObservationDao
+import dev.enthusiastdev.netinspector.data.persistence.scan.ScanSessionDao
 import dev.enthusiastdev.netinspector.data.persistence.wol.DefaultSavedWolTargetRepository
 import dev.enthusiastdev.netinspector.data.persistence.wol.SavedWolTargetDao
 import dev.enthusiastdev.netinspector.data.persistence.wol.SavedWolTargetRepository
@@ -21,16 +30,44 @@ abstract class DatabaseModule {
     @Singleton
     abstract fun bindSavedWolTargetRepository(impl: DefaultSavedWolTargetRepository): SavedWolTargetRepository
 
+    @Binds
+    @Singleton
+    abstract fun bindScanHistoryRepository(impl: DefaultScanHistoryRepository): ScanHistoryRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindDiagnosticRunRepository(impl: DefaultDiagnosticRunRepository): DiagnosticRunRepository
+
     companion object {
         @Provides
         @Singleton
         fun provideDatabase(
             @ApplicationContext context: Context,
         ): NetInspectorDatabase =
-            Room.databaseBuilder(context, NetInspectorDatabase::class.java, "netinspector.db").build()
+            Room
+                .databaseBuilder(context, NetInspectorDatabase::class.java, "netinspector.db")
+                .addMigrations(MIGRATION_1_2)
+                .build()
 
         @Provides
         @Singleton
         fun provideSavedWolTargetDao(database: NetInspectorDatabase): SavedWolTargetDao = database.savedWolTargetDao()
+
+        @Provides
+        @Singleton
+        fun provideScanSessionDao(database: NetInspectorDatabase): ScanSessionDao = database.scanSessionDao()
+
+        @Provides
+        @Singleton
+        fun provideScanObservationDao(database: NetInspectorDatabase): ScanObservationDao =
+            database.scanObservationDao()
+
+        @Provides
+        @Singleton
+        fun provideKnownApDao(database: NetInspectorDatabase): KnownApDao = database.knownApDao()
+
+        @Provides
+        @Singleton
+        fun provideDiagnosticRunDao(database: NetInspectorDatabase): DiagnosticRunDao = database.diagnosticRunDao()
     }
 }

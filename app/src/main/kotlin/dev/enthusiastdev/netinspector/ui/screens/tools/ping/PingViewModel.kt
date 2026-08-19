@@ -5,11 +5,20 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.navigation.toRoute
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dev.enthusiastdev.netinspector.core.common.icmp.PingSummary
 import dev.enthusiastdev.netinspector.core.common.icmp.summarizePing
 import dev.enthusiastdev.netinspector.core.model.diagnostics.PingProbeResult
 import dev.enthusiastdev.netinspector.core.model.diagnostics.PingTier
 import dev.enthusiastdev.netinspector.data.diagnostics.icmp.PingConfig
 import dev.enthusiastdev.netinspector.data.diagnostics.icmp.PingRepository
+import dev.enthusiastdev.netinspector.data.persistence.diagnostics.DiagnosticRunRecord
+import dev.enthusiastdev.netinspector.data.persistence.diagnostics.DiagnosticRunRepository
+import dev.enthusiastdev.netinspector.history.DiagnosticToolType
+import dev.enthusiastdev.netinspector.history.PingRunPayload
+import dev.enthusiastdev.netinspector.history.diagnosticHistoryJson
+import dev.enthusiastdev.netinspector.history.diagnosticRunParametersJson
+import dev.enthusiastdev.netinspector.history.toDto
+import dev.enthusiastdev.netinspector.history.toHistorySummary
 import dev.enthusiastdev.netinspector.ui.navigation.PingToolRoute
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -19,6 +28,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.encodeToString
 import java.net.Inet4Address
 import java.net.InetAddress
 import javax.inject.Inject
@@ -28,6 +38,7 @@ class PingViewModel
     @Inject
     constructor(
         private val pingRepository: PingRepository,
+        private val diagnosticRunRepository: DiagnosticRunRepository,
         savedStateHandle: SavedStateHandle,
     ) : ViewModel() {
         private val _uiState =
@@ -58,6 +69,7 @@ class PingViewModel
                     }
 
                     val config = PingConfig()
+                    val startedAtMillis = System.currentTimeMillis()
                     val collected = mutableListOf<PingProbeResult>()
                     pingRepository.ping(address, config).collect { result ->
                         collected.add(result)
@@ -67,12 +79,43 @@ class PingViewModel
                     val rtts = collected.filterIsInstance<PingProbeResult.Reply>().map { it.rttMs }
                     val summary = summarizePing(PingTier.ICMP_SOCKET, config.count, rtts)
                     _uiState.update { it.copy(isRunning = false, summary = summary) }
+
+                    recordHistory(host, config, collected, summary, System.currentTimeMillis() - startedAtMillis)
                 }
         }
 
         fun stop() {
             runJob?.cancel()
             _uiState.update { it.copy(isRunning = false) }
+        }
+
+        private suspend fun recordHistory(
+            host: String,
+            config: PingConfig,
+            results: List<PingProbeResult>,
+            summary: PingSummary,
+            durationMillis: Long,
+        ) {
+            val payload = PingRunPayload(results.map { it.toDto() }, summary.toDto())
+            diagnosticRunRepository.record(
+                DiagnosticRunRecord(
+                    toolType = DiagnosticToolType.PING.name,
+                    target = host,
+                    durationMillis = durationMillis,
+                    summary = summary.toHistorySummary(),
+                    parametersJson =
+                        diagnosticRunParametersJson(
+                            mapOf(
+                                "count" to config.count.toString(),
+                                "intervalMs" to config.intervalMs.toString(),
+                                "timeoutMs" to config.timeoutMs.toString(),
+                                "ttl" to config.ttl.toString(),
+                                "payloadSize" to config.payloadSize.toString(),
+                            ),
+                        ),
+                    resultJson = diagnosticHistoryJson.encodeToString(payload),
+                ),
+            )
         }
 
         private suspend fun resolveIpv4(host: String): Inet4Address? =

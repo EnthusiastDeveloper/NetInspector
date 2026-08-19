@@ -49,6 +49,21 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!-- Phase 8 - the default androidx.startup-driven WorkManagerInitializer runs as a
+             ContentProvider before Application.onCreate(), too early for Hilt to have
+             field-injected HiltWorkerFactory yet. WorkManager.initialize() is called manually
+             from NetInspectorApplication.onCreate() instead, once injection has completed. -->
+        <provider
+            android:name="androidx.startup.InitializationProvider"
+            android:authorities="${applicationId}.androidx-startup"
+            android:exported="false"
+            tools:node="merge">
+            <meta-data
+                android:name="androidx.work.WorkManagerInitializer"
+                android:value="androidx.startup"
+                tools:node="remove" />
+        </provider>
     </application>
 
 </manifest>

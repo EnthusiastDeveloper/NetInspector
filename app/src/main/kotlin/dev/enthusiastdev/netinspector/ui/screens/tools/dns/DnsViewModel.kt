@@ -7,12 +7,20 @@ import dev.enthusiastdev.netinspector.core.model.diagnostics.DnsQueryOutcome
 import dev.enthusiastdev.netinspector.core.model.diagnostics.DnsRecordType
 import dev.enthusiastdev.netinspector.data.diagnostics.dns.DnsRepository
 import dev.enthusiastdev.netinspector.data.diagnostics.dns.reverseDnsName
+import dev.enthusiastdev.netinspector.data.persistence.diagnostics.DiagnosticRunRecord
+import dev.enthusiastdev.netinspector.data.persistence.diagnostics.DiagnosticRunRepository
+import dev.enthusiastdev.netinspector.history.DiagnosticToolType
+import dev.enthusiastdev.netinspector.history.diagnosticHistoryJson
+import dev.enthusiastdev.netinspector.history.diagnosticRunParametersJson
+import dev.enthusiastdev.netinspector.history.toHistorySummary
+import dev.enthusiastdev.netinspector.history.toRunPayload
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.serialization.encodeToString
 import java.net.InetAddress
 import javax.inject.Inject
 
@@ -21,6 +29,7 @@ class DnsViewModel
     @Inject
     constructor(
         private val dnsRepository: DnsRepository,
+        private val diagnosticRunRepository: DiagnosticRunRepository,
     ) : ViewModel() {
         private val _uiState = MutableStateFlow(DnsUiState())
         val uiState: StateFlow<DnsUiState> = _uiState.asStateFlow()
@@ -51,6 +60,7 @@ class DnsViewModel
             queryJob =
                 viewModelScope.launch {
                     _uiState.update { it.copy(isRunning = true, outcome = null) }
+                    val startedAtMillis = System.currentTimeMillis()
                     val server = state.customServer.trim()
                     val outcome =
                         if (server.isEmpty()) {
@@ -64,6 +74,22 @@ class DnsViewModel
                             }
                         }
                     _uiState.update { it.copy(isRunning = false, outcome = outcome) }
+                    diagnosticRunRepository.record(
+                        DiagnosticRunRecord(
+                            toolType = DiagnosticToolType.DNS_LOOKUP.name,
+                            target = queryName,
+                            durationMillis = System.currentTimeMillis() - startedAtMillis,
+                            summary = outcome.toHistorySummary(),
+                            parametersJson =
+                                diagnosticRunParametersJson(
+                                    mapOf(
+                                        "recordType" to state.recordType.name,
+                                        "server" to server.ifEmpty { "system" },
+                                    ),
+                                ),
+                            resultJson = diagnosticHistoryJson.encodeToString(outcome.toRunPayload()),
+                        ),
+                    )
                 }
         }
 

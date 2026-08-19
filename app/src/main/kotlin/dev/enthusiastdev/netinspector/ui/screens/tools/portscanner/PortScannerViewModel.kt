@@ -5,9 +5,17 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.navigation.toRoute
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dev.enthusiastdev.netinspector.core.model.diagnostics.PortScanFinding
 import dev.enthusiastdev.netinspector.core.model.diagnostics.PortSelection
 import dev.enthusiastdev.netinspector.data.diagnostics.portscan.PortScanEvent
 import dev.enthusiastdev.netinspector.data.diagnostics.portscan.PortScannerRepository
+import dev.enthusiastdev.netinspector.data.persistence.diagnostics.DiagnosticRunRecord
+import dev.enthusiastdev.netinspector.data.persistence.diagnostics.DiagnosticRunRepository
+import dev.enthusiastdev.netinspector.history.DiagnosticToolType
+import dev.enthusiastdev.netinspector.history.PortScanRunPayload
+import dev.enthusiastdev.netinspector.history.diagnosticHistoryJson
+import dev.enthusiastdev.netinspector.history.diagnosticRunParametersJson
+import dev.enthusiastdev.netinspector.history.toDto
 import dev.enthusiastdev.netinspector.ui.navigation.PortScannerToolRoute
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -17,6 +25,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.encodeToString
 import java.net.Inet4Address
 import java.net.InetAddress
 import javax.inject.Inject
@@ -26,6 +35,7 @@ class PortScannerViewModel
     @Inject
     constructor(
         private val portScannerRepository: PortScannerRepository,
+        private val diagnosticRunRepository: DiagnosticRunRepository,
         savedStateHandle: SavedStateHandle,
     ) : ViewModel() {
         private val _uiState =
@@ -79,6 +89,7 @@ class PortScannerViewModel
                         it.copy(isRunning = true, findings = emptyList(), progress = null, errorMessage = null)
                     }
 
+                    val startedAtMillis = System.currentTimeMillis()
                     portScannerRepository.scan(address, ports).collect { event ->
                         when (event) {
                             is PortScanEvent.Progress -> _uiState.update { it.copy(progress = event.progress) }
@@ -88,12 +99,41 @@ class PortScannerViewModel
                     }
 
                     _uiState.update { it.copy(isRunning = false) }
+                    recordHistory(
+                        host,
+                        _uiState.value.selection,
+                        ports.size,
+                        _uiState.value.findings,
+                        System.currentTimeMillis() - startedAtMillis,
+                    )
                 }
         }
 
         fun stop() {
             scanJob?.cancel()
             _uiState.update { it.copy(isRunning = false) }
+        }
+
+        private suspend fun recordHistory(
+            host: String,
+            selection: PortSelection,
+            portsScanned: Int,
+            findings: List<PortScanFinding>,
+            durationMillis: Long,
+        ) {
+            diagnosticRunRepository.record(
+                DiagnosticRunRecord(
+                    toolType = DiagnosticToolType.PORT_SCAN.name,
+                    target = host,
+                    durationMillis = durationMillis,
+                    summary = "${findings.size} open of $portsScanned scanned",
+                    parametersJson = diagnosticRunParametersJson(mapOf("preset" to selection.kind.name)),
+                    resultJson =
+                        diagnosticHistoryJson.encodeToString(
+                            PortScanRunPayload(portsScanned, findings.map { it.toDto() }),
+                        ),
+                ),
+            )
         }
 
         private suspend fun resolveIpv4(host: String): Inet4Address? =

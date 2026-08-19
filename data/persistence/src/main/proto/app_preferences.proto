@@ -11,4 +11,12 @@ option java_multiple_files = true;
 message AppPreferences {
   // design §11.4 - "not skippable, not repeated": gates the first LAN sweep.
   bool lan_scan_acknowledged = 1;
+
+  // Phase 8 / design §10 resolved decision #4 - retention in days for `scan_session` (cascades
+  // to `scan_observation`) and `diagnostic_run` respectively, read by the periodic cleanup
+  // WorkManager job in `:app`. Proto3 scalars default to 0, which isn't a valid retention
+  // value, so 0 here is read by the repository as "unset" and substituted with the design
+  // doc's defaults (30 / 90) rather than actually meaning "delete everything immediately."
+  int32 scan_history_retention_days = 2;
+  int32 diagnostic_history_retention_days = 3;
 }

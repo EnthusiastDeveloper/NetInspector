@@ -5,6 +5,7 @@ import dev.enthusiastdev.netinspector.core.model.wifi.AccessPoint
 import dev.enthusiastdev.netinspector.core.model.wifi.InformationElementSummary
 import dev.enthusiastdev.netinspector.core.model.wifi.ScanBudget
 import dev.enthusiastdev.netinspector.core.model.wifi.ScanOutcome
+import dev.enthusiastdev.netinspector.core.model.wifi.ScanSnapshot
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.scan
@@ -22,6 +23,10 @@ interface WifiScanRepository {
     /** design §3, §7.2 - one row per BSSID, refreshed in place rather than re-created; an AP
      * missing from the latest scan keeps its last-known state rather than disappearing. */
     val scanState: Flow<WifiScanState>
+
+    /** design §10/Phase 8 - one emission per passively-harvested scan generation (unlike
+     * [scanState], which accumulates across generations), for whatever collects scan history. */
+    val scanSnapshots: Flow<ScanSnapshot>
 
     suspend fun requestScan(isUserInitiated: Boolean): ScanOutcome
 
@@ -51,6 +56,8 @@ class DefaultWifiScanRepository
                     }
                     Accumulator(merged, acc.sampleCount + 1)
                 }.map { WifiScanState(it.byBssid.values.toList(), it.sampleCount) }
+
+        override val scanSnapshots: Flow<ScanSnapshot> = scanGovernor.results
 
         override suspend fun requestScan(isUserInitiated: Boolean) = scanGovernor.requestScan(isUserInitiated)
 

@@ -29,6 +29,13 @@ hilt = "2.58"
 hiltNavigationCompose = "1.2.0"
 room = "2.8.4"
 
+# Phase 8 - monitoring/history/export. workManager checked at minCompileSdk=35 (matches this
+# project's compileSdk exactly); androidxHilt is the androidx.hilt release train (same one
+# hiltNavigationCompose already pins at 1.2.0, kept as its own key since hilt-work/hilt-compiler
+# are separate artifacts) - see docs/references/dependency-versions.md before bumping either.
+workManager = "2.10.5"
+androidxHilt = "1.2.0"
+
 # Protobuf (DataStore Proto preferences)
 protobuf = "4.35.1"
 protobufPlugin = "0.9.6"
@@ -37,6 +44,10 @@ protobufPlugin = "0.9.6"
 coroutines = "1.10.2"
 timber = "5.0.1"
 serialization = "1.8.1"
+
+# Phase 8 - JSON encoding for diagnostic-run history payloads and CSV/JSON export. Same
+# version as serialization-core above (same release, same POM kotlin-stdlib constraint).
+serializationJson = "1.8.1"
 
 # Test
 junit4 = "4.13.2"
@@ -78,10 +89,14 @@ androidx-compose-material3-adaptive-navigation = { group = "androidx.compose.mat
 hilt-android = { group = "com.google.dagger", name = "hilt-android", version.ref = "hilt" }
 hilt-compiler = { group = "com.google.dagger", name = "hilt-android-compiler", version.ref = "hilt" }
 androidx-hilt-navigation-compose = { group = "androidx.hilt", name = "hilt-navigation-compose", version.ref = "hiltNavigationCompose" }
+androidx-hilt-work = { group = "androidx.hilt", name = "hilt-work", version.ref = "androidxHilt" }
+androidx-hilt-compiler = { group = "androidx.hilt", name = "hilt-compiler", version.ref = "androidxHilt" }
 
 androidx-room-runtime = { group = "androidx.room", name = "room-runtime", version.ref = "room" }
 androidx-room-ktx = { group = "androidx.room", name = "room-ktx", version.ref = "room" }
 androidx-room-compiler = { group = "androidx.room", name = "room-compiler", version.ref = "room" }
+
+androidx-work-runtime-ktx = { group = "androidx.work", name = "work-runtime-ktx", version.ref = "workManager" }
 
 protobuf-kotlin-lite = { group = "com.google.protobuf", name = "protobuf-kotlin-lite", version.ref = "protobuf" }
 
@@ -91,6 +106,7 @@ kotlinx-coroutines-test = { group = "org.jetbrains.kotlinx", name = "kotlinx-cor
 
 timber = { group = "com.jakewharton.timber", name = "timber", version.ref = "timber" }
 kotlinx-serialization-core = { group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-core", version.ref = "serialization" }
+kotlinx-serialization-json = { group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-json", version.ref = "serializationJson" }
 
 junit4 = { group = "junit", name = "junit", version.ref = "junit4" }
 turbine = { group = "app.cash.turbine", name = "turbine", version.ref = "turbine" }

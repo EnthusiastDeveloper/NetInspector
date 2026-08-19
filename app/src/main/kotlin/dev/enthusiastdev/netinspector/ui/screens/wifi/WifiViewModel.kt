@@ -11,6 +11,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dev.enthusiastdev.netinspector.core.model.wifi.ScanOutcome
 import dev.enthusiastdev.netinspector.data.wifi.WifiScanRepository
+import dev.enthusiastdev.netinspector.usecase.RecordWifiScanUseCase
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -18,7 +19,9 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -28,6 +31,7 @@ class WifiViewModel
     @Inject
     constructor(
         private val wifiScanRepository: WifiScanRepository,
+        private val recordWifiScan: RecordWifiScanUseCase,
         @ApplicationContext private val context: Context,
     ) : ViewModel() {
         // Drives the throttle countdown and the permission-state check - neither has its own
@@ -39,6 +43,16 @@ class WifiViewModel
                     delay(1_000)
                 }
             }
+
+        // design §10/Phase 8 - persists every passively-harvested scan generation as it arrives,
+        // independent of `uiState`'s accumulation (a `WhileSubscribed` collector further down
+        // would otherwise stop recording history the moment the screen isn't visible, which the
+        // history feature explicitly shouldn't depend on while the screen *is* open).
+        init {
+            wifiScanRepository.scanSnapshots
+                .onEach { recordWifiScan(it) }
+                .launchIn(viewModelScope)
+        }
 
         val uiState: StateFlow<WifiUiState> =
             combine(wifiScanRepository.scanState, ticker) { scanState, _ -> scanState }
