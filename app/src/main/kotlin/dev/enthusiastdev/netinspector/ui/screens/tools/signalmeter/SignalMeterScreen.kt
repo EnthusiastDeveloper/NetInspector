@@ -76,10 +76,15 @@ private fun Chart(
         if (uiState.history.size < 2) {
             Text(text = "Collecting samples…", style = MaterialTheme.typography.bodySmall)
         } else {
+            val samples = uiState.history.map { it.rssiDbm.toFloat() }
             RollingLineChart(
-                samples = uiState.history.map { it.rssiDbm.toFloat() },
+                samples = samples,
                 minValue = -100f,
                 maxValue = -30f,
+                contentDescription =
+                    "RSSI trend over the last 60 seconds, ${samples.size} samples, " +
+                        "latest ${samples.last().toInt()} dBm, ranging from ${samples.min().toInt()} " +
+                        "to ${samples.max().toInt()} dBm",
                 modifier = Modifier.fillMaxWidth(),
             )
         }

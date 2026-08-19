@@ -14,6 +14,8 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.unit.dp
 
 private const val START_ANGLE = 150f
@@ -41,7 +43,17 @@ fun RssiGauge(
     val onSurface = MaterialTheme.colorScheme.onSurface
     val onSurfaceVariant = MaterialTheme.colorScheme.onSurfaceVariant
 
-    Box(modifier = modifier.size(160.dp), contentAlignment = Alignment.Center) {
+    // The arc's colour is the only place "poor/fair/good" is conveyed today - clearAndSetSemantics
+    // (rather than a plain merge) replaces the two child Texts' own announcement with this one
+    // combined description, so TalkBack gets the quality band once instead of just the raw number
+    // twice.
+    Box(
+        modifier =
+            modifier.size(160.dp).clearAndSetSemantics {
+                contentDescription = rssiGaugeDescription(rssiDbm, qualityPercent, showAsPercent)
+            },
+        contentAlignment = Alignment.Center,
+    ) {
         Canvas(modifier = Modifier.size(160.dp)) {
             val stroke = Stroke(width = 16.dp.toPx(), cap = StrokeCap.Round)
             val inset = stroke.width / 2
@@ -78,4 +90,19 @@ fun RssiGauge(
             }
         }
     }
+}
+
+private fun rssiGaugeDescription(
+    rssiDbm: Int,
+    qualityPercent: Int,
+    showAsPercent: Boolean,
+): String {
+    val qualityLabel =
+        when {
+            qualityPercent < 30 -> "poor"
+            qualityPercent < 60 -> "fair"
+            else -> "good"
+        }
+    val value = if (showAsPercent) "$qualityPercent percent" else "$rssiDbm dBm"
+    return "Signal strength $value, $qualityLabel"
 }

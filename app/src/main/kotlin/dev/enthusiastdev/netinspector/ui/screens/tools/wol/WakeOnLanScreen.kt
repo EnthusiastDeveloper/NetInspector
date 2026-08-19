@@ -27,6 +27,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import dev.enthusiastdev.netinspector.data.persistence.wol.SavedWolTarget
@@ -115,7 +116,13 @@ private fun SavedTargetRow(
             modifier = Modifier.fillMaxWidth().padding(8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Column(modifier = Modifier.weight(1f)) {
+            // Unlike the card-row pattern elsewhere (Card(onClick = ...) auto-merges its
+            // descendant text into one TalkBack stop), this card has no onClick of its own -
+            // the two IconButtons need their own stops - so the label/MAC pair needs an
+            // explicit merge or they'd read as two separate announcements per row.
+            Column(
+                modifier = Modifier.weight(1f).semantics(mergeDescendants = true) {},
+            ) {
                 Text(text = target.label, style = MaterialTheme.typography.bodyMedium)
                 Text(text = target.mac, style = MaterialTheme.typography.bodySmall)
             }

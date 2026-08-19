@@ -9,6 +9,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
@@ -70,22 +72,31 @@ fun ChannelOccupancyGraph(
 
     Canvas(
         modifier =
-            modifier.fillMaxWidth().height(GRAPH_HEIGHT_DP.dp).pointerInput(curves, axisLowMhz, axisHighMhz) {
-                val topInsetPx = TOP_INSET_DP.dp.toPx()
-                val bottomInsetPx = BOTTOM_INSET_DP.dp.toPx()
-                detectTapGestures { offset ->
-                    val mapper =
-                        AxisMapper(
-                            axisLowMhz = axisLowMhz,
-                            axisHighMhz = axisHighMhz,
-                            widthPx = size.width.toFloat(),
-                            topInsetPx = topInsetPx,
-                            bottomInsetPx = bottomInsetPx,
-                            heightPx = size.height.toFloat(),
-                        )
-                    hitTestCurve(curves, offset, mapper)?.let(onCurveTap)
+            modifier
+                .fillMaxWidth()
+                .height(GRAPH_HEIGHT_DP.dp)
+                .pointerInput(curves, axisLowMhz, axisHighMhz) {
+                    val topInsetPx = TOP_INSET_DP.dp.toPx()
+                    val bottomInsetPx = BOTTOM_INSET_DP.dp.toPx()
+                    detectTapGestures { offset ->
+                        val mapper =
+                            AxisMapper(
+                                axisLowMhz = axisLowMhz,
+                                axisHighMhz = axisHighMhz,
+                                widthPx = size.width.toFloat(),
+                                topInsetPx = topInsetPx,
+                                bottomInsetPx = bottomInsetPx,
+                                heightPx = size.height.toFloat(),
+                            )
+                        hitTestCurve(curves, offset, mapper)?.let(onCurveTap)
+                    }
                 }
-            },
+                // The tap-to-highlight interaction above has no TalkBack equivalent (a raw
+                // gesture detector, not a `clickable`) - out of scope to build one here (it'd
+                // need per-curve focusable nodes). This at least gives every curve's data - the
+                // information the highlight interaction can only ever narrow down to one curve
+                // at a time anyway - a single accessible summary of the whole chart.
+                .clearAndSetSemantics { contentDescription = describeCurves(curves) },
     ) {
         val mapper =
             AxisMapper(
@@ -99,4 +110,13 @@ fun ChannelOccupancyGraph(
         val paint = GraphPaint(gridColor, textMeasurer, labelStyles)
         drawOccupancyGraph(curves, highlightedKey, mapper, minTickSpacingPx, paint)
     }
+}
+
+private fun describeCurves(curves: List<OccupancyCurve>): String {
+    if (curves.isEmpty()) return "Channel occupancy graph, no networks on this band"
+    val entries =
+        curves.joinToString("; ") { curve ->
+            "${curve.label}, centered at ${curve.primary.centerMhz} megahertz, ${curve.rssiDbm} dBm"
+        }
+    return "Channel occupancy graph, ${curves.size} networks: $entries"
 }

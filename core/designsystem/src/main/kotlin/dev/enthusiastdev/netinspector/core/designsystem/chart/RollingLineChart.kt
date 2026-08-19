@@ -10,6 +10,8 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.unit.dp
 
 /**
@@ -17,18 +19,29 @@ import androidx.compose.ui.unit.dp
  * over whatever samples the caller kept in its own rolling window (design leaves the sampling
  * cadence to the underlying stream - a `NetworkCallback`-driven RSSI flow doesn't emit on a
  * fixed timer, so the window is time-bounded by the caller, not sample-count-bounded here).
+ *
+ * [contentDescription] is required rather than defaulted/generated here: this chart has no
+ * built-in notion of units (dBm, percent, ...) or what it's a trend *of* - only the caller
+ * knows that, so a generic "line chart" fallback would tell a TalkBack user nothing a sighted
+ * user doesn't already get from the surrounding screen title.
  */
 @Composable
 fun RollingLineChart(
     samples: List<Float>,
     minValue: Float,
     maxValue: Float,
+    contentDescription: String,
     modifier: Modifier = Modifier,
 ) {
     val lineColor = MaterialTheme.colorScheme.primary
     val trackColor = MaterialTheme.colorScheme.surfaceVariant
 
-    Canvas(modifier = modifier.fillMaxWidth().height(160.dp)) {
+    Canvas(
+        modifier =
+            modifier.fillMaxWidth().height(160.dp).clearAndSetSemantics {
+                this.contentDescription = contentDescription
+            },
+    ) {
         drawRect(color = trackColor)
         if (samples.size < 2) return@Canvas
 

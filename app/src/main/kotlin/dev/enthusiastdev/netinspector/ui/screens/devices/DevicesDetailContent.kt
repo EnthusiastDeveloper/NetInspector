@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -132,8 +133,9 @@ private fun DevicesDetailIdentificationCard(host: Host) {
 private fun MacAddressRow() {
     var showExplanation by remember { mutableStateOf(false) }
     Row(
-        modifier = Modifier.fillMaxWidth().clickable { showExplanation = true },
+        modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).clickable { showExplanation = true },
         horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
             text = "MAC address",

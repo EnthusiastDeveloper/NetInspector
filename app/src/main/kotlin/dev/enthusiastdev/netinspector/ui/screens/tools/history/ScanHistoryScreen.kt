@@ -174,7 +174,15 @@ private fun ScanHistoryDetailPane(
                 if (rssiSamples.size < 2) {
                     Text("Not enough history yet - this AP needs to appear in more scans.")
                 } else {
-                    RollingLineChart(samples = rssiSamples, minValue = -100f, maxValue = -30f)
+                    RollingLineChart(
+                        samples = rssiSamples,
+                        minValue = -100f,
+                        maxValue = -30f,
+                        contentDescription =
+                            "RSSI history for ${knownAp.ssid.ifEmpty { "this hidden network" }}, " +
+                                "${rssiSamples.size} samples, latest ${rssiSamples.last().toInt()} dBm, " +
+                                "ranging from ${rssiSamples.min().toInt()} to ${rssiSamples.max().toInt()} dBm",
+                    )
                 }
             }
         }
