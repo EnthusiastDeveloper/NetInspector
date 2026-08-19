@@ -38,10 +38,12 @@ import dev.enthusiastdev.netinspector.core.designsystem.adaptive.rememberDeviceP
 import dev.enthusiastdev.netinspector.core.designsystem.adaptive.translatedTo
 import dev.enthusiastdev.netinspector.ui.navigation.ConnectionRoute
 import dev.enthusiastdev.netinspector.ui.navigation.DevicesRoute
+import dev.enthusiastdev.netinspector.ui.navigation.DiagnosticHistoryToolRoute
 import dev.enthusiastdev.netinspector.ui.navigation.DnsToolRoute
 import dev.enthusiastdev.netinspector.ui.navigation.HttpInspectorToolRoute
 import dev.enthusiastdev.netinspector.ui.navigation.PingToolRoute
 import dev.enthusiastdev.netinspector.ui.navigation.PortScannerToolRoute
+import dev.enthusiastdev.netinspector.ui.navigation.ScanHistoryToolRoute
 import dev.enthusiastdev.netinspector.ui.navigation.SignalMeterToolRoute
 import dev.enthusiastdev.netinspector.ui.navigation.SubnetCalculatorToolRoute
 import dev.enthusiastdev.netinspector.ui.navigation.ToolsHomeRoute
@@ -58,6 +60,8 @@ import dev.enthusiastdev.netinspector.ui.screens.devices.DevicesViewModel
 import dev.enthusiastdev.netinspector.ui.screens.tools.Tool
 import dev.enthusiastdev.netinspector.ui.screens.tools.ToolsScreen
 import dev.enthusiastdev.netinspector.ui.screens.tools.dns.DnsRoute
+import dev.enthusiastdev.netinspector.ui.screens.tools.history.DiagnosticHistoryRoute
+import dev.enthusiastdev.netinspector.ui.screens.tools.history.ScanHistoryRoute
 import dev.enthusiastdev.netinspector.ui.screens.tools.httpinspector.HttpInspectorRoute
 import dev.enthusiastdev.netinspector.ui.screens.tools.ping.PingRoute
 import dev.enthusiastdev.netinspector.ui.screens.tools.portscanner.PortScannerRoute
@@ -142,6 +146,8 @@ private fun AppNavHost(navController: NavHostController) {
             composable<WhoisToolRoute> { WhoisRoute() }
             composable<HttpInspectorToolRoute> { HttpInspectorRoute() }
             composable<WakeOnLanToolRoute> { WakeOnLanRoute() }
+            composable<ScanHistoryToolRoute> { ScanHistoryRoute() }
+            composable<DiagnosticHistoryToolRoute> { DiagnosticHistoryRoute() }
         }
     }
 }
@@ -230,5 +236,7 @@ private fun NavHostController.navigateToTool(tool: Tool) {
         Tool.HTTP_INSPECTOR -> navigate(HttpInspectorToolRoute)
         Tool.SUBNET_CALCULATOR -> navigate(SubnetCalculatorToolRoute)
         Tool.SIGNAL_METER -> navigate(SignalMeterToolRoute)
+        Tool.SCAN_HISTORY -> navigate(ScanHistoryToolRoute)
+        Tool.DIAGNOSTIC_HISTORY -> navigate(DiagnosticHistoryToolRoute)
     }
 }
