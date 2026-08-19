@@ -16,11 +16,12 @@ import androidx.compose.ui.unit.dp
 fun ConnectionScreen(
     uiState: ConnectionUiState,
     modifier: Modifier = Modifier,
+    onLocationAccessChanged: () -> Unit = {},
 ) {
     when (uiState) {
         ConnectionUiState.Loading -> CenteredMessage("Loading…", modifier)
         ConnectionUiState.Disconnected -> CenteredMessage("Not connected to Wi-Fi", modifier)
-        is ConnectionUiState.Connected -> ConnectedContent(uiState, modifier)
+        is ConnectionUiState.Connected -> ConnectedContent(uiState, modifier, onLocationAccessChanged)
     }
 }
 
@@ -42,6 +43,7 @@ private fun CenteredMessage(
 private fun ConnectedContent(
     state: ConnectionUiState.Connected,
     modifier: Modifier = Modifier,
+    onLocationAccessChanged: () -> Unit = {},
 ) {
     val snapshot = state.snapshot
 
@@ -50,7 +52,10 @@ private fun ConnectedContent(
         contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        item { ConnectionHeader(snapshot, state.hasScanPermission) }
+        item { ConnectionHeader(snapshot, state.locationAccess) }
+        if (state.locationAccess != LocationAccessState.GRANTED) {
+            item { LocationAccessCard(state.locationAccess, onLocationAccessChanged) }
+        }
         item { StatusBadges(snapshot) }
         item { RadioSection(snapshot) }
         item { Ipv4Section(snapshot) }

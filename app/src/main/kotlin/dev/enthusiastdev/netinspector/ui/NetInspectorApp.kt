@@ -17,6 +17,7 @@ import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.res.stringResource
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -76,11 +77,7 @@ fun NetInspectorApp() {
                 },
             ) {
                 NavHost(navController = navController, startDestination = ConnectionRoute) {
-                    composable<ConnectionRoute> {
-                        val connectionViewModel: ConnectionViewModel = hiltViewModel()
-                        val connectionUiState by connectionViewModel.uiState.collectAsState()
-                        ConnectionScreen(uiState = connectionUiState)
-                    }
+                    composable<ConnectionRoute> { ConnectionDestination() }
                     composable<WifiRoute> {
                         PlaceholderScreen(stringResource(R.string.destination_wifi))
                     }
@@ -94,4 +91,20 @@ fun NetInspectorApp() {
             }
         }
     }
+}
+
+@Composable
+private fun ConnectionDestination() {
+    val connectionViewModel: ConnectionViewModel = hiltViewModel()
+    val connectionUiState by connectionViewModel.uiState.collectAsState()
+    // Granting location access via system Settings, then returning here, doesn't fire any
+    // callback the ViewModel observes - re-check on resume.
+    LifecycleResumeEffect(Unit) {
+        connectionViewModel.refreshLocationAccess()
+        onPauseOrDispose {}
+    }
+    ConnectionScreen(
+        uiState = connectionUiState,
+        onLocationAccessChanged = connectionViewModel::refreshLocationAccess,
+    )
 }

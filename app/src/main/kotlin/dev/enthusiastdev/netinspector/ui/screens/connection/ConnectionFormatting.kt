@@ -4,11 +4,18 @@ import dev.enthusiastdev.netinspector.core.model.connection.ConnectionSnapshot
 import dev.enthusiastdev.netinspector.core.model.wifi.Band
 import dev.enthusiastdev.netinspector.core.model.wifi.WifiStandard
 
-internal fun ConnectionSnapshot.ssidLabel(hasScanPermission: Boolean): String =
-    ssid ?: if (hasScanPermission) "Hidden network" else "<permission required>"
+internal fun ConnectionSnapshot.ssidLabel(locationAccess: LocationAccessState): String =
+    ssid ?: locationAccess.unknownLabel("Hidden network")
 
-internal fun ConnectionSnapshot.bssidLabel(hasScanPermission: Boolean): String =
-    bssid ?: if (hasScanPermission) "Unknown" else "<permission required>"
+internal fun ConnectionSnapshot.bssidLabel(locationAccess: LocationAccessState): String =
+    bssid ?: locationAccess.unknownLabel("Unknown")
+
+private fun LocationAccessState.unknownLabel(whenGranted: String): String =
+    when (this) {
+        LocationAccessState.GRANTED -> whenGranted
+        LocationAccessState.PERMISSION_NEEDED -> "<permission required>"
+        LocationAccessState.SERVICES_DISABLED -> "<location services off>"
+    }
 
 internal fun Band.label(): String =
     when (this) {

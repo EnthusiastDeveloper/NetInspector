@@ -6,12 +6,11 @@
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
 
-    <!-- Declared here so Phase 1's dashboard can check permission state and degrade
-         gracefully (design plan Phase 1 risk note); the runtime request + rationale flow is
-         Phase 3 work (design plan Phase 3, C-03). -->
-    <uses-permission
-        android:name="android.permission.NEARBY_WIFI_DEVICES"
-        android:usesPermissionFlags="neverForLocation" />
+    <!-- Unredacts the *connected* network's SSID/BSSID on the dashboard only - not the
+         scan-results permission (design §4, C-04). Requested lazily from the dashboard,
+         not at first launch. NEARBY_WIFI_DEVICES is added when Phase 3 builds AP scanning;
+         it is a different permission gating a different API and isn't needed yet. -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
 
     <application
         android:name=".NetInspectorApplication"

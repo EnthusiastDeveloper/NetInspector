@@ -29,16 +29,16 @@ import dev.enthusiastdev.netinspector.core.model.connection.ConnectionSnapshot
 @Composable
 internal fun ConnectionHeader(
     snapshot: ConnectionSnapshot,
-    hasScanPermission: Boolean,
+    locationAccess: LocationAccessState,
     modifier: Modifier = Modifier,
 ) {
     Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = modifier.fillMaxWidth()) {
         snapshot.rssiDbm?.let { rssi ->
             RssiGauge(rssiDbm = rssi, qualityPercent = rssiToQualityPercent(rssi))
         }
-        Text(text = snapshot.ssidLabel(hasScanPermission), style = MaterialTheme.typography.titleLarge)
+        Text(text = snapshot.ssidLabel(locationAccess), style = MaterialTheme.typography.titleLarge)
         Text(
-            text = snapshot.bssidLabel(hasScanPermission),
+            text = snapshot.bssidLabel(locationAccess),
             style = MaterialTheme.typography.bodyMedium,
             fontFamily = FontFamily.Monospace,
         )
