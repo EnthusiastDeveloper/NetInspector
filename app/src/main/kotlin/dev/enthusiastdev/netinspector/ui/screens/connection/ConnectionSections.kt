@@ -25,16 +25,22 @@ import dev.enthusiastdev.netinspector.core.designsystem.component.InfoCard
 import dev.enthusiastdev.netinspector.core.designsystem.component.InfoRow
 import dev.enthusiastdev.netinspector.core.designsystem.gauge.RssiGauge
 import dev.enthusiastdev.netinspector.core.model.connection.ConnectionSnapshot
+import dev.enthusiastdev.netinspector.core.model.settings.RssiDisplayUnit
 
 @Composable
 internal fun ConnectionHeader(
     snapshot: ConnectionSnapshot,
     locationAccess: LocationAccessState,
+    rssiDisplayUnit: RssiDisplayUnit,
     modifier: Modifier = Modifier,
 ) {
     Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = modifier.fillMaxWidth()) {
         snapshot.rssiDbm?.let { rssi ->
-            RssiGauge(rssiDbm = rssi, qualityPercent = rssiToQualityPercent(rssi))
+            RssiGauge(
+                rssiDbm = rssi,
+                qualityPercent = rssiToQualityPercent(rssi),
+                showAsPercent = rssiDisplayUnit == RssiDisplayUnit.PERCENT,
+            )
         }
         Text(text = snapshot.ssidLabel(locationAccess), style = MaterialTheme.typography.titleLarge)
         Text(

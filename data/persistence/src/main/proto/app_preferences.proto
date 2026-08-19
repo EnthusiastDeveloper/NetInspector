@@ -19,4 +19,15 @@ message AppPreferences {
   // doc's defaults (30 / 90) rather than actually meaning "delete everything immediately."
   int32 scan_history_retention_days = 2;
   int32 diagnostic_history_retention_days = 3;
+
+  // Phase 8 / design §10 - the rest of the settings screen's fields. Stored as the enum/preset
+  // name rather than a proto enum: keeps the same "empty/0 means unset, substitute the
+  // default" pattern the retention fields above already use, with one shared parsing shape
+  // (`runCatching { T.valueOf(raw) }.getOrDefault(default)`) instead of a second one for
+  // proto's generated enum type.
+  string theme_mode = 4;
+  string rssi_display_unit = 5;
+  string default_port_preset = 6;
+  int32 default_port_custom_start = 7;
+  int32 default_port_custom_end = 8;
 }

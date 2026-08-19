@@ -137,7 +137,7 @@ private fun WifiContent(
         detailPane = {
             AnimatedPane {
                 navigator.currentDestination?.contentKey?.let { bssid ->
-                    WifiDetailPane(bssid, state.accessPoints, informationElementsFor)
+                    WifiDetailPane(bssid, state.accessPoints, informationElementsFor, state.rssiDisplayUnit)
                 }
             }
         },

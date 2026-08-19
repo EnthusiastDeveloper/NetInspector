@@ -1,5 +1,6 @@
 package dev.enthusiastdev.netinspector.ui.screens.wifi
 
+import dev.enthusiastdev.netinspector.core.model.settings.RssiDisplayUnit
 import dev.enthusiastdev.netinspector.core.model.wifi.AccessPoint
 import dev.enthusiastdev.netinspector.core.model.wifi.ScanBudget
 import java.time.Instant
@@ -20,5 +21,6 @@ sealed interface WifiUiState {
         val wifiAccess: WifiAccessState,
         val budget: ScanBudget,
         val lastUpdated: Instant?,
+        val rssiDisplayUnit: RssiDisplayUnit = RssiDisplayUnit.DBM,
     ) : WifiUiState
 }

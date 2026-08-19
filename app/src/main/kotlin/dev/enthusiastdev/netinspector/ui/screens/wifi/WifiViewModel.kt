@@ -10,6 +10,7 @@ import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dev.enthusiastdev.netinspector.core.model.wifi.ScanOutcome
+import dev.enthusiastdev.netinspector.data.persistence.preferences.AppSettingsRepository
 import dev.enthusiastdev.netinspector.data.wifi.WifiScanRepository
 import dev.enthusiastdev.netinspector.usecase.RecordWifiScanUseCase
 import kotlinx.coroutines.delay
@@ -20,7 +21,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.launchIn
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -32,6 +32,7 @@ class WifiViewModel
     constructor(
         private val wifiScanRepository: WifiScanRepository,
         private val recordWifiScan: RecordWifiScanUseCase,
+        private val appSettingsRepository: AppSettingsRepository,
         @ApplicationContext private val context: Context,
     ) : ViewModel() {
         // Drives the throttle countdown and the permission-state check - neither has its own
@@ -55,20 +56,24 @@ class WifiViewModel
         }
 
         val uiState: StateFlow<WifiUiState> =
-            combine(wifiScanRepository.scanState, ticker) { scanState, _ -> scanState }
-                .map { scanState ->
-                    WifiUiState.Content(
-                        accessPoints = scanState.accessPoints,
-                        sampleCount = scanState.sampleCount,
-                        wifiAccess = currentWifiAccessState(),
-                        budget = wifiScanRepository.budget(),
-                        lastUpdated = scanState.accessPoints.maxOfOrNull { it.lastSeen },
-                    )
-                }.stateIn(
-                    scope = viewModelScope,
-                    started = SharingStarted.WhileSubscribed(5_000),
-                    initialValue = WifiUiState.Loading,
+            combine(
+                wifiScanRepository.scanState,
+                ticker,
+                appSettingsRepository.rssiDisplayUnit,
+            ) { scanState, _, rssiDisplayUnit ->
+                WifiUiState.Content(
+                    accessPoints = scanState.accessPoints,
+                    sampleCount = scanState.sampleCount,
+                    wifiAccess = currentWifiAccessState(),
+                    budget = wifiScanRepository.budget(),
+                    lastUpdated = scanState.accessPoints.maxOfOrNull { it.lastSeen },
+                    rssiDisplayUnit = rssiDisplayUnit,
                 )
+            }.stateIn(
+                scope = viewModelScope,
+                started = SharingStarted.WhileSubscribed(5_000),
+                initialValue = WifiUiState.Loading,
+            )
 
         /** design §6.1 - "one [active scan] on screen entry": called from `ON_RESUME`, which
          * covers first entry and also re-arming after a permission grant (nothing else would

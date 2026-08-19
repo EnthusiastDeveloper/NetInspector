@@ -18,6 +18,7 @@ import dev.enthusiastdev.netinspector.core.common.wifi.rssiToQualityPercent
 import dev.enthusiastdev.netinspector.core.designsystem.component.InfoCard
 import dev.enthusiastdev.netinspector.core.designsystem.component.InfoRow
 import dev.enthusiastdev.netinspector.core.designsystem.gauge.RssiGauge
+import dev.enthusiastdev.netinspector.core.model.settings.RssiDisplayUnit
 import dev.enthusiastdev.netinspector.core.model.wifi.AccessPoint
 import dev.enthusiastdev.netinspector.core.model.wifi.InformationElementSummary
 import dev.enthusiastdev.netinspector.ui.screens.connection.label
@@ -29,6 +30,7 @@ internal fun WifiDetailPane(
     bssid: String,
     accessPoints: List<AccessPoint>,
     informationElementsFor: (String) -> InformationElementSummary,
+    rssiDisplayUnit: RssiDisplayUnit,
     modifier: Modifier = Modifier,
 ) {
     val accessPoint = accessPoints.firstOrNull { it.bssid == bssid }
@@ -43,13 +45,14 @@ internal fun WifiDetailPane(
         return
     }
     val informationElements = remember(bssid) { informationElementsFor(bssid) }
-    WifiDetailContent(accessPoint, informationElements, modifier)
+    WifiDetailContent(accessPoint, informationElements, rssiDisplayUnit, modifier)
 }
 
 @Composable
 internal fun WifiDetailContent(
     accessPoint: AccessPoint,
     informationElements: InformationElementSummary,
+    rssiDisplayUnit: RssiDisplayUnit = RssiDisplayUnit.DBM,
     modifier: Modifier = Modifier,
 ) {
     LazyColumn(
@@ -57,7 +60,7 @@ internal fun WifiDetailContent(
         contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        item { WifiDetailHeader(accessPoint) }
+        item { WifiDetailHeader(accessPoint, rssiDisplayUnit) }
         item { WifiDetailRadioSection(accessPoint) }
         item { WifiDetailSecuritySection(accessPoint) }
         item { WifiDetailInformationElementsSection(informationElements) }
@@ -65,9 +68,16 @@ internal fun WifiDetailContent(
 }
 
 @Composable
-private fun WifiDetailHeader(accessPoint: AccessPoint) {
+private fun WifiDetailHeader(
+    accessPoint: AccessPoint,
+    rssiDisplayUnit: RssiDisplayUnit,
+) {
     Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
-        RssiGauge(rssiDbm = accessPoint.rssiDbm, qualityPercent = rssiToQualityPercent(accessPoint.rssiDbm))
+        RssiGauge(
+            rssiDbm = accessPoint.rssiDbm,
+            qualityPercent = rssiToQualityPercent(accessPoint.rssiDbm),
+            showAsPercent = rssiDisplayUnit == RssiDisplayUnit.PERCENT,
+        )
         Text(
             text = accessPoint.ssid.ifEmpty { "<hidden>" },
             style = MaterialTheme.typography.titleLarge,

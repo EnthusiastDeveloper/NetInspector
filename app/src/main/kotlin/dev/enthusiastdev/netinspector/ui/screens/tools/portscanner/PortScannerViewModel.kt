@@ -11,6 +11,7 @@ import dev.enthusiastdev.netinspector.data.diagnostics.portscan.PortScanEvent
 import dev.enthusiastdev.netinspector.data.diagnostics.portscan.PortScannerRepository
 import dev.enthusiastdev.netinspector.data.persistence.diagnostics.DiagnosticRunRecord
 import dev.enthusiastdev.netinspector.data.persistence.diagnostics.DiagnosticRunRepository
+import dev.enthusiastdev.netinspector.data.persistence.preferences.AppSettingsRepository
 import dev.enthusiastdev.netinspector.history.DiagnosticToolType
 import dev.enthusiastdev.netinspector.history.PortScanRunPayload
 import dev.enthusiastdev.netinspector.history.diagnosticHistoryJson
@@ -22,6 +23,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -36,6 +38,7 @@ class PortScannerViewModel
     constructor(
         private val portScannerRepository: PortScannerRepository,
         private val diagnosticRunRepository: DiagnosticRunRepository,
+        private val appSettingsRepository: AppSettingsRepository,
         savedStateHandle: SavedStateHandle,
     ) : ViewModel() {
         private val _uiState =
@@ -43,6 +46,23 @@ class PortScannerViewModel
                 PortScannerUiState(target = savedStateHandle.toRoute<PortScannerToolRoute>().target.orEmpty()),
             )
         val uiState: StateFlow<PortScannerUiState> = _uiState.asStateFlow()
+
+        // design §8 settings - the port scanner's default preset (see
+        // AppSettingsRepository.defaultPortSelection). Read once on entry rather than kept live:
+        // this only seeds the form's starting selection, so a setting changed mid-session
+        // shouldn't yank the user's in-progress choice out from under them.
+        init {
+            viewModelScope.launch {
+                val default = appSettingsRepository.defaultPortSelection.first()
+                _uiState.update {
+                    it.copy(
+                        selection = default,
+                        customStart = (default as? PortSelection.Custom)?.start?.toString() ?: it.customStart,
+                        customEnd = (default as? PortSelection.Custom)?.end?.toString() ?: it.customEnd,
+                    )
+                }
+            }
+        }
 
         private var scanJob: Job? = null
 

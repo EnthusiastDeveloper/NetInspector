@@ -69,7 +69,7 @@ private fun ConnectedContent(
         contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        item { ConnectionHeader(snapshot, state.locationAccess) }
+        item { ConnectionHeader(snapshot, state.locationAccess, state.rssiDisplayUnit) }
         if (state.locationAccess != LocationAccessState.GRANTED) {
             item { LocationAccessCard(state.locationAccess, onLocationAccessChanged) }
         }

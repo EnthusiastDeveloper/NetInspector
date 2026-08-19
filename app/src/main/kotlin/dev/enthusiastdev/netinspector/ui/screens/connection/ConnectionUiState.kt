@@ -1,6 +1,7 @@
 package dev.enthusiastdev.netinspector.ui.screens.connection
 
 import dev.enthusiastdev.netinspector.core.model.connection.ConnectionSnapshot
+import dev.enthusiastdev.netinspector.core.model.settings.RssiDisplayUnit
 
 /**
  * Two independent gates on the dashboard's SSID/BSSID fields (design §4.1a, C-04) - kept
@@ -17,5 +18,6 @@ sealed interface ConnectionUiState {
     data class Connected(
         val snapshot: ConnectionSnapshot,
         val locationAccess: LocationAccessState,
+        val rssiDisplayUnit: RssiDisplayUnit = RssiDisplayUnit.DBM,
     ) : ConnectionUiState
 }

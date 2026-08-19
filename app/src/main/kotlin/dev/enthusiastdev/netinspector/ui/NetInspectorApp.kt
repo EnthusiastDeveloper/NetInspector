@@ -44,6 +44,7 @@ import dev.enthusiastdev.netinspector.ui.navigation.HttpInspectorToolRoute
 import dev.enthusiastdev.netinspector.ui.navigation.PingToolRoute
 import dev.enthusiastdev.netinspector.ui.navigation.PortScannerToolRoute
 import dev.enthusiastdev.netinspector.ui.navigation.ScanHistoryToolRoute
+import dev.enthusiastdev.netinspector.ui.navigation.SettingsToolRoute
 import dev.enthusiastdev.netinspector.ui.navigation.SignalMeterToolRoute
 import dev.enthusiastdev.netinspector.ui.navigation.SubnetCalculatorToolRoute
 import dev.enthusiastdev.netinspector.ui.navigation.ToolsHomeRoute
@@ -57,6 +58,7 @@ import dev.enthusiastdev.netinspector.ui.screens.connection.ConnectionScreen
 import dev.enthusiastdev.netinspector.ui.screens.connection.ConnectionViewModel
 import dev.enthusiastdev.netinspector.ui.screens.devices.DevicesScreen
 import dev.enthusiastdev.netinspector.ui.screens.devices.DevicesViewModel
+import dev.enthusiastdev.netinspector.ui.screens.settings.SettingsRoute
 import dev.enthusiastdev.netinspector.ui.screens.tools.Tool
 import dev.enthusiastdev.netinspector.ui.screens.tools.ToolsScreen
 import dev.enthusiastdev.netinspector.ui.screens.tools.dns.DnsRoute
@@ -148,6 +150,7 @@ private fun AppNavHost(navController: NavHostController) {
             composable<WakeOnLanToolRoute> { WakeOnLanRoute() }
             composable<ScanHistoryToolRoute> { ScanHistoryRoute() }
             composable<DiagnosticHistoryToolRoute> { DiagnosticHistoryRoute() }
+            composable<SettingsToolRoute> { SettingsRoute() }
         }
     }
 }
@@ -238,5 +241,6 @@ private fun NavHostController.navigateToTool(tool: Tool) {
         Tool.SIGNAL_METER -> navigate(SignalMeterToolRoute)
         Tool.SCAN_HISTORY -> navigate(ScanHistoryToolRoute)
         Tool.DIAGNOSTIC_HISTORY -> navigate(DiagnosticHistoryToolRoute)
+        Tool.SETTINGS -> navigate(SettingsToolRoute)
     }
 }

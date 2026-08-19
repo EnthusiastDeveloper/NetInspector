@@ -9,6 +9,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import dev.enthusiastdev.netinspector.data.persistence.preferences.AppSettingsRepository
 import dev.enthusiastdev.netinspector.data.wifi.ConnectionRepository
 import dev.enthusiastdev.netinspector.monitoring.MonitoringController
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -17,7 +18,6 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import javax.inject.Inject
@@ -29,6 +29,7 @@ class ConnectionViewModel
     constructor(
         connectionRepository: ConnectionRepository,
         private val monitoringController: MonitoringController,
+        appSettingsRepository: AppSettingsRepository,
         @ApplicationContext private val context: Context,
     ) : ViewModel() {
         // Granting location access - whether via the in-app prompt or the system Settings
@@ -41,20 +42,20 @@ class ConnectionViewModel
         private val locationAccessTrigger = MutableStateFlow(0)
 
         val uiState: StateFlow<ConnectionUiState> =
-            locationAccessTrigger
-                .flatMapLatest {
-                    connectionRepository.connectionSnapshot.map { snapshot ->
-                        if (snapshot == null) {
-                            ConnectionUiState.Disconnected
-                        } else {
-                            ConnectionUiState.Connected(snapshot, currentLocationAccessState())
-                        }
-                    }
-                }.stateIn(
-                    scope = viewModelScope,
-                    started = SharingStarted.WhileSubscribed(5_000),
-                    initialValue = ConnectionUiState.Loading,
-                )
+            combine(
+                locationAccessTrigger.flatMapLatest { connectionRepository.connectionSnapshot },
+                appSettingsRepository.rssiDisplayUnit,
+            ) { snapshot, rssiDisplayUnit ->
+                if (snapshot == null) {
+                    ConnectionUiState.Disconnected
+                } else {
+                    ConnectionUiState.Connected(snapshot, currentLocationAccessState(), rssiDisplayUnit)
+                }
+            }.stateIn(
+                scope = viewModelScope,
+                started = SharingStarted.WhileSubscribed(5_000),
+                initialValue = ConnectionUiState.Loading,
+            )
 
         fun refreshLocationAccess() {
             locationAccessTrigger.update { it + 1 }

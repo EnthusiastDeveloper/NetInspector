@@ -8,6 +8,7 @@ import androidx.compose.material.icons.filled.Http
 import androidx.compose.material.icons.filled.NetworkPing
 import androidx.compose.material.icons.filled.Radar
 import androidx.compose.material.icons.filled.Router
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.SettingsEthernet
 import androidx.compose.material.icons.filled.SignalCellularAlt
 import androidx.compose.material.icons.filled.Timeline
@@ -32,4 +33,5 @@ enum class Tool(
     SIGNAL_METER("Signal meter", Icons.Filled.SignalCellularAlt),
     SCAN_HISTORY("Wi-Fi history", Icons.Filled.Timeline),
     DIAGNOSTIC_HISTORY("Diagnostic history", Icons.Filled.History),
+    SETTINGS("Settings", Icons.Filled.Settings),
 }

@@ -29,6 +29,7 @@ fun RssiGauge(
     rssiDbm: Int,
     qualityPercent: Int,
     modifier: Modifier = Modifier,
+    showAsPercent: Boolean = false,
 ) {
     val trackColor = MaterialTheme.colorScheme.surfaceVariant
     val fillColor =
@@ -68,8 +69,13 @@ fun RssiGauge(
         }
 
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(text = "$rssiDbm", style = MaterialTheme.typography.headlineMedium, color = onSurface)
-            Text(text = "dBm", style = MaterialTheme.typography.labelMedium, color = onSurfaceVariant)
+            if (showAsPercent) {
+                Text(text = "$qualityPercent", style = MaterialTheme.typography.headlineMedium, color = onSurface)
+                Text(text = "%", style = MaterialTheme.typography.labelMedium, color = onSurfaceVariant)
+            } else {
+                Text(text = "$rssiDbm", style = MaterialTheme.typography.headlineMedium, color = onSurface)
+                Text(text = "dBm", style = MaterialTheme.typography.labelMedium, color = onSurfaceVariant)
+            }
         }
     }
 }
