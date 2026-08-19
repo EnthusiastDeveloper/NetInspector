@@ -12,6 +12,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -42,8 +43,8 @@ internal fun WifiGraphView(
     sampleCount: Int,
     modifier: Modifier = Modifier,
 ) {
-    var selectedBand by remember { mutableStateOf(Band.GHZ_5) }
-    var highlightedBssid by remember { mutableStateOf<String?>(null) }
+    var selectedBand by rememberSaveable { mutableStateOf(Band.GHZ_5) }
+    var highlightedBssid by rememberSaveable { mutableStateOf<String?>(null) }
 
     Column(modifier = modifier.fillMaxWidth()) {
         WifiBandTabs(selectedBand) { band ->

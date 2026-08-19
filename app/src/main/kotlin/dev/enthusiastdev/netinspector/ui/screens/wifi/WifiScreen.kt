@@ -26,6 +26,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -92,7 +93,9 @@ private fun WifiContent(
     informationElementsFor: (String) -> InformationElementSummary,
     modifier: Modifier = Modifier,
 ) {
-    var viewMode by remember { mutableStateOf(WifiViewMode.LIST) }
+    // rememberSaveable - a plain `remember` here loses the user's chosen view on rotation
+    // (Activity recreation discards non-saveable Compose state, unlike ViewModel state).
+    var viewMode by rememberSaveable { mutableStateOf(WifiViewMode.LIST) }
 
     if (viewMode == WifiViewMode.GRAPH) {
         WifiGraphScreen(
@@ -171,8 +174,8 @@ private fun WifiListPane(
     onViewModeChange: (WifiViewMode) -> Unit,
     onApClick: (String) -> Unit,
 ) {
-    var sortOrder by remember { mutableStateOf(WifiSortOrder.SIGNAL) }
-    var bandFilter by remember { mutableStateOf(emptySet<Band>()) }
+    var sortOrder by rememberSaveable { mutableStateOf(WifiSortOrder.SIGNAL) }
+    var bandFilter by rememberSaveable { mutableStateOf(emptySet<Band>()) }
     val groups =
         remember(state.accessPoints, sortOrder, bandFilter) {
             state.accessPoints.toGroups(sortOrder, bandFilter)
@@ -266,8 +269,8 @@ private fun WifiGraphTabletopContent(
     onViewModeChange: (WifiViewMode) -> Unit,
     onWifiAccessChanged: () -> Unit,
 ) {
-    var selectedBand by remember { mutableStateOf(Band.GHZ_5) }
-    var highlightedBssid by remember { mutableStateOf<String?>(null) }
+    var selectedBand by rememberSaveable { mutableStateOf(Band.GHZ_5) }
+    var highlightedBssid by rememberSaveable { mutableStateOf<String?>(null) }
 
     Column(modifier = Modifier.fillMaxSize()) {
         WifiHeaderBlock(state, viewMode, onViewModeChange, onWifiAccessChanged, modifier = Modifier.padding(16.dp))
