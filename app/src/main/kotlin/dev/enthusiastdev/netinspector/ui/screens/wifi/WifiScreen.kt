@@ -8,6 +8,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi
 import androidx.compose.material3.adaptive.layout.AnimatedPane
@@ -100,6 +103,8 @@ private fun WifiContent(
     )
 }
 
+private enum class WifiViewMode { LIST, GRAPH }
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun WifiListPane(
@@ -109,6 +114,7 @@ private fun WifiListPane(
     onWifiAccessChanged: () -> Unit,
     onApClick: (String) -> Unit,
 ) {
+    var viewMode by remember { mutableStateOf(WifiViewMode.LIST) }
     var sortOrder by remember { mutableStateOf(WifiSortOrder.SIGNAL) }
     var bandFilter by remember { mutableStateOf(emptySet<Band>()) }
     val groups =
@@ -128,18 +134,45 @@ private fun WifiListPane(
             if (state.wifiAccess != WifiAccessState.GRANTED) {
                 item { WifiLocationAccessCard(state.wifiAccess, onWifiAccessChanged) }
             }
-            item {
-                WifiFilterSortBar(
-                    sortOrder = sortOrder,
-                    onSortOrderChange = { sortOrder = it },
-                    bandFilter = bandFilter,
-                    onBandFilterChange = { bandFilter = it },
-                )
+            item { WifiViewModeToggle(viewMode, onViewModeChange = { viewMode = it }) }
+            when (viewMode) {
+                WifiViewMode.LIST -> {
+                    item {
+                        WifiFilterSortBar(
+                            sortOrder = sortOrder,
+                            onSortOrderChange = { sortOrder = it },
+                            bandFilter = bandFilter,
+                            onBandFilterChange = { bandFilter = it },
+                        )
+                    }
+                    if (groups.isEmpty()) {
+                        item { Text("No networks found yet", style = MaterialTheme.typography.bodyMedium) }
+                    } else {
+                        wifiGroupItems(groups, onApClick)
+                    }
+                }
+                WifiViewMode.GRAPH -> {
+                    item { WifiGraphView(state.accessPoints) }
+                }
             }
-            if (groups.isEmpty()) {
-                item { Text("No networks found yet", style = MaterialTheme.typography.bodyMedium) }
-            } else {
-                wifiGroupItems(groups, onApClick)
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun WifiViewModeToggle(
+    viewMode: WifiViewMode,
+    onViewModeChange: (WifiViewMode) -> Unit,
+) {
+    SingleChoiceSegmentedButtonRow {
+        WifiViewMode.entries.forEachIndexed { index, mode ->
+            SegmentedButton(
+                selected = mode == viewMode,
+                onClick = { onViewModeChange(mode) },
+                shape = SegmentedButtonDefaults.itemShape(index = index, count = WifiViewMode.entries.size),
+            ) {
+                Text(if (mode == WifiViewMode.LIST) "List" else "Graph")
             }
         }
     }
