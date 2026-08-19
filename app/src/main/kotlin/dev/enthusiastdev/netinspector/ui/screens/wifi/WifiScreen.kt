@@ -71,6 +71,17 @@ private fun CenteredMessage(
     }
 }
 
+internal enum class WifiViewMode { LIST, GRAPH }
+
+/**
+ * design §11.1/§11.2 - List mode is the genuine list-detail pair (AP list ↔ AP detail) and
+ * goes through [NavigableListDetailPaneScaffold] so both panes share the window per the size
+ * class. Graph mode has no detail counterpart, so it is *not* nested inside that scaffold's list
+ * pane: doing so confined it to the pane's fraction of the width, which read as the graph being
+ * "pinned" to a partial-width column once a rotation or window resize brought the two-pane
+ * layout into play. It renders as its own full-width branch instead - exactly the width design
+ * §11.2 wants the graph to benefit from in landscape.
+ */
 @OptIn(ExperimentalMaterial3AdaptiveApi::class)
 @Composable
 private fun WifiContent(
@@ -81,6 +92,21 @@ private fun WifiContent(
     informationElementsFor: (String) -> InformationElementSummary,
     modifier: Modifier = Modifier,
 ) {
+    var viewMode by remember { mutableStateOf(WifiViewMode.LIST) }
+
+    if (viewMode == WifiViewMode.GRAPH) {
+        WifiGraphScreen(
+            state = state,
+            isRefreshing = isRefreshing,
+            onRefresh = onRefresh,
+            onWifiAccessChanged = onWifiAccessChanged,
+            viewMode = viewMode,
+            onViewModeChange = { viewMode = it },
+            modifier = modifier,
+        )
+        return
+    }
+
     val navigator = rememberListDetailPaneScaffoldNavigator<String>()
     val coroutineScope = rememberCoroutineScope()
     BackHandler(enabled = navigator.canNavigateBack()) {
@@ -97,6 +123,8 @@ private fun WifiContent(
                     isRefreshing = isRefreshing,
                     onRefresh = onRefresh,
                     onWifiAccessChanged = onWifiAccessChanged,
+                    viewMode = viewMode,
+                    onViewModeChange = { viewMode = it },
                     onApClick = { bssid ->
                         coroutineScope.launch { navigator.navigateTo(ListDetailPaneScaffoldRole.Detail, bssid) }
                     },
@@ -113,65 +141,35 @@ private fun WifiContent(
     )
 }
 
-private enum class WifiViewMode { LIST, GRAPH }
+/** The header block shared by every Wi-Fi layout: AP count / freshness, the location-access
+ * card when needed, and the List/Graph toggle. */
+@Composable
+private fun WifiHeaderBlock(
+    state: WifiUiState.Content,
+    viewMode: WifiViewMode,
+    onViewModeChange: (WifiViewMode) -> Unit,
+    onWifiAccessChanged: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        WifiHeader(apCount = state.accessPoints.size, lastUpdated = state.lastUpdated, budget = state.budget)
+        if (state.wifiAccess != WifiAccessState.GRANTED) {
+            WifiLocationAccessCard(state.wifiAccess, onWifiAccessChanged)
+        }
+        WifiViewModeToggle(viewMode, onViewModeChange)
+    }
+}
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun WifiListPane(
     state: WifiUiState.Content,
     isRefreshing: Boolean,
     onRefresh: () -> Unit,
     onWifiAccessChanged: () -> Unit,
-    onApClick: (String) -> Unit,
-) {
-    var viewMode by remember { mutableStateOf(WifiViewMode.LIST) }
-
-    // design §11.2 - re-derived locally (rather than read from the app-root
-    // `LocalDevicePosture`) because the hinge bounds it carries are relative to whichever
-    // composable last translated them; this pane sits well below the root, behind nav-suite
-    // chrome and content insets, so it re-translates from its own position instead.
-    val rawPosture by rememberDevicePosture()
-    var containerCoordinates by remember { mutableStateOf<LayoutCoordinates?>(null) }
-    val posture =
-        remember(rawPosture, containerCoordinates) {
-            containerCoordinates?.let { rawPosture.translatedTo(it) } ?: DevicePosture.Normal
-        }
-
-    Column(
-        modifier = Modifier.fillMaxSize().onGloballyPositioned { containerCoordinates = it },
-    ) {
-        val tabletopPosture = posture as? DevicePosture.Tabletop
-        if (viewMode == WifiViewMode.GRAPH && tabletopPosture != null) {
-            WifiGraphTabletopContent(
-                state = state,
-                hingeBounds = tabletopPosture.hingeBounds,
-                viewMode = viewMode,
-                onViewModeChange = { viewMode = it },
-                onWifiAccessChanged = onWifiAccessChanged,
-            )
-        } else {
-            WifiListOrGraphScrollContent(
-                state = state,
-                isRefreshing = isRefreshing,
-                onRefresh = onRefresh,
-                onWifiAccessChanged = onWifiAccessChanged,
-                onApClick = onApClick,
-                viewMode = viewMode,
-                onViewModeChange = { viewMode = it },
-            )
-        }
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun WifiListOrGraphScrollContent(
-    state: WifiUiState.Content,
-    isRefreshing: Boolean,
-    onRefresh: () -> Unit,
-    onWifiAccessChanged: () -> Unit,
-    onApClick: (String) -> Unit,
     viewMode: WifiViewMode,
     onViewModeChange: (WifiViewMode) -> Unit,
+    onApClick: (String) -> Unit,
 ) {
     var sortOrder by remember { mutableStateOf(WifiSortOrder.SIGNAL) }
     var bandFilter by remember { mutableStateOf(emptySet<Band>()) }
@@ -186,31 +184,70 @@ private fun WifiListOrGraphScrollContent(
             contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
+            item { WifiHeaderBlock(state, viewMode, onViewModeChange, onWifiAccessChanged) }
             item {
-                WifiHeader(apCount = state.accessPoints.size, lastUpdated = state.lastUpdated, budget = state.budget)
+                WifiFilterSortBar(
+                    sortOrder = sortOrder,
+                    onSortOrderChange = { sortOrder = it },
+                    bandFilter = bandFilter,
+                    onBandFilterChange = { bandFilter = it },
+                )
             }
-            if (state.wifiAccess != WifiAccessState.GRANTED) {
-                item { WifiLocationAccessCard(state.wifiAccess, onWifiAccessChanged) }
+            if (groups.isEmpty()) {
+                item { Text("No networks found yet", style = MaterialTheme.typography.bodyMedium) }
+            } else {
+                wifiGroupItems(groups, onApClick)
             }
-            item { WifiViewModeToggle(viewMode, onViewModeChange) }
-            when (viewMode) {
-                WifiViewMode.LIST -> {
-                    item {
-                        WifiFilterSortBar(
-                            sortOrder = sortOrder,
-                            onSortOrderChange = { sortOrder = it },
-                            bandFilter = bandFilter,
-                            onBandFilterChange = { bandFilter = it },
-                        )
-                    }
-                    if (groups.isEmpty()) {
-                        item { Text("No networks found yet", style = MaterialTheme.typography.bodyMedium) }
-                    } else {
-                        wifiGroupItems(groups, onApClick)
-                    }
-                }
-                WifiViewMode.GRAPH -> {
-                    item { WifiGraphView(state.accessPoints, state.sampleCount) }
+        }
+    }
+}
+
+/**
+ * design §11.2 - the Graph view mode's own top-level layout, full window width. Re-derives fold
+ * posture locally (rather than reading the app-root `LocalDevicePosture`) because this
+ * composable sits below nav-suite chrome and content insets that the root's translation doesn't
+ * account for; re-translating from this composable's own position keeps the hinge bounds
+ * accurate regardless of what sits above it.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun WifiGraphScreen(
+    state: WifiUiState.Content,
+    isRefreshing: Boolean,
+    onRefresh: () -> Unit,
+    onWifiAccessChanged: () -> Unit,
+    viewMode: WifiViewMode,
+    onViewModeChange: (WifiViewMode) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val rawPosture by rememberDevicePosture()
+    var containerCoordinates by remember { mutableStateOf<LayoutCoordinates?>(null) }
+    val posture =
+        remember(rawPosture, containerCoordinates) {
+            containerCoordinates?.let { rawPosture.translatedTo(it) } ?: DevicePosture.Normal
+        }
+
+    Column(modifier = modifier.fillMaxSize().onGloballyPositioned { containerCoordinates = it }) {
+        val tabletopPosture = posture as? DevicePosture.Tabletop
+        if (tabletopPosture != null) {
+            WifiGraphTabletopContent(
+                state = state,
+                hingeBounds = tabletopPosture.hingeBounds,
+                viewMode = viewMode,
+                onViewModeChange = onViewModeChange,
+                onWifiAccessChanged = onWifiAccessChanged,
+            )
+        } else {
+            PullToRefreshBox(isRefreshing = isRefreshing, onRefresh = onRefresh, modifier = Modifier.fillMaxSize()) {
+                Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
+                    WifiHeaderBlock(
+                        state,
+                        viewMode,
+                        onViewModeChange,
+                        onWifiAccessChanged,
+                        modifier = Modifier.padding(16.dp),
+                    )
+                    WifiGraphView(state.accessPoints, state.sampleCount)
                 }
             }
         }
@@ -233,16 +270,7 @@ private fun WifiGraphTabletopContent(
     var highlightedBssid by remember { mutableStateOf<String?>(null) }
 
     Column(modifier = Modifier.fillMaxSize()) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            WifiHeader(apCount = state.accessPoints.size, lastUpdated = state.lastUpdated, budget = state.budget)
-            if (state.wifiAccess != WifiAccessState.GRANTED) {
-                WifiLocationAccessCard(state.wifiAccess, onWifiAccessChanged)
-            }
-            WifiViewModeToggle(viewMode, onViewModeChange)
-        }
+        WifiHeaderBlock(state, viewMode, onViewModeChange, onWifiAccessChanged, modifier = Modifier.padding(16.dp))
 
         TabletopSplitLayout(
             hingeBounds = hingeBounds,
