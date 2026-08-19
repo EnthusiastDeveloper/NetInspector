@@ -34,6 +34,7 @@ class ScanGovernor
         @ApplicationContext private val context: Context,
         private val wifiManager: WifiManager,
         private val clock: Clock,
+        private val vendorLookup: VendorLookup,
     ) {
         private val mutex = Mutex()
         private val activeScanTimestamps = ArrayDeque<Instant>()
@@ -103,10 +104,9 @@ class ScanGovernor
         private fun currentSnapshot(): ScanSnapshot {
             val now = clock.instant()
             val connectedBssid = wifiManager.connectionInfo?.bssid?.normalizedBssid()
-            return ScanSnapshot(
-                accessPoints = latestScanResults().map { it.toAccessPoint(connectedBssid, now) },
-                timestamp = now,
-            )
+            val accessPoints =
+                latestScanResults().map { it.toAccessPoint(connectedBssid, now, vendorLookup::vendorFor) }
+            return ScanSnapshot(accessPoints = accessPoints, timestamp = now)
         }
 
         /** design §6.2 - the raw material for lazy information-element parsing on the AP

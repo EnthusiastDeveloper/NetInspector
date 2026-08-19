@@ -14,14 +14,14 @@ import java.nio.ByteBuffer
 import java.time.Instant
 
 /**
- * design §6.2/§6.3 - vendor OUI lookup is deferred (persistence-backed, Phase 3 sub-task) so
- * it's always null here; `firstSeen`/`lastSeen` are both set to [now] because this maps a
- * single scan in isolation - carrying `firstSeen` forward across scans is the repository's
- * job (design §3: "refreshed in place on each scan rather than re-created").
+ * design §6.2/§6.3 - `firstSeen`/`lastSeen` are both set to [now] because this maps a single
+ * scan in isolation - carrying `firstSeen` forward across scans is the repository's job
+ * (design §3: "refreshed in place on each scan rather than re-created").
  */
 internal fun ScanResult.toAccessPoint(
     connectedBssid: String?,
     now: Instant,
+    vendorFor: (String) -> String?,
 ): AccessPoint {
     val widthMhz = channelWidthMhz(channelWidth)
     val band = bandOf(frequency)
@@ -43,7 +43,7 @@ internal fun ScanResult.toAccessPoint(
         secondarySpan = secondarySpan,
         security = securityTypesOf(securityTypes),
         standard = wifiStandardOf(wifiStandard),
-        vendor = null,
+        vendor = vendorFor(BSSID),
         isConnected = connectedBssid != null && connectedBssid == BSSID,
         isDfsChannel = isDfsChannel(band, primaryChannel),
         is6GhzPsc = is6GhzPsc(band, primaryChannel),

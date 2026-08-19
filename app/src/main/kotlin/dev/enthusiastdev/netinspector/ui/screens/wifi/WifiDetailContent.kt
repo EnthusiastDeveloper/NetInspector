@@ -101,6 +101,7 @@ private fun WifiDetailSecuritySection(accessPoint: AccessPoint) {
         InfoRow("Type", accessPoint.security.label())
         InfoRow("Signal", "${accessPoint.rssiDbm} dBm (${rssiToQualityPercent(accessPoint.rssiDbm)}%)")
         InfoRow("Connected", if (accessPoint.isConnected) "Yes" else "No")
+        InfoRow("Vendor", accessPoint.vendor ?: "Unknown")
     }
 }
 
