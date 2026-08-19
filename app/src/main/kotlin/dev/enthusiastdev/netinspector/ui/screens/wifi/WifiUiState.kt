@@ -16,6 +16,7 @@ sealed interface WifiUiState {
 
     data class Content(
         val accessPoints: List<AccessPoint>,
+        val sampleCount: Int,
         val wifiAccess: WifiAccessState,
         val budget: ScanBudget,
         val lastUpdated: Instant?,

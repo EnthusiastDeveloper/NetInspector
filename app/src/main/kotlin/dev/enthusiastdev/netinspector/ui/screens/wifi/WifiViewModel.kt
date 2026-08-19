@@ -41,13 +41,14 @@ class WifiViewModel
             }
 
         val uiState: StateFlow<WifiUiState> =
-            combine(wifiScanRepository.accessPoints, ticker) { accessPoints, _ -> accessPoints }
-                .map { accessPoints ->
+            combine(wifiScanRepository.scanState, ticker) { scanState, _ -> scanState }
+                .map { scanState ->
                     WifiUiState.Content(
-                        accessPoints = accessPoints,
+                        accessPoints = scanState.accessPoints,
+                        sampleCount = scanState.sampleCount,
                         wifiAccess = currentWifiAccessState(),
                         budget = wifiScanRepository.budget(),
-                        lastUpdated = accessPoints.maxOfOrNull { it.lastSeen },
+                        lastUpdated = scanState.accessPoints.maxOfOrNull { it.lastSeen },
                     )
                 }.stateIn(
                     scope = viewModelScope,

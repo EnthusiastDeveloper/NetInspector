@@ -18,9 +18,13 @@ import androidx.compose.ui.unit.dp
 @Composable
 fun InfoCard(
     title: String,
+    modifier: Modifier = Modifier,
     content: @Composable () -> Unit,
 ) {
-    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
+    Card(
+        modifier = modifier,
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+    ) {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(text = title, style = MaterialTheme.typography.titleMedium)
             HorizontalDivider()
