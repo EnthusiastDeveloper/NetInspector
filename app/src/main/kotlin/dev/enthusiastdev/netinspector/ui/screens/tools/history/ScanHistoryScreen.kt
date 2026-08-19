@@ -1,6 +1,8 @@
 package dev.enthusiastdev.netinspector.ui.screens.tools.history
 
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -23,6 +25,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -40,7 +43,23 @@ fun ScanHistoryRoute(
     viewModel: ScanHistoryViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    ScanHistoryScreen(uiState = uiState, rssiHistoryFor = viewModel::rssiHistory, modifier = modifier)
+    val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
+    val csvLauncher =
+        rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("text/csv")) { uri ->
+            uri?.let { writeExport(context, coroutineScope, it, ScanHistoryExporter.toCsv(uiState.knownAps)) }
+        }
+    val jsonLauncher =
+        rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri ->
+            uri?.let { writeExport(context, coroutineScope, it, ScanHistoryExporter.toJson(uiState.knownAps)) }
+        }
+    ScanHistoryScreen(
+        uiState = uiState,
+        rssiHistoryFor = viewModel::rssiHistory,
+        onExportCsv = { csvLauncher.launch("netinspector-wifi-history.csv") },
+        onExportJson = { jsonLauncher.launch("netinspector-wifi-history.json") },
+        modifier = modifier,
+    )
 }
 
 @OptIn(ExperimentalMaterial3AdaptiveApi::class)
@@ -49,6 +68,8 @@ fun ScanHistoryScreen(
     uiState: ScanHistoryUiState,
     rssiHistoryFor: (String) -> Flow<List<RssiHistoryPoint>>,
     modifier: Modifier = Modifier,
+    onExportCsv: () -> Unit = {},
+    onExportJson: () -> Unit = {},
 ) {
     val navigator = rememberListDetailPaneScaffoldNavigator<String>()
     val coroutineScope = rememberCoroutineScope()
@@ -66,6 +87,8 @@ fun ScanHistoryScreen(
                     onApClick = { bssid ->
                         coroutineScope.launch { navigator.navigateTo(ListDetailPaneScaffoldRole.Detail, bssid) }
                     },
+                    onExportCsv = onExportCsv,
+                    onExportJson = onExportJson,
                 )
             }
         },
@@ -87,6 +110,8 @@ fun ScanHistoryScreen(
 private fun ScanHistoryListPane(
     knownAps: List<KnownApEntity>,
     onApClick: (String) -> Unit,
+    onExportCsv: () -> Unit,
+    onExportJson: () -> Unit,
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -94,6 +119,9 @@ private fun ScanHistoryListPane(
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         item { Text(text = "Wi-Fi history", style = MaterialTheme.typography.titleLarge) }
+        if (knownAps.isNotEmpty()) {
+            item { HistoryExportRow(onExportCsv, onExportJson) }
+        }
         if (knownAps.isEmpty()) {
             item { Text("No networks seen yet - visit the Wi-Fi tab to start collecting history.") }
         } else {

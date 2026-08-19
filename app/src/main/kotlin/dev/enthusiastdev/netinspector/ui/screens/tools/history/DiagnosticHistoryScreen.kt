@@ -1,6 +1,8 @@
 package dev.enthusiastdev.netinspector.ui.screens.tools.history
 
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -22,6 +24,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -34,7 +37,22 @@ fun DiagnosticHistoryRoute(
     viewModel: DiagnosticHistoryViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    DiagnosticHistoryScreen(uiState = uiState, modifier = modifier)
+    val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
+    val csvLauncher =
+        rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("text/csv")) { uri ->
+            uri?.let { writeExport(context, coroutineScope, it, DiagnosticHistoryExporter.toCsv(uiState.runs)) }
+        }
+    val jsonLauncher =
+        rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri ->
+            uri?.let { writeExport(context, coroutineScope, it, DiagnosticHistoryExporter.toJson(uiState.runs)) }
+        }
+    DiagnosticHistoryScreen(
+        uiState = uiState,
+        onExportCsv = { csvLauncher.launch("netinspector-diagnostic-history.csv") },
+        onExportJson = { jsonLauncher.launch("netinspector-diagnostic-history.json") },
+        modifier = modifier,
+    )
 }
 
 @OptIn(ExperimentalMaterial3AdaptiveApi::class)
@@ -42,6 +60,8 @@ fun DiagnosticHistoryRoute(
 fun DiagnosticHistoryScreen(
     uiState: DiagnosticHistoryUiState,
     modifier: Modifier = Modifier,
+    onExportCsv: () -> Unit = {},
+    onExportJson: () -> Unit = {},
 ) {
     val navigator = rememberListDetailPaneScaffoldNavigator<Long>()
     val coroutineScope = rememberCoroutineScope()
@@ -59,6 +79,8 @@ fun DiagnosticHistoryScreen(
                     onRunClick = { id ->
                         coroutineScope.launch { navigator.navigateTo(ListDetailPaneScaffoldRole.Detail, id) }
                     },
+                    onExportCsv = onExportCsv,
+                    onExportJson = onExportJson,
                 )
             }
         },
@@ -76,6 +98,8 @@ fun DiagnosticHistoryScreen(
 private fun DiagnosticHistoryListPane(
     runs: List<DiagnosticRunEntity>,
     onRunClick: (Long) -> Unit,
+    onExportCsv: () -> Unit,
+    onExportJson: () -> Unit,
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -83,6 +107,9 @@ private fun DiagnosticHistoryListPane(
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         item { Text(text = "Diagnostic history", style = MaterialTheme.typography.titleLarge) }
+        if (runs.isNotEmpty()) {
+            item { HistoryExportRow(onExportCsv, onExportJson) }
+        }
         if (runs.isEmpty()) {
             item { Text("No diagnostic runs yet - results from Ping, Traceroute and the other tools appear here.") }
         } else {
