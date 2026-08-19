@@ -30,12 +30,15 @@ import dev.enthusiastdev.netinspector.core.designsystem.adaptive.rememberDeviceP
 import dev.enthusiastdev.netinspector.core.designsystem.adaptive.translatedTo
 import dev.enthusiastdev.netinspector.ui.navigation.ConnectionRoute
 import dev.enthusiastdev.netinspector.ui.navigation.DevicesRoute
+import dev.enthusiastdev.netinspector.ui.navigation.PingToolRoute
 import dev.enthusiastdev.netinspector.ui.navigation.ToolsRoute
 import dev.enthusiastdev.netinspector.ui.navigation.WifiRoute
 import dev.enthusiastdev.netinspector.ui.navigation.topLevelDestinations
 import dev.enthusiastdev.netinspector.ui.screens.PlaceholderScreen
 import dev.enthusiastdev.netinspector.ui.screens.connection.ConnectionScreen
 import dev.enthusiastdev.netinspector.ui.screens.connection.ConnectionViewModel
+import dev.enthusiastdev.netinspector.ui.screens.tools.ToolsScreen
+import dev.enthusiastdev.netinspector.ui.screens.tools.ping.PingRoute
 
 @Composable
 fun NetInspectorApp() {
@@ -85,8 +88,9 @@ fun NetInspectorApp() {
                         PlaceholderScreen(stringResource(R.string.destination_devices))
                     }
                     composable<ToolsRoute> {
-                        PlaceholderScreen(stringResource(R.string.destination_tools))
+                        ToolsScreen(onNavigateToPing = { navController.navigate(PingToolRoute) })
                     }
+                    composable<PingToolRoute> { PingRoute() }
                 }
             }
         }
