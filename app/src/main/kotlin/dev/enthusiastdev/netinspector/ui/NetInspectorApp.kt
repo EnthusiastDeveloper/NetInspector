@@ -7,6 +7,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -15,6 +16,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.res.stringResource
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -31,6 +33,8 @@ import dev.enthusiastdev.netinspector.ui.navigation.ToolsRoute
 import dev.enthusiastdev.netinspector.ui.navigation.WifiRoute
 import dev.enthusiastdev.netinspector.ui.navigation.topLevelDestinations
 import dev.enthusiastdev.netinspector.ui.screens.PlaceholderScreen
+import dev.enthusiastdev.netinspector.ui.screens.connection.ConnectionScreen
+import dev.enthusiastdev.netinspector.ui.screens.connection.ConnectionViewModel
 
 @Composable
 fun NetInspectorApp() {
@@ -73,7 +77,9 @@ fun NetInspectorApp() {
             ) {
                 NavHost(navController = navController, startDestination = ConnectionRoute) {
                     composable<ConnectionRoute> {
-                        PlaceholderScreen(stringResource(R.string.destination_connection))
+                        val connectionViewModel: ConnectionViewModel = hiltViewModel()
+                        val connectionUiState by connectionViewModel.uiState.collectAsState()
+                        ConnectionScreen(uiState = connectionUiState)
                     }
                     composable<WifiRoute> {
                         PlaceholderScreen(stringResource(R.string.destination_wifi))

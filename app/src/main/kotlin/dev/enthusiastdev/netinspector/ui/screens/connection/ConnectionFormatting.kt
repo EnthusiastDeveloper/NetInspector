@@ -1,0 +1,29 @@
+package dev.enthusiastdev.netinspector.ui.screens.connection
+
+import dev.enthusiastdev.netinspector.core.model.connection.ConnectionSnapshot
+import dev.enthusiastdev.netinspector.core.model.wifi.Band
+import dev.enthusiastdev.netinspector.core.model.wifi.WifiStandard
+
+internal fun ConnectionSnapshot.ssidLabel(hasScanPermission: Boolean): String =
+    ssid ?: if (hasScanPermission) "Hidden network" else "<permission required>"
+
+internal fun ConnectionSnapshot.bssidLabel(hasScanPermission: Boolean): String =
+    bssid ?: if (hasScanPermission) "Unknown" else "<permission required>"
+
+internal fun Band.label(): String =
+    when (this) {
+        Band.GHZ_2_4 -> "2.4 GHz"
+        Band.GHZ_5 -> "5 GHz"
+        Band.GHZ_6 -> "6 GHz"
+        Band.UNKNOWN -> "Unknown"
+    }
+
+internal fun WifiStandard.label(): String =
+    when (this) {
+        WifiStandard.LEGACY -> "Legacy (802.11a/b/g)"
+        WifiStandard.N -> "Wi-Fi 4 (802.11n)"
+        WifiStandard.AC -> "Wi-Fi 5 (802.11ac)"
+        WifiStandard.AX -> "Wi-Fi 6 (802.11ax)"
+        WifiStandard.BE -> "Wi-Fi 7 (802.11be)"
+        WifiStandard.UNKNOWN -> "Unknown"
+    }
