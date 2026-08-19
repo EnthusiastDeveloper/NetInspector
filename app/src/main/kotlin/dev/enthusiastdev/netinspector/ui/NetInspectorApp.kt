@@ -28,7 +28,6 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
-import dev.enthusiastdev.netinspector.R
 import dev.enthusiastdev.netinspector.core.designsystem.adaptive.DevicePosture
 import dev.enthusiastdev.netinspector.core.designsystem.adaptive.LocalDevicePosture
 import dev.enthusiastdev.netinspector.core.designsystem.adaptive.rememberDevicePosture
@@ -39,9 +38,10 @@ import dev.enthusiastdev.netinspector.ui.navigation.PingToolRoute
 import dev.enthusiastdev.netinspector.ui.navigation.ToolsRoute
 import dev.enthusiastdev.netinspector.ui.navigation.WifiRoute
 import dev.enthusiastdev.netinspector.ui.navigation.topLevelDestinations
-import dev.enthusiastdev.netinspector.ui.screens.PlaceholderScreen
 import dev.enthusiastdev.netinspector.ui.screens.connection.ConnectionScreen
 import dev.enthusiastdev.netinspector.ui.screens.connection.ConnectionViewModel
+import dev.enthusiastdev.netinspector.ui.screens.devices.DevicesScreen
+import dev.enthusiastdev.netinspector.ui.screens.devices.DevicesViewModel
 import dev.enthusiastdev.netinspector.ui.screens.tools.ToolsScreen
 import dev.enthusiastdev.netinspector.ui.screens.tools.ping.PingRoute
 import dev.enthusiastdev.netinspector.ui.screens.wifi.WifiScreen
@@ -93,9 +93,7 @@ fun NetInspectorApp() {
                 ) {
                     composable<ConnectionRoute> { ConnectionDestination() }
                     composable<WifiRoute> { WifiDestination() }
-                    composable<DevicesRoute> {
-                        PlaceholderScreen(stringResource(R.string.destination_devices))
-                    }
+                    composable<DevicesRoute> { DevicesDestination() }
                     composable<ToolsRoute> {
                         ToolsScreen(onNavigateToPing = { navController.navigate(PingToolRoute) })
                     }
@@ -139,5 +137,19 @@ private fun WifiDestination() {
         onRefresh = wifiViewModel::onRefresh,
         onWifiAccessChanged = wifiViewModel::onResumed,
         informationElementsFor = wifiViewModel::informationElements,
+    )
+}
+
+@Composable
+private fun DevicesDestination() {
+    val devicesViewModel: DevicesViewModel = hiltViewModel()
+    val devicesUiState by devicesViewModel.uiState.collectAsState()
+    DevicesScreen(
+        uiState = devicesUiState,
+        onScan = devicesViewModel::onScanRequested,
+        onCancel = devicesViewModel::cancelSweep,
+        onAcknowledgeAndScan = devicesViewModel::acknowledgeAndStartSweep,
+        onConfirmShortPrefixScan = devicesViewModel::confirmShortPrefixSweep,
+        onDismissConfirmation = devicesViewModel::dismissConfirmation,
     )
 }

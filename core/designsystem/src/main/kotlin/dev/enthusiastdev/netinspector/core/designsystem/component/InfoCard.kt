@@ -12,6 +12,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 
 /** A titled group of [InfoRow]s - the list-detail pattern every screen's detail sections use. */
@@ -33,6 +34,13 @@ fun InfoCard(
     }
 }
 
+/** A label/value pair. Either side can be arbitrarily long (a URL, a UUID, a banner string) -
+ * both are weighted to at most half the row rather than measured at their natural width, so a
+ * long one wraps within its own half instead of either overlapping the other or, worse,
+ * hogging the whole row and squeezing the other into a near-zero width where text wraps one
+ * character per line. `fill = false` keeps the common case (two short strings) visually
+ * unchanged: each stays at its compact natural width, positioned by `SpaceBetween`, unless it
+ * actually needs the extra room. */
 @Composable
 fun InfoRow(
     label: String,
@@ -46,7 +54,13 @@ fun InfoRow(
             text = label,
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.weight(1f, fill = false),
         )
-        Text(text = value, style = MaterialTheme.typography.bodyMedium)
+        Text(
+            text = value,
+            style = MaterialTheme.typography.bodyMedium,
+            textAlign = TextAlign.End,
+            modifier = Modifier.weight(1f, fill = false).padding(start = 8.dp),
+        )
     }
 }

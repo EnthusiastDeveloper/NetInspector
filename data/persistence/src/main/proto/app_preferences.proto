@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+option java_package = "dev.enthusiastdev.netinspector.data.persistence.proto";
+option java_multiple_files = true;
+
+// design §10 - "DataStore (Proto) holds preferences: scan cadence, sweep concurrency and
+// timeouts, port presets, theme, units, and the one-time scanning acknowledgement flag."
+// Phase 5 needs only the acknowledgement flag; the rest are added by whichever later phase
+// builds the settings screen, as new fields on this same message (proto3 fields are
+// additive, so this never needs a migration for that).
+message AppPreferences {
+  // design §11.4 - "not skippable, not repeated": gates the first LAN sweep.
+  bool lan_scan_acknowledged = 1;
+}

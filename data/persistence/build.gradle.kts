@@ -2,6 +2,7 @@ plugins {
     alias(libs.plugins.netinspector.android.library)
     alias(libs.plugins.netinspector.android.hilt)
     alias(libs.plugins.room)
+    alias(libs.plugins.protobuf)
 }
 
 android {
@@ -15,10 +16,26 @@ room {
     schemaDirectory("$projectDir/schemas")
 }
 
+protobuf {
+    protoc {
+        artifact = "com.google.protobuf:protoc:${libs.versions.protobuf.get()}"
+    }
+    generateProtoTasks {
+        all().forEach { task ->
+            task.builtins {
+                create("java") { option("lite") }
+                create("kotlin") { option("lite") }
+            }
+        }
+    }
+}
+
 dependencies {
     implementation(project(":core:model"))
     implementation(project(":core:common"))
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
     ksp(libs.androidx.room.compiler)
+    implementation(libs.androidx.datastore.core)
+    implementation(libs.protobuf.kotlin.lite)
 }

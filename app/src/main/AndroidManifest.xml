@@ -8,6 +8,16 @@
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
     <uses-permission android:name="android.permission.CHANGE_WIFI_STATE" />
 
+    <!-- Install-time, no runtime prompt (design §8.2/C-06) - required to hold the
+         MulticastLock the LAN sweep's mDNS/SSDP/NetBIOS probes need, since the Wi-Fi driver
+         drops inbound multicast to save power without it. -->
+    <uses-permission android:name="android.permission.CHANGE_WIFI_MULTICAST_STATE" />
+
+    <!-- design §8.4 - required to hold the WifiLock (WIFI_MODE_FULL_LOW_LATENCY) the LAN sweep
+         acquires for its duration, without which WifiLock.acquire() throws a SecurityException
+         at runtime rather than failing at compile or install time. -->
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+
     <!-- Unredacts the *connected* network's SSID/BSSID on the dashboard (C-04) AND gates
          the AP scan list on the Wi-Fi screen (C-03) - the same permission covers both,
          despite two earlier design drafts each assuming only one of them needed it and
