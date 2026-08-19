@@ -1,4 +1,4 @@
-package dev.enthusiastdev.netinspector.ui.screens.tools.ping
+package dev.enthusiastdev.netinspector.ui.screens.tools.traceroute
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -28,21 +28,21 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import dev.enthusiastdev.netinspector.core.common.icmp.summarizeHop
 import dev.enthusiastdev.netinspector.core.designsystem.adaptive.DevicePosture
 import dev.enthusiastdev.netinspector.core.designsystem.adaptive.TabletopSplitLayout
 import dev.enthusiastdev.netinspector.core.designsystem.adaptive.rememberDevicePosture
 import dev.enthusiastdev.netinspector.core.designsystem.adaptive.translatedTo
-import dev.enthusiastdev.netinspector.core.designsystem.component.InfoCard
-import dev.enthusiastdev.netinspector.core.designsystem.component.InfoRow
-import dev.enthusiastdev.netinspector.core.model.diagnostics.PingProbeResult
+import dev.enthusiastdev.netinspector.core.model.diagnostics.TracerouteHop
+import dev.enthusiastdev.netinspector.core.model.diagnostics.TracerouteTier
 
 @Composable
-fun PingRoute(
+fun TracerouteRoute(
     modifier: Modifier = Modifier,
-    viewModel: PingViewModel = hiltViewModel(),
+    viewModel: TracerouteViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    PingScreen(
+    TracerouteScreen(
         uiState = uiState,
         onTargetChange = viewModel::updateTarget,
         onStart = viewModel::start,
@@ -51,12 +51,11 @@ fun PingRoute(
     )
 }
 
-/** design §11.2 - re-derives posture locally, same reasoning as `WifiScreen`'s graph view and
- * `TracerouteScreen`: this composable sits below nav-suite chrome the app-root translation
- * doesn't account for. */
+/** design §11.2 - re-derives posture locally, same reasoning as `WifiScreen`'s graph view: this
+ * composable sits below nav-suite chrome that the app-root translation doesn't account for. */
 @Composable
-fun PingScreen(
-    uiState: PingUiState,
+fun TracerouteScreen(
+    uiState: TracerouteUiState,
     onTargetChange: (String) -> Unit,
     onStart: () -> Unit,
     onStop: () -> Unit,
@@ -74,21 +73,21 @@ fun PingScreen(
         if (tabletopPosture != null) {
             TabletopSplitLayout(
                 hingeBounds = tabletopPosture.hingeBounds,
-                upper = { ResultLog(uiState, modifier = Modifier.fillMaxSize()) },
-                lower = { PingControls(uiState, onTargetChange, onStart, onStop, Modifier.fillMaxSize()) },
+                upper = { HopLog(uiState, modifier = Modifier.fillMaxSize()) },
+                lower = { TracerouteControls(uiState, onTargetChange, onStart, onStop, Modifier.fillMaxSize()) },
             )
         } else {
             Column(modifier = Modifier.fillMaxSize().widthIn(max = 600.dp)) {
-                PingControls(uiState, onTargetChange, onStart, onStop)
-                ResultLog(uiState, modifier = Modifier.weight(1f).fillMaxWidth())
+                TracerouteControls(uiState, onTargetChange, onStart, onStop)
+                HopLog(uiState, modifier = Modifier.weight(1f).fillMaxWidth())
             }
         }
     }
 }
 
 @Composable
-private fun PingControls(
-    uiState: PingUiState,
+private fun TracerouteControls(
+    uiState: TracerouteUiState,
     onTargetChange: (String) -> Unit,
     onStart: () -> Unit,
     onStop: () -> Unit,
@@ -108,8 +107,16 @@ private fun PingControls(
                 modifier = Modifier.weight(1f),
             )
             Button(onClick = if (uiState.isRunning) onStop else onStart) {
-                Text(if (uiState.isRunning) "Stop" else "Ping")
+                Text(if (uiState.isRunning) "Stop" else "Trace")
             }
+        }
+        if (uiState.tier == TracerouteTier.PING_BINARY) {
+            Text(
+                text = "Using the ping-binary fallback - hop timing is approximate",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(horizontal = 16.dp),
+            )
         }
         uiState.errorMessage?.let {
             Text(text = it, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(horizontal = 16.dp))
@@ -118,8 +125,8 @@ private fun PingControls(
 }
 
 @Composable
-private fun ResultLog(
-    uiState: PingUiState,
+private fun HopLog(
+    uiState: TracerouteUiState,
     modifier: Modifier = Modifier,
 ) {
     LazyColumn(
@@ -127,31 +134,23 @@ private fun ResultLog(
         contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
-        items(uiState.results) { result -> ProbeResultRow(result) }
-        uiState.summary?.let { summary ->
-            item {
-                InfoCard(title = "Summary (${summary.tier})") {
-                    InfoRow("Sent / received", "${summary.sent} / ${summary.received}")
-                    InfoRow("Loss", "%.1f%%".format(summary.lossPercent))
-                    summary.minMs?.let { InfoRow("Min", "%.1f ms".format(it)) }
-                    summary.avgMs?.let { InfoRow("Avg", "%.1f ms".format(it)) }
-                    summary.maxMs?.let { InfoRow("Max", "%.1f ms".format(it)) }
-                    summary.medianMs?.let { InfoRow("Median", "%.1f ms".format(it)) }
-                    summary.stddevMs?.let { InfoRow("Std dev", "%.1f ms".format(it)) }
-                    summary.jitterMs?.let { InfoRow("Jitter", "%.1f ms".format(it)) }
-                }
-            }
-        }
+        items(uiState.hops) { hop -> HopRow(hop) }
     }
 }
 
 @Composable
-private fun ProbeResultRow(result: PingProbeResult) {
-    val text =
-        when (result) {
-            is PingProbeResult.Reply -> "seq=${result.sequence} time=%.1fms [${result.tier}]".format(result.rttMs)
-            is PingProbeResult.Timeout -> "seq=${result.sequence} timeout [${result.tier}]"
-            is PingProbeResult.Error -> "seq=${result.sequence} error: ${result.message}"
+private fun HopRow(hop: TracerouteHop) {
+    val stats = summarizeHop(hop.probes)
+    val addressLabel = hop.hostname?.let { "${hop.respondingAddress} ($it)" } ?: hop.respondingAddress ?: "*"
+    val timingLabel =
+        if (stats.avgMs != null) {
+            "min %.1f / avg %.1f / max %.1f ms".format(stats.minMs, stats.avgMs, stats.maxMs)
+        } else {
+            "* * *"
         }
-    Text(text = text, fontFamily = FontFamily.Monospace, style = MaterialTheme.typography.bodySmall)
+    Text(
+        text = "%2d  %-30s  %s".format(hop.ttl, addressLabel, timingLabel),
+        fontFamily = FontFamily.Monospace,
+        style = MaterialTheme.typography.bodySmall,
+    )
 }

@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffold
+import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScope
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.collectAsState
@@ -23,6 +24,7 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.res.stringResource
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.LifecycleResumeEffect
+import androidx.navigation.NavDestination
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
@@ -36,17 +38,34 @@ import dev.enthusiastdev.netinspector.core.designsystem.adaptive.rememberDeviceP
 import dev.enthusiastdev.netinspector.core.designsystem.adaptive.translatedTo
 import dev.enthusiastdev.netinspector.ui.navigation.ConnectionRoute
 import dev.enthusiastdev.netinspector.ui.navigation.DevicesRoute
+import dev.enthusiastdev.netinspector.ui.navigation.DnsToolRoute
+import dev.enthusiastdev.netinspector.ui.navigation.HttpInspectorToolRoute
 import dev.enthusiastdev.netinspector.ui.navigation.PingToolRoute
+import dev.enthusiastdev.netinspector.ui.navigation.PortScannerToolRoute
+import dev.enthusiastdev.netinspector.ui.navigation.SignalMeterToolRoute
+import dev.enthusiastdev.netinspector.ui.navigation.SubnetCalculatorToolRoute
 import dev.enthusiastdev.netinspector.ui.navigation.ToolsHomeRoute
 import dev.enthusiastdev.netinspector.ui.navigation.ToolsRoute
+import dev.enthusiastdev.netinspector.ui.navigation.TracerouteToolRoute
+import dev.enthusiastdev.netinspector.ui.navigation.WakeOnLanToolRoute
+import dev.enthusiastdev.netinspector.ui.navigation.WhoisToolRoute
 import dev.enthusiastdev.netinspector.ui.navigation.WifiRoute
 import dev.enthusiastdev.netinspector.ui.navigation.topLevelDestinations
 import dev.enthusiastdev.netinspector.ui.screens.connection.ConnectionScreen
 import dev.enthusiastdev.netinspector.ui.screens.connection.ConnectionViewModel
 import dev.enthusiastdev.netinspector.ui.screens.devices.DevicesScreen
 import dev.enthusiastdev.netinspector.ui.screens.devices.DevicesViewModel
+import dev.enthusiastdev.netinspector.ui.screens.tools.Tool
 import dev.enthusiastdev.netinspector.ui.screens.tools.ToolsScreen
+import dev.enthusiastdev.netinspector.ui.screens.tools.dns.DnsRoute
+import dev.enthusiastdev.netinspector.ui.screens.tools.httpinspector.HttpInspectorRoute
 import dev.enthusiastdev.netinspector.ui.screens.tools.ping.PingRoute
+import dev.enthusiastdev.netinspector.ui.screens.tools.portscanner.PortScannerRoute
+import dev.enthusiastdev.netinspector.ui.screens.tools.signalmeter.SignalMeterRoute
+import dev.enthusiastdev.netinspector.ui.screens.tools.subnetcalc.SubnetCalculatorRoute
+import dev.enthusiastdev.netinspector.ui.screens.tools.traceroute.TracerouteRoute
+import dev.enthusiastdev.netinspector.ui.screens.tools.whois.WhoisRoute
+import dev.enthusiastdev.netinspector.ui.screens.tools.wol.WakeOnLanRoute
 import dev.enthusiastdev.netinspector.ui.screens.wifi.WifiScreen
 import dev.enthusiastdev.netinspector.ui.screens.wifi.WifiViewModel
 
@@ -70,45 +89,59 @@ fun NetInspectorApp() {
             val currentDestination = navController.currentBackStackEntryAsState().value?.destination
 
             NavigationSuiteScaffold(
-                navigationSuiteItems = {
-                    topLevelDestinations.forEach { destination ->
-                        item(
-                            selected = destination.isSelected(currentDestination),
-                            onClick = {
-                                navController.navigate(destination.route) {
-                                    popUpTo(navController.graph.findStartDestination().id) {
-                                        saveState = true
-                                    }
-                                    launchSingleTop = true
-                                    restoreState = true
-                                }
-                            },
-                            icon = { Icon(destination.icon, contentDescription = null) },
-                            label = { Text(stringResource(destination.labelRes)) },
-                        )
-                    }
-                },
+                navigationSuiteItems = { navigationItems(navController, currentDestination) },
             ) {
-                NavHost(
-                    navController = navController,
-                    startDestination = ConnectionRoute,
-                    modifier = Modifier.windowInsetsPadding(WindowInsets.statusBars.union(WindowInsets.displayCutout)),
-                ) {
-                    composable<ConnectionRoute> { ConnectionDestination() }
-                    composable<WifiRoute> { WifiDestination() }
-                    composable<DevicesRoute> {
-                        DevicesDestination(
-                            onPingHost = { target -> navController.navigateToPingDeepLink(target) },
-                        )
-                    }
-                    navigation<ToolsRoute>(startDestination = ToolsHomeRoute) {
-                        composable<ToolsHomeRoute> {
-                            ToolsScreen(onNavigateToPing = { navController.navigate(PingToolRoute()) })
-                        }
-                        composable<PingToolRoute> { PingRoute() }
-                    }
-                }
+                AppNavHost(navController)
             }
+        }
+    }
+}
+
+private fun NavigationSuiteScope.navigationItems(
+    navController: NavHostController,
+    currentDestination: NavDestination?,
+) {
+    topLevelDestinations.forEach { destination ->
+        item(
+            selected = destination.isSelected(currentDestination),
+            onClick = {
+                navController.navigate(destination.route) {
+                    popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+                    launchSingleTop = true
+                    restoreState = true
+                }
+            },
+            icon = { Icon(destination.icon, contentDescription = null) },
+            label = { Text(stringResource(destination.labelRes)) },
+        )
+    }
+}
+
+@Composable
+private fun AppNavHost(navController: NavHostController) {
+    NavHost(
+        navController = navController,
+        startDestination = ConnectionRoute,
+        modifier = Modifier.windowInsetsPadding(WindowInsets.statusBars.union(WindowInsets.displayCutout)),
+    ) {
+        composable<ConnectionRoute> { ConnectionDestination() }
+        composable<WifiRoute> { WifiDestination() }
+        composable<DevicesRoute> {
+            DevicesDestination(onPingHost = { target -> navController.navigateToPingDeepLink(target) })
+        }
+        navigation<ToolsRoute>(startDestination = ToolsHomeRoute) {
+            composable<ToolsHomeRoute> {
+                ToolsScreen(onNavigate = { tool -> navController.navigateToTool(tool) })
+            }
+            composable<PingToolRoute> { PingRoute() }
+            composable<TracerouteToolRoute> { TracerouteRoute() }
+            composable<DnsToolRoute> { DnsRoute() }
+            composable<PortScannerToolRoute> { PortScannerRoute() }
+            composable<SignalMeterToolRoute> { SignalMeterRoute() }
+            composable<SubnetCalculatorToolRoute> { SubnetCalculatorRoute() }
+            composable<WhoisToolRoute> { WhoisRoute() }
+            composable<HttpInspectorToolRoute> { HttpInspectorRoute() }
+            composable<WakeOnLanToolRoute> { WakeOnLanRoute() }
         }
     }
 }
@@ -177,5 +210,19 @@ private fun NavHostController.navigateToPingDeepLink(target: String) {
     navigate(PingToolRoute(target)) {
         popUpTo(graph.findStartDestination().id) { saveState = true }
         launchSingleTop = true
+    }
+}
+
+private fun NavHostController.navigateToTool(tool: Tool) {
+    when (tool) {
+        Tool.PING -> navigate(PingToolRoute())
+        Tool.TRACEROUTE -> navigate(TracerouteToolRoute())
+        Tool.DNS -> navigate(DnsToolRoute)
+        Tool.PORT_SCANNER -> navigate(PortScannerToolRoute())
+        Tool.WAKE_ON_LAN -> navigate(WakeOnLanToolRoute)
+        Tool.WHOIS -> navigate(WhoisToolRoute)
+        Tool.HTTP_INSPECTOR -> navigate(HttpInspectorToolRoute)
+        Tool.SUBNET_CALCULATOR -> navigate(SubnetCalculatorToolRoute)
+        Tool.SIGNAL_METER -> navigate(SignalMeterToolRoute)
     }
 }
