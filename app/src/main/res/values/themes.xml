@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Only used for the brief pre-Compose window background; Compose owns real theming
+         via NetInspectorTheme (core:designsystem). -->
+    <style name="Theme.NetInspector" parent="android:Theme.Material.NoActionBar" />
+</resources>

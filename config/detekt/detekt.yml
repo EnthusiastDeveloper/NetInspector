@@ -1,0 +1,14 @@
+build:
+  maxIssues: 0
+
+style:
+  MagicNumber:
+    active: false # network/RF code is full of legitimate constants (channel widths, ports, MHz bounds)
+  MaxLineLength:
+    maxLineLength: 120
+  ReturnCount:
+    max: 4 # early-return state derivation (e.g. posture/security-type mapping) reads better flat
+
+naming:
+  FunctionNaming:
+    ignoreAnnotated: ['Composable'] # PascalCase is the Compose convention for UI-emitting functions

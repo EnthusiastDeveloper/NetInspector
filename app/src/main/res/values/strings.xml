@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">NetInspector</string>
+
+    <string name="destination_connection">Connection</string>
+    <string name="destination_wifi">Wi-Fi</string>
+    <string name="destination_devices">Devices</string>
+    <string name="destination_tools">Tools</string>
+</resources>

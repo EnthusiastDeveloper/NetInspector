@@ -1,0 +1,17 @@
+*.iml
+.gradle/
+.idea/
+.kotlin/
+build/
+captures/
+local.properties
+.cxx/
+*.apk
+*.aab
+
+# Release signing - never committed (design doc §0 / Phase 0: keystore lives outside the repo).
+keystore.properties
+*.jks
+*.keystore
+
+.DS_Store
