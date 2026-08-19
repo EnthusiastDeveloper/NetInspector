@@ -1,0 +1,22 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24"
+    android:tint="#FFFFFF">
+    <!-- Status-bar notification icon: a plain signal-bars silhouette. Android ignores this
+         fill and re-tints the alpha shape to white/grey itself (API 21+ convention), so the
+         exact color here only matters for the design-time preview. -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M3,18h3v3H3z" />
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M9,13h3v8H9z" />
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M15,8h3v13h-3z" />
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M21,3h3v18h-3z" />
+</vector>

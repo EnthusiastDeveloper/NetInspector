@@ -15,13 +15,26 @@ import androidx.compose.ui.unit.dp
 @Composable
 fun ConnectionScreen(
     uiState: ConnectionUiState,
+    monitoringState: MonitoringUiState,
     modifier: Modifier = Modifier,
     onLocationAccessChanged: () -> Unit = {},
+    onStartMonitoring: () -> Unit = {},
+    onStopMonitoring: () -> Unit = {},
+    onNotificationAccessChanged: () -> Unit = {},
 ) {
     when (uiState) {
         ConnectionUiState.Loading -> CenteredMessage("Loading…", modifier)
         ConnectionUiState.Disconnected -> CenteredMessage("Not connected to Wi-Fi", modifier)
-        is ConnectionUiState.Connected -> ConnectedContent(uiState, modifier, onLocationAccessChanged)
+        is ConnectionUiState.Connected ->
+            ConnectedContent(
+                uiState,
+                monitoringState,
+                modifier,
+                onLocationAccessChanged,
+                onStartMonitoring,
+                onStopMonitoring,
+                onNotificationAccessChanged,
+            )
     }
 }
 
@@ -42,8 +55,12 @@ private fun CenteredMessage(
 @Composable
 private fun ConnectedContent(
     state: ConnectionUiState.Connected,
+    monitoringState: MonitoringUiState,
     modifier: Modifier = Modifier,
     onLocationAccessChanged: () -> Unit = {},
+    onStartMonitoring: () -> Unit = {},
+    onStopMonitoring: () -> Unit = {},
+    onNotificationAccessChanged: () -> Unit = {},
 ) {
     val snapshot = state.snapshot
 
@@ -58,6 +75,9 @@ private fun ConnectedContent(
         }
         item { StatusBadges(snapshot) }
         item { RadioSection(snapshot) }
+        item {
+            MonitoringCard(monitoringState, onStartMonitoring, onStopMonitoring, onNotificationAccessChanged)
+        }
         item { Ipv4Section(snapshot) }
         if (snapshot.ipv6.isNotEmpty()) item { Ipv6Section(snapshot) }
         if (snapshot.dnsServers.isNotEmpty()) item { DnsSection(snapshot) }

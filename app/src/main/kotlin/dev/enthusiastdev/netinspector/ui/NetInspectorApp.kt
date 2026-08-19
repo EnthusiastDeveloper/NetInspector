@@ -150,15 +150,21 @@ private fun AppNavHost(navController: NavHostController) {
 private fun ConnectionDestination() {
     val connectionViewModel: ConnectionViewModel = hiltViewModel()
     val connectionUiState by connectionViewModel.uiState.collectAsState()
-    // Granting location access via system Settings, then returning here, doesn't fire any
-    // callback the ViewModel observes - re-check on resume.
+    val monitoringState by connectionViewModel.monitoringState.collectAsState()
+    // Granting location/notification access via system Settings, then returning here, doesn't
+    // fire any callback the ViewModel observes - re-check both on resume.
     LifecycleResumeEffect(Unit) {
         connectionViewModel.refreshLocationAccess()
+        connectionViewModel.refreshNotificationAccess()
         onPauseOrDispose {}
     }
     ConnectionScreen(
         uiState = connectionUiState,
+        monitoringState = monitoringState,
         onLocationAccessChanged = connectionViewModel::refreshLocationAccess,
+        onStartMonitoring = connectionViewModel::startMonitoring,
+        onStopMonitoring = connectionViewModel::stopMonitoring,
+        onNotificationAccessChanged = connectionViewModel::refreshNotificationAccess,
     )
 }
 

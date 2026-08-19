@@ -32,6 +32,13 @@
         android:name="android.permission.ACCESS_FINE_LOCATION"
         tools:ignore="CoarseFineLocation" />
 
+    <!-- design §4/§8, C-09 - the optional continuous-monitoring foreground service. Requested
+         only when the user explicitly starts monitoring from the Connection dashboard, never
+         at first launch. -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CONNECTED_DEVICE" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
     <application
         android:name=".NetInspectorApplication"
         android:allowBackup="false"
@@ -49,6 +56,13 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!-- design §8, C-09 - connectedDevice is satisfied by CHANGE_WIFI_STATE, already held.
+             Not exported: only this app ever starts/stops it. -->
+        <service
+            android:name=".monitoring.MonitoringService"
+            android:exported="false"
+            android:foregroundServiceType="connectedDevice" />
 
         <!-- Phase 8 - the default androidx.startup-driven WorkManagerInitializer runs as a
              ContentProvider before Application.onCreate(), too early for Hilt to have

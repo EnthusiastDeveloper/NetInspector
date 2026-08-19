@@ -10,10 +10,12 @@ import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dev.enthusiastdev.netinspector.data.wifi.ConnectionRepository
+import dev.enthusiastdev.netinspector.monitoring.MonitoringController
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
@@ -26,6 +28,7 @@ class ConnectionViewModel
     @Inject
     constructor(
         connectionRepository: ConnectionRepository,
+        private val monitoringController: MonitoringController,
         @ApplicationContext private val context: Context,
     ) : ViewModel() {
         // Granting location access - whether via the in-app prompt or the system Settings
@@ -55,6 +58,42 @@ class ConnectionViewModel
 
         fun refreshLocationAccess() {
             locationAccessTrigger.update { it + 1 }
+        }
+
+        // Mirrors locationAccessTrigger's shape: POST_NOTIFICATIONS granted via the system
+        // Settings app (after a permanent denial) doesn't fire any callback this ViewModel
+        // would otherwise observe, so ON_RESUME has to force a re-check explicitly.
+        private val notificationAccessTrigger = MutableStateFlow(0)
+
+        val monitoringState: StateFlow<MonitoringUiState> =
+            combine(monitoringController.isRunning, notificationAccessTrigger) { isRunning, _ ->
+                MonitoringUiState(isRunning, currentNotificationAccessState())
+            }.stateIn(
+                scope = viewModelScope,
+                started = SharingStarted.WhileSubscribed(5_000),
+                initialValue = MonitoringUiState(isRunning = false, NotificationAccessState.PERMISSION_NEEDED),
+            )
+
+        fun refreshNotificationAccess() {
+            notificationAccessTrigger.update { it + 1 }
+        }
+
+        fun startMonitoring() {
+            if (currentNotificationAccessState() == NotificationAccessState.GRANTED) monitoringController.start()
+        }
+
+        fun stopMonitoring() {
+            monitoringController.stop()
+        }
+
+        // minSdk 33 (design §0) means POST_NOTIFICATIONS is a runtime permission on every
+        // supported level - no version gate needed, unlike most POST_NOTIFICATIONS call sites
+        // in the wild that also have to support pre-33 installs.
+        private fun currentNotificationAccessState(): NotificationAccessState {
+            val hasPermission =
+                ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) ==
+                    PackageManager.PERMISSION_GRANTED
+            return if (hasPermission) NotificationAccessState.GRANTED else NotificationAccessState.PERMISSION_NEEDED
         }
 
         private fun currentLocationAccessState(): LocationAccessState {
