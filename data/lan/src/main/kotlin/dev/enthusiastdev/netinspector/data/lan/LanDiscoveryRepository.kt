@@ -13,7 +13,6 @@ import dev.enthusiastdev.netinspector.core.model.lan.mergeObservation
 import dev.enthusiastdev.netinspector.data.lan.mdns.MdnsProbe
 import dev.enthusiastdev.netinspector.data.lan.netbios.NetBiosProbe
 import dev.enthusiastdev.netinspector.data.lan.ssdp.SsdpProbe
-import dev.enthusiastdev.netinspector.data.lan.sweep.HostSweeper
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
@@ -56,7 +55,7 @@ class DefaultLanDiscoveryRepository
         private val mdnsProbe: MdnsProbe,
         private val ssdpProbe: SsdpProbe,
         private val netBiosProbe: NetBiosProbe,
-        private val hostSweeper: HostSweeper,
+        private val sweepPipeline: LanSweepPipeline,
         private val clock: Clock,
     ) : LanDiscoveryRepository {
         private val hostMap = MutableStateFlow<Map<Inet4Address, Host>>(emptyMap())
@@ -137,9 +136,10 @@ class DefaultLanDiscoveryRepository
                     }
                 }
 
-                // Stage B - active sweep.
-                hostSweeper.sweep(
+                // Stage B (active sweep) then Stage C (enrichment of what Stage B confirmed).
+                sweepPipeline.run(
                     subnet = subnet,
+                    currentHosts = { hostMap.value.values },
                     onObservation = { emit(it) },
                     onProgress = {
                         probed,

@@ -16,15 +16,10 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.unit.dp
-import dev.enthusiastdev.netinspector.core.designsystem.component.InfoRow
 import dev.enthusiastdev.netinspector.core.model.lan.Host
 import dev.enthusiastdev.netinspector.core.model.lan.HostConfidence
 import dev.enthusiastdev.netinspector.core.model.lan.SweepProgress
@@ -70,29 +65,34 @@ internal fun DevicesHeader(
 }
 
 @Composable
-internal fun HostCard(host: Host) {
-    var expanded by remember(host.address) { mutableStateOf(false) }
+internal fun HostCard(
+    host: Host,
+    onClick: () -> Unit,
+) {
     val isStale = host.confidence == HostConfidence.STALE
     val contentAlpha = if (isStale) 0.5f else 1f
 
-    Card(onClick = { expanded = !expanded }, modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
-        Column(
-            modifier = Modifier.padding(16.dp).alpha(contentAlpha),
-            verticalArrangement = Arrangement.spacedBy(4.dp),
+    Card(onClick = onClick, modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
+        Row(
+            modifier = Modifier.padding(16.dp).alpha(contentAlpha).fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                ConfidenceDot(host.confidence)
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(text = host.displayName(), style = MaterialTheme.typography.titleMedium)
+            ConfidenceDot(host.confidence)
+            Column(modifier = Modifier.weight(1f)) {
+                Text(text = host.displayName(), style = MaterialTheme.typography.titleMedium)
+                Text(
+                    text = "${host.address.addressString} · ${host.confidence.label()}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                host.deviceHint?.let { hint ->
                     Text(
-                        text = "${host.address.hostAddress} · ${host.confidence.label()}",
+                        text = hint.label,
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        color = MaterialTheme.colorScheme.primary,
                     )
                 }
-            }
-            if (expanded) {
-                HostEvidenceDetail(host)
             }
         }
     }
@@ -108,25 +108,6 @@ private fun ConfidenceDot(confidence: HostConfidence) {
         }
     Canvas(modifier = Modifier.size(12.dp)) {
         drawCircle(color = color)
-    }
-}
-
-@Composable
-private fun HostEvidenceDetail(host: Host) {
-    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-        val rttMedianMs = host.rttMedianMs
-        if (rttMedianMs != null) {
-            InfoRow("Median RTT", "${rttMedianMs.toInt()} ms")
-        }
-        host.hostnames.forEach { (source, name) ->
-            InfoRow(source.label(), name)
-        }
-        host.evidence.distinctBy { it.source }.forEach { evidence ->
-            InfoRow(evidence.source.label(), evidence.observedAt.asClockTime())
-        }
-        host.services.forEach { service ->
-            InfoRow(service.serviceType ?: "Service", service.name ?: service.detail ?: "-")
-        }
     }
 }
 

@@ -20,7 +20,17 @@ import kotlinx.serialization.Serializable
 
 @Serializable data object DevicesRoute
 
+// `ToolsRoute` is the *graph* route for the Tools tab, not a screen - nesting the tools grid
+// and every tool destination (`PingToolRoute`, and Phase 7's rest) inside it keeps their
+// back-stack state scoped to this tab. Without that nesting, the bottom nav's
+// popUpTo(start){saveState=true}/restoreState pattern (needed so switching tabs doesn't lose
+// each tab's state) has nothing to key a save on *per tab*, and restoring, say, the Devices tab
+// after visiting Ping from a deep link can resurrect Ping instead - reproduced on-device during
+// Phase 6 once host detail added its "Ping this host" deep link, the first place anything
+// navigated to a Tools-tab screen from *outside* the Tools tab.
 @Serializable data object ToolsRoute
+
+@Serializable data object ToolsHomeRoute
 
 data class TopLevelDestination(
     val route: Any,

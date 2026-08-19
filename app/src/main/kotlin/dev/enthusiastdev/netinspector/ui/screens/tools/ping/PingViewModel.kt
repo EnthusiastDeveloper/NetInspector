@@ -1,13 +1,16 @@
 package dev.enthusiastdev.netinspector.ui.screens.tools.ping
 
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.navigation.toRoute
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dev.enthusiastdev.netinspector.core.common.icmp.summarizePing
 import dev.enthusiastdev.netinspector.core.model.diagnostics.PingProbeResult
 import dev.enthusiastdev.netinspector.core.model.diagnostics.PingTier
 import dev.enthusiastdev.netinspector.data.diagnostics.icmp.PingConfig
 import dev.enthusiastdev.netinspector.data.diagnostics.icmp.PingRepository
+import dev.enthusiastdev.netinspector.ui.navigation.PingToolRoute
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -25,8 +28,10 @@ class PingViewModel
     @Inject
     constructor(
         private val pingRepository: PingRepository,
+        savedStateHandle: SavedStateHandle,
     ) : ViewModel() {
-        private val _uiState = MutableStateFlow(PingUiState())
+        private val _uiState =
+            MutableStateFlow(PingUiState(target = savedStateHandle.toRoute<PingToolRoute>().target.orEmpty()))
         val uiState: StateFlow<PingUiState> = _uiState.asStateFlow()
 
         private var runJob: Job? = null

@@ -24,9 +24,11 @@ import androidx.compose.ui.res.stringResource
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.navigation.NavGraph.Companion.findStartDestination
+import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
+import androidx.navigation.compose.navigation
 import androidx.navigation.compose.rememberNavController
 import dev.enthusiastdev.netinspector.core.designsystem.adaptive.DevicePosture
 import dev.enthusiastdev.netinspector.core.designsystem.adaptive.LocalDevicePosture
@@ -35,6 +37,7 @@ import dev.enthusiastdev.netinspector.core.designsystem.adaptive.translatedTo
 import dev.enthusiastdev.netinspector.ui.navigation.ConnectionRoute
 import dev.enthusiastdev.netinspector.ui.navigation.DevicesRoute
 import dev.enthusiastdev.netinspector.ui.navigation.PingToolRoute
+import dev.enthusiastdev.netinspector.ui.navigation.ToolsHomeRoute
 import dev.enthusiastdev.netinspector.ui.navigation.ToolsRoute
 import dev.enthusiastdev.netinspector.ui.navigation.WifiRoute
 import dev.enthusiastdev.netinspector.ui.navigation.topLevelDestinations
@@ -93,11 +96,17 @@ fun NetInspectorApp() {
                 ) {
                     composable<ConnectionRoute> { ConnectionDestination() }
                     composable<WifiRoute> { WifiDestination() }
-                    composable<DevicesRoute> { DevicesDestination() }
-                    composable<ToolsRoute> {
-                        ToolsScreen(onNavigateToPing = { navController.navigate(PingToolRoute) })
+                    composable<DevicesRoute> {
+                        DevicesDestination(
+                            onPingHost = { target -> navController.navigateToPingDeepLink(target) },
+                        )
                     }
-                    composable<PingToolRoute> { PingRoute() }
+                    navigation<ToolsRoute>(startDestination = ToolsHomeRoute) {
+                        composable<ToolsHomeRoute> {
+                            ToolsScreen(onNavigateToPing = { navController.navigate(PingToolRoute()) })
+                        }
+                        composable<PingToolRoute> { PingRoute() }
+                    }
                 }
             }
         }
@@ -141,7 +150,7 @@ private fun WifiDestination() {
 }
 
 @Composable
-private fun DevicesDestination() {
+private fun DevicesDestination(onPingHost: (String) -> Unit) {
     val devicesViewModel: DevicesViewModel = hiltViewModel()
     val devicesUiState by devicesViewModel.uiState.collectAsState()
     DevicesScreen(
@@ -151,5 +160,22 @@ private fun DevicesDestination() {
         onAcknowledgeAndScan = devicesViewModel::acknowledgeAndStartSweep,
         onConfirmShortPrefixScan = devicesViewModel::confirmShortPrefixSweep,
         onDismissConfirmation = devicesViewModel::dismissConfirmation,
+        onPingHost = onPingHost,
     )
+}
+
+/**
+ * Deep-linking into another tab's nested graph needs the same popUpTo(start,
+ * saveState)/launchSingleTop back-stack handling the bottom-nav tab switch above uses - a plain
+ * `navigate()` here leaves [DevicesRoute] *and* the Tools graph both live on the back stack
+ * simultaneously, which then confuses the next bottom-nav tab switch's own popUpTo/restoreState
+ * into landing back on Ping instead of the newly-tapped tab (reproduced on-device during Phase 6,
+ * the first deep link into a nested tab graph). `restoreState` is left off deliberately: this
+ * must always land on the freshly-targeted host, never a previously saved Ping run.
+ */
+private fun NavHostController.navigateToPingDeepLink(target: String) {
+    navigate(PingToolRoute(target)) {
+        popUpTo(graph.findStartDestination().id) { saveState = true }
+        launchSingleTop = true
+    }
 }

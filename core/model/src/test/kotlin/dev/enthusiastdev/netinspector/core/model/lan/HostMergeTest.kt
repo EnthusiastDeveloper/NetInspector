@@ -155,6 +155,72 @@ class HostMergeTest {
     }
 
     @Test
+    fun `mergeObservation folds in Stage C enrichment fields`() {
+        val address = addr("192.168.1.5")
+        val confirmed = mergeObservation(emptyMap(), HostObservation(address, listOf(evidence(EvidenceSource.ICMP))))
+
+        val enriched =
+            mergeObservation(
+                confirmed,
+                HostObservation(
+                    address,
+                    listOf(evidence(EvidenceSource.REVERSE_DNS)),
+                    openPorts = listOf(OpenPort(80, "http", "nginx")),
+                    deviceHint = DeviceHint("Network printer", "Open port 9100 → Network printer", Certainty.LIKELY),
+                    icmpReplyTtl = 64,
+                ),
+            )
+
+        val host = enriched.getValue(address)
+        assertThat(host.openPorts).containsExactly(OpenPort(80, "http", "nginx"))
+        assertThat(host.deviceHint?.label).isEqualTo("Network printer")
+        assertThat(host.icmpReplyTtl).isEqualTo(64)
+    }
+
+    @Test
+    fun `mergeObservation keeps existing enrichment fields when a later observation carries none`() {
+        val address = addr("192.168.1.5")
+        val enriched =
+            mergeObservation(
+                emptyMap(),
+                HostObservation(
+                    address,
+                    listOf(evidence(EvidenceSource.ICMP)),
+                    icmpReplyTtl = 64,
+                ),
+            )
+
+        val again = mergeObservation(enriched, HostObservation(address, listOf(evidence(EvidenceSource.ICMP))))
+
+        assertThat(again.getValue(address).icmpReplyTtl).isEqualTo(64)
+    }
+
+    @Test
+    fun `mergeObservation overwrites an open port re-reported with a banner`() {
+        val address = addr("192.168.1.5")
+        val first =
+            mergeObservation(
+                emptyMap(),
+                HostObservation(
+                    address,
+                    listOf(evidence(EvidenceSource.TCP_CONNECT)),
+                    openPorts = listOf(OpenPort(22, "ssh", null)),
+                ),
+            )
+        val second =
+            mergeObservation(
+                first,
+                HostObservation(
+                    address,
+                    listOf(evidence(EvidenceSource.TCP_CONNECT)),
+                    openPorts = listOf(OpenPort(22, "ssh", "SSH-2.0-OpenSSH_9.6")),
+                ),
+            )
+
+        assertThat(second.getValue(address).openPorts).containsExactly(OpenPort(22, "ssh", "SSH-2.0-OpenSSH_9.6"))
+    }
+
+    @Test
     fun `finalizeSweep marks an unobserved host STALE the first time it is missing`() {
         val address = addr("192.168.1.5")
         val current = mergeObservation(emptyMap(), HostObservation(address, listOf(evidence(EvidenceSource.ICMP))))

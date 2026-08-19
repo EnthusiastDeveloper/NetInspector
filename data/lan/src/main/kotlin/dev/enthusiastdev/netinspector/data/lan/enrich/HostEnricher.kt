@@ -1,0 +1,101 @@
+package dev.enthusiastdev.netinspector.data.lan.enrich
+
+import dev.enthusiastdev.netinspector.core.model.lan.DeviceHint
+import dev.enthusiastdev.netinspector.core.model.lan.Evidence
+import dev.enthusiastdev.netinspector.core.model.lan.EvidenceSource
+import dev.enthusiastdev.netinspector.core.model.lan.Host
+import dev.enthusiastdev.netinspector.core.model.lan.HostObservation
+import dev.enthusiastdev.netinspector.core.model.lan.deviceHintFor
+import dev.enthusiastdev.netinspector.data.lan.sweep.IcmpSweepProbe
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
+import java.net.Inet4Address
+import java.time.Clock
+import javax.inject.Inject
+
+/**
+ * design §8.2 Stage C - enrichment for confirmed hosts only: reverse DNS, the extended port
+ * probe with banner grab, and the ICMP-reply-TTL/port-signature [DeviceHint]. Runs after Stage
+ * B, bounded to [HOST_CONCURRENCY] hosts at once - Stage C's targets are a small, already-known
+ * subset of the subnet, not the full address space Stage B swept, so it needs nowhere near
+ * Stage B's 64-way concurrency.
+ */
+class HostEnricher
+    @Inject
+    constructor(
+        private val reverseDnsProbe: ReverseDnsProbe,
+        private val extendedPortProbe: ExtendedPortProbe,
+        private val icmpTtlProbe: IcmpSweepProbe,
+        private val clock: Clock,
+    ) {
+        suspend fun enrich(
+            hosts: List<Host>,
+            onObservation: suspend (HostObservation) -> Unit,
+        ) = coroutineScope {
+            val dispatcher = Dispatchers.IO.limitedParallelism(HOST_CONCURRENCY)
+            hosts
+                .map { host -> async(dispatcher) { enrichOne(host, onObservation) } }
+                .awaitAll()
+        }
+
+        private suspend fun enrichOne(
+            host: Host,
+            onObservation: suspend (HostObservation) -> Unit,
+        ) = coroutineScope {
+            val address = host.address
+            val hostnameJob = async { resolveHostname(address) }
+            val portsJob = async { probePorts(address) }
+            val ttlJob = async { resolveTtl(host) }
+
+            val hostname = hostnameJob.await()
+            val openPorts = portsJob.await()
+            val icmpReplyTtl = ttlJob.await()
+            // deviceHint is derived entirely from openPorts/icmpReplyTtl, so it can never be
+            // non-null when both of those are empty/null - no need to check it separately.
+            if (hostname == null && openPorts.isEmpty() && icmpReplyTtl == null) return@coroutineScope
+            val deviceHint = deviceHintFor(openPorts, icmpReplyTtl)
+
+            onObservation(
+                HostObservation(
+                    address = address,
+                    evidence = reverseDnsEvidence(hostname),
+                    hostnames = hostname?.let { mapOf(EvidenceSource.REVERSE_DNS to it) }.orEmpty(),
+                    openPorts = openPorts,
+                    deviceHint = deviceHint,
+                    icmpReplyTtl = icmpReplyTtl,
+                ),
+            )
+        }
+
+        private suspend fun resolveHostname(address: Inet4Address): String? =
+            runCatching { reverseDnsProbe.resolve(address, DNS_TIMEOUT_MS) }.getOrNull()
+
+        /** design §8.2 - TTL is free from Stage B for hosts that answered ICMP there; only a
+         * TCP-only confirmed host needs a dedicated probe here. */
+        private suspend fun resolveTtl(host: Host): Int? =
+            host.icmpReplyTtl ?: runCatching { icmpTtlProbe.probe(host.address, TTL_TIMEOUT_MS)?.replyTtl }.getOrNull()
+
+        private fun reverseDnsEvidence(hostname: String?) =
+            if (hostname != null) listOf(Evidence(EvidenceSource.REVERSE_DNS, clock.instant())) else emptyList()
+
+        /** design §8.2 - "all ports for a given host are probed concurrently," the same pattern
+         * Stage B's pass 3 uses (design's own note there on why serial probing blows the sweep's
+         * time budget applies here too, just against a much smaller port set). */
+        private suspend fun probePorts(address: Inet4Address) =
+            coroutineScope {
+                ExtendedPortProbe.PORTS
+                    .map { port -> async(Dispatchers.IO) { extendedPortProbe.probe(address, port, PORT_TIMEOUT_MS) } }
+                    .awaitAll()
+                    .filterNotNull()
+                    .sortedBy { it.port }
+            }
+
+        private companion object {
+            const val HOST_CONCURRENCY = 16
+            const val DNS_TIMEOUT_MS = 2_000
+            const val PORT_TIMEOUT_MS = 500
+            const val TTL_TIMEOUT_MS = 1_000
+        }
+    }

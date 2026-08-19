@@ -30,10 +30,10 @@ fun mergeObservation(
             hostnames = existing?.hostnames.orEmpty() + observation.hostnames,
             macAddress = existing?.macAddress,
             vendor = existing?.vendor,
-            deviceHint = existing?.deviceHint,
-            openPorts = existing?.openPorts.orEmpty(),
+            deviceHint = observation.deviceHint ?: existing?.deviceHint,
+            openPorts = mergeOpenPorts(existing?.openPorts.orEmpty(), observation.openPorts),
             services = mergeServices(existing?.services.orEmpty(), observation.services),
-            icmpReplyTtl = existing?.icmpReplyTtl,
+            icmpReplyTtl = observation.icmpReplyTtl ?: existing?.icmpReplyTtl,
             rttMedianMs = rttSamples?.let { median(it) } ?: existing?.rttMedianMs,
             isGateway = observation.isGateway || (existing?.isGateway == true),
             isSelf = observation.isSelf || (existing?.isSelf == true),
@@ -63,6 +63,17 @@ private fun mergeServices(
     existing: List<DiscoveredService>,
     incoming: List<DiscoveredService>,
 ): List<DiscoveredService> = (existing + incoming).distinct()
+
+/** design §8.4 - a re-reported port (e.g. a banner arriving after the bare open/closed
+ * result) overwrites its own entry by port number; the result stays sorted for a stable
+ * detail-screen order. */
+private fun mergeOpenPorts(
+    existing: List<OpenPort>,
+    incoming: List<OpenPort>,
+): List<OpenPort> =
+    (existing.associateBy { it.port } + incoming.associateBy { it.port })
+        .values
+        .sortedBy { it.port }
 
 private fun median(values: List<Double>): Double {
     val sorted = values.sorted()

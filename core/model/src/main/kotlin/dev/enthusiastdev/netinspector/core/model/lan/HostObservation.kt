@@ -14,4 +14,9 @@ data class HostObservation(
     val rttSamplesMs: List<Double> = emptyList(),
     val isGateway: Boolean = false,
     val isSelf: Boolean = false,
+    /** design §8.2 Stage C - populated by the confirmed-hosts-only enrichment pass; absent
+     * (`null`/empty) from every Stage A/B observation. */
+    val openPorts: List<OpenPort> = emptyList(),
+    val deviceHint: DeviceHint? = null,
+    val icmpReplyTtl: Int? = null,
 )
