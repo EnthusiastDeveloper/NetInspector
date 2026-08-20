@@ -3,11 +3,10 @@ package dev.enthusiastdev.netinspector.data.lan.enrich
 import android.net.DnsResolver
 import android.os.CancellationSignal
 import dev.enthusiastdev.netinspector.core.common.dns.DnsPtrQuery
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.asExecutor
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withTimeoutOrNull
 import java.net.Inet4Address
+import java.util.concurrent.Executor
 import javax.inject.Inject
 import kotlin.coroutines.resume
 import kotlin.random.Random
@@ -17,6 +16,15 @@ import kotlin.random.Random
  * returns A/AAAA answers (design's own note on this: the general encoder/decoder it envisions
  * for the DNS tool is Phase 7 work in a different module), so a PTR lookup goes through
  * `rawQuery(byte[])` with [DnsPtrQuery] doing the encoding/decoding.
+ *
+ * The callback executor is a direct/inline `Executor`, not `Dispatchers.IO.asExecutor()` -
+ * Stage C's extended port probe saturates `Dispatchers.IO` with hundreds of concurrent blocking
+ * socket connects (up to [dev.enthusiastdev.netinspector.data.lan.enrich.HostEnricher]'s
+ * `HOST_CONCURRENCY` hosts × `ExtendedPortProbe.PORTS`), so a callback merely *queued* on that
+ * pool can starve past the query's own timeout even though the resolver answered in
+ * milliseconds - reproduced on-device: every query dispatched cleanly but not one callback ever
+ * fired before cancellation. Matches [dev.enthusiastdev.netinspector.data.diagnostics.dns.DefaultDnsRepository]'s
+ * `Executor { it.run() }`, which never hits this because it isn't competing with Stage C's probes.
  */
 class ReverseDnsProbe
     @Inject
@@ -37,7 +45,7 @@ class ReverseDnsProbe
                             null,
                             query,
                             DnsResolver.FLAG_EMPTY,
-                            Dispatchers.IO.asExecutor(),
+                            DIRECT_EXECUTOR,
                             signal,
                             object : DnsResolver.Callback<ByteArray> {
                                 override fun onAnswer(
@@ -57,4 +65,8 @@ class ReverseDnsProbe
                     signal.cancel()
                 }
             }
+
+        private companion object {
+            val DIRECT_EXECUTOR = Executor { it.run() }
+        }
     }
