@@ -3,6 +3,7 @@ package dev.enthusiastdev.netinspector.ui.screens.wifi
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
@@ -73,9 +74,10 @@ internal fun WifiFilterSortBar(
     bandFilter: Set<Band>,
     onBandFilterChange: (Set<Band>) -> Unit,
 ) {
-    Row(
+    FlowRow(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         listOf(Band.GHZ_2_4, Band.GHZ_5, Band.GHZ_6).forEach { band ->
             FilterChip(

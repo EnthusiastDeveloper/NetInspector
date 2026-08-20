@@ -18,7 +18,7 @@ fun ToolsScreen(
     modifier: Modifier = Modifier,
 ) {
     LazyVerticalGrid(
-        columns = GridCells.Adaptive(minSize = 120.dp),
+        columns = GridCells.Adaptive(minSize = 160.dp),
         modifier = modifier.fillMaxSize().padding(16.dp),
     ) {
         items(Tool.entries) { tool -> ToolTileCard(tool, onClick = { onNavigate(tool) }) }
