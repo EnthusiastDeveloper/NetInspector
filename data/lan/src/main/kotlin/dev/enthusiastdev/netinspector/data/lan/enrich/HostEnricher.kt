@@ -45,9 +45,15 @@ class HostEnricher
             onObservation: suspend (HostObservation) -> Unit,
         ) = coroutineScope {
             val address = host.address
-            val hostnameJob = async { resolveHostname(address) }
-            val portsJob = async { probePorts(address) }
-            val ttlJob = async { resolveTtl(host) }
+            // design §8.2 - HOST_CONCURRENCY caps how many *hosts* enrich at once; these three
+            // sub-tasks must not inherit that same limited dispatcher, or a burst of hosts each
+            // launching three more tasks oversubscribes it 4x and a DNS lookup that would
+            // otherwise take milliseconds can sit queued for a slot long enough to blow its own
+            // timeout - reproduced on-device as a handful of hosts silently, deterministically
+            // never resolving. Dispatchers.IO's own (much larger) pool has room for this.
+            val hostnameJob = async(Dispatchers.IO) { resolveHostname(address) }
+            val portsJob = async(Dispatchers.IO) { probePorts(address) }
+            val ttlJob = async(Dispatchers.IO) { resolveTtl(host) }
 
             val hostname = hostnameJob.await()
             val openPorts = portsJob.await()
@@ -69,8 +75,14 @@ class HostEnricher
             )
         }
 
+        /** A single retry - under Stage C's [HOST_CONCURRENCY]-way concurrent burst (each host
+         * also fanning out ~30 port probes at once), a query can occasionally lose the race for
+         * Wi-Fi airtime or a timely server reply even though the query itself is sound; the
+         * retry recovers those the same way pass 2 of the Stage B sweep recovers hosts lost to
+         * transient wireless loss. */
         private suspend fun resolveHostname(address: Inet4Address): String? =
             runCatching { reverseDnsProbe.resolve(address, DNS_TIMEOUT_MS) }.getOrNull()
+                ?: runCatching { reverseDnsProbe.resolve(address, DNS_TIMEOUT_MS) }.getOrNull()
 
         /** design §8.2 - TTL is free from Stage B for hosts that answered ICMP there; only a
          * TCP-only confirmed host needs a dedicated probe here. */
