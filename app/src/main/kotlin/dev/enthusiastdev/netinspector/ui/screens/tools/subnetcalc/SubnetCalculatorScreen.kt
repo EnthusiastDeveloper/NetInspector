@@ -1,8 +1,10 @@
 package dev.enthusiastdev.netinspector.ui.screens.tools.subnetcalc
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.widthIn
@@ -14,6 +16,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -45,50 +48,52 @@ fun SubnetCalculatorScreen(
     onVlsmChange: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    LazyColumn(
-        modifier = modifier.fillMaxSize().widthIn(max = 600.dp),
-        contentPadding = PaddingValues(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-        item {
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+    Box(modifier = modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
+        LazyColumn(
+            modifier = Modifier.fillMaxHeight().widthIn(max = 600.dp),
+            contentPadding = PaddingValues(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            item {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedTextField(
+                        value = uiState.addressInput,
+                        onValueChange = onAddressChange,
+                        label = { Text("Address") },
+                        singleLine = true,
+                        modifier = Modifier.weight(1f),
+                    )
+                    OutlinedTextField(
+                        value = uiState.prefixInput,
+                        onValueChange = onPrefixChange,
+                        label = { Text("Prefix") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(0.35f),
+                    )
+                }
+            }
+
+            uiState.errorMessage?.let {
+                item { Text(text = it, color = MaterialTheme.colorScheme.error) }
+            }
+
+            uiState.subnet?.let { subnet ->
+                item { SubnetInfoCard(subnet, uiState.netmaskText.orEmpty()) }
+            }
+
+            item {
                 OutlinedTextField(
-                    value = uiState.addressInput,
-                    onValueChange = onAddressChange,
-                    label = { Text("Address") },
+                    value = uiState.vlsmInput,
+                    onValueChange = onVlsmChange,
+                    label = { Text("VLSM: host counts, comma-separated (e.g. 100,50,20)") },
                     singleLine = true,
-                    modifier = Modifier.weight(1f),
-                )
-                OutlinedTextField(
-                    value = uiState.prefixInput,
-                    onValueChange = onPrefixChange,
-                    label = { Text("Prefix") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth(0.35f),
+                    modifier = Modifier.fillMaxWidth(),
                 )
             }
-        }
 
-        uiState.errorMessage?.let {
-            item { Text(text = it, color = MaterialTheme.colorScheme.error) }
-        }
-
-        uiState.subnet?.let { subnet ->
-            item { SubnetInfoCard(subnet, uiState.netmaskText.orEmpty()) }
-        }
-
-        item {
-            OutlinedTextField(
-                value = uiState.vlsmInput,
-                onValueChange = onVlsmChange,
-                label = { Text("VLSM: host counts, comma-separated (e.g. 100,50,20)") },
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth(),
-            )
-        }
-
-        uiState.vlsmAllocations?.let { allocations ->
-            items(allocations) { allocation -> VlsmRow(allocation) }
+            uiState.vlsmAllocations?.let { allocations ->
+                items(allocations) { allocation -> VlsmRow(allocation) }
+            }
         }
     }
 }

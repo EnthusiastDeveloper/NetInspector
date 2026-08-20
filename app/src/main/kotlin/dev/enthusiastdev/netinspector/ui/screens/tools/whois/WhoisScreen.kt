@@ -1,9 +1,11 @@
 package dev.enthusiastdev.netinspector.ui.screens.tools.whois
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -17,6 +19,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
@@ -45,34 +48,36 @@ fun WhoisScreen(
     onRunQuery: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Column(modifier = modifier.fillMaxSize().widthIn(max = 600.dp)) {
-        Row(modifier = Modifier.fillMaxWidth().padding(16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            OutlinedTextField(
-                value = uiState.target,
-                onValueChange = onTargetChange,
-                label = { Text("Domain or IP") },
-                singleLine = true,
-                modifier = Modifier.weight(1f),
-            )
-            Button(onClick = onRunQuery) { Text("Query") }
-        }
-
-        when (val outcome = uiState.outcome) {
-            is WhoisOutcome.Error ->
-                Text(
-                    text = outcome.message,
-                    color = MaterialTheme.colorScheme.error,
-                    modifier = Modifier.padding(16.dp),
+    Box(modifier = modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
+        Column(modifier = Modifier.fillMaxHeight().widthIn(max = 600.dp)) {
+            Row(modifier = Modifier.fillMaxWidth().padding(16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedTextField(
+                    value = uiState.target,
+                    onValueChange = onTargetChange,
+                    label = { Text("Domain or IP") },
+                    singleLine = true,
+                    modifier = Modifier.weight(1f),
                 )
-            is WhoisOutcome.Success ->
-                LazyColumn(
-                    modifier = Modifier.weight(1f).fillMaxWidth(),
-                    contentPadding = PaddingValues(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
-                ) {
-                    items(outcome.hops) { hop -> HopSection(hop) }
-                }
-            null -> {}
+                Button(onClick = onRunQuery) { Text("Query") }
+            }
+
+            when (val outcome = uiState.outcome) {
+                is WhoisOutcome.Error ->
+                    Text(
+                        text = outcome.message,
+                        color = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.padding(16.dp),
+                    )
+                is WhoisOutcome.Success ->
+                    LazyColumn(
+                        modifier = Modifier.weight(1f).fillMaxWidth(),
+                        contentPadding = PaddingValues(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        items(outcome.hops) { hop -> HopSection(hop) }
+                    }
+                null -> {}
+            }
         }
     }
 }

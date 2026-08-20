@@ -1,9 +1,11 @@
 package dev.enthusiastdev.netinspector.ui.screens.tools.portscanner
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -58,23 +60,25 @@ fun PortScannerScreen(
     onStop: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Column(modifier = modifier.fillMaxSize().widthIn(max = 600.dp)) {
-        PortScannerForm(
-            uiState,
-            onTargetChange,
-            onSelectionChange,
-            onCustomStartChange,
-            onCustomEndChange,
-            onStart,
-            onStop,
-        )
+    Box(modifier = modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
+        Column(modifier = Modifier.fillMaxHeight().widthIn(max = 600.dp)) {
+            PortScannerForm(
+                uiState,
+                onTargetChange,
+                onSelectionChange,
+                onCustomStartChange,
+                onCustomEndChange,
+                onStart,
+                onStop,
+            )
 
-        LazyColumn(
-            modifier = Modifier.weight(1f).fillMaxWidth(),
-            contentPadding = PaddingValues(16.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp),
-        ) {
-            items(uiState.findings.sortedBy { it.port }) { finding -> FindingRow(finding) }
+            LazyColumn(
+                modifier = Modifier.weight(1f).fillMaxWidth(),
+                contentPadding = PaddingValues(16.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                items(uiState.findings.sortedBy { it.port }) { finding -> FindingRow(finding) }
+            }
         }
     }
 }

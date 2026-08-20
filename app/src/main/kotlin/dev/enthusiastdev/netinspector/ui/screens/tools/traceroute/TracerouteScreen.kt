@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -77,7 +78,7 @@ fun TracerouteScreen(
                 lower = { TracerouteControls(uiState, onTargetChange, onStart, onStop, Modifier.fillMaxSize()) },
             )
         } else {
-            Column(modifier = Modifier.fillMaxSize().widthIn(max = 600.dp)) {
+            Column(modifier = Modifier.align(Alignment.TopCenter).fillMaxHeight().widthIn(max = 600.dp)) {
                 TracerouteControls(uiState, onTargetChange, onStart, onStop)
                 HopLog(uiState, modifier = Modifier.weight(1f).fillMaxWidth())
             }

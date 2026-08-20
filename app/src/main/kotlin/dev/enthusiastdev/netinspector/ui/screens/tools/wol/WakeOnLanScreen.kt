@@ -1,9 +1,11 @@
 package dev.enthusiastdev.netinspector.ui.screens.tools.wol
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -61,46 +63,48 @@ fun WakeOnLanScreen(
     onDelete: (SavedWolTarget) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    LazyColumn(
-        modifier = modifier.fillMaxSize().widthIn(max = 600.dp),
-        contentPadding = PaddingValues(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-        item {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedTextField(
-                    value = uiState.label,
-                    onValueChange = onLabelChange,
-                    label = { Text("Label (for saving)") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
-                )
-                OutlinedTextField(
-                    value = uiState.mac,
-                    onValueChange = onMacChange,
-                    label = { Text("MAC address") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
-                )
-                OutlinedTextField(
-                    value = uiState.broadcastAddress,
-                    onValueChange = onBroadcastAddressChange,
-                    label = { Text("Broadcast address") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
-                )
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Button(onClick = { onWake(uiState.mac, uiState.broadcastAddress) }) { Text("Wake") }
-                    OutlinedButton(onClick = onSave) { Text("Save") }
+    Box(modifier = modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
+        LazyColumn(
+            modifier = Modifier.fillMaxHeight().widthIn(max = 600.dp),
+            contentPadding = PaddingValues(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            item {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedTextField(
+                        value = uiState.label,
+                        onValueChange = onLabelChange,
+                        label = { Text("Label (for saving)") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    OutlinedTextField(
+                        value = uiState.mac,
+                        onValueChange = onMacChange,
+                        label = { Text("MAC address") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    OutlinedTextField(
+                        value = uiState.broadcastAddress,
+                        onValueChange = onBroadcastAddressChange,
+                        label = { Text("Broadcast address") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Button(onClick = { onWake(uiState.mac, uiState.broadcastAddress) }) { Text("Wake") }
+                        OutlinedButton(onClick = onSave) { Text("Save") }
+                    }
+                    uiState.lastResultMessage?.let { Text(text = it, style = MaterialTheme.typography.bodySmall) }
                 }
-                uiState.lastResultMessage?.let { Text(text = it, style = MaterialTheme.typography.bodySmall) }
             }
-        }
 
-        if (uiState.savedTargets.isNotEmpty()) {
-            item { HorizontalDivider() }
-            item { Text(text = "Saved targets", style = MaterialTheme.typography.titleSmall) }
-            items(uiState.savedTargets) { target -> SavedTargetRow(target, onWake, onDelete) }
+            if (uiState.savedTargets.isNotEmpty()) {
+                item { HorizontalDivider() }
+                item { Text(text = "Saved targets", style = MaterialTheme.typography.titleSmall) }
+                items(uiState.savedTargets) { target -> SavedTargetRow(target, onWake, onDelete) }
+            }
         }
     }
 }

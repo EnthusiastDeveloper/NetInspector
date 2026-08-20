@@ -2,10 +2,12 @@ package dev.enthusiastdev.netinspector.ui.screens.tools.dns
 
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -57,9 +59,11 @@ fun DnsScreen(
     onRunQuery: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Column(modifier = modifier.fillMaxSize().widthIn(max = 600.dp)) {
-        DnsForm(uiState, onNameChange, onRecordTypeChange, onCustomServerChange, onRunQuery)
-        DnsResults(uiState.outcome)
+    Box(modifier = modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
+        Column(modifier = Modifier.fillMaxHeight().widthIn(max = 600.dp)) {
+            DnsForm(uiState, onNameChange, onRecordTypeChange, onCustomServerChange, onRunQuery)
+            DnsResults(uiState.outcome)
+        }
     }
 }
 
