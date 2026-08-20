@@ -61,4 +61,32 @@ class DeviceHintHeuristicsTest {
     fun `deviceHintFor returns null when nothing matched`() {
         assertThat(deviceHintFor(openPorts = emptyList(), icmpReplyTtl = null)).isNull()
     }
+
+    @Test
+    fun `deviceHintFor prefers a domain controller signature over the plain Windows-Samba signature`() {
+        val hint =
+            deviceHintFor(
+                openPorts = listOf(port(88), port(636), port(445), port(139)),
+                icmpReplyTtl = null,
+            )
+        assertThat(hint?.label).isEqualTo("Windows domain controller (Active Directory)")
+    }
+
+    @Test
+    fun `deviceHintFor falls back to plain Windows-Samba when the domain controller ports are absent`() {
+        val hint = deviceHintFor(openPorts = listOf(port(445), port(139)), icmpReplyTtl = null)
+        assertThat(hint?.label).isEqualTo("Windows/Samba file sharing")
+    }
+
+    @Test
+    fun `deviceHintFor recognizes an RTSP camera signature`() {
+        val hint = deviceHintFor(openPorts = listOf(port(554)), icmpReplyTtl = null)
+        assertThat(hint?.label).isEqualTo("IP camera / streaming device")
+    }
+
+    @Test
+    fun `deviceHintFor recognizes a telnet signature`() {
+        val hint = deviceHintFor(openPorts = listOf(port(23)), icmpReplyTtl = null)
+        assertThat(hint?.label).isEqualTo("Telnet-enabled device (legacy/insecure)")
+    }
 }

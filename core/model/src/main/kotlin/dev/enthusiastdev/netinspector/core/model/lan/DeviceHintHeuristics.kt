@@ -33,7 +33,9 @@ fun ttlDeviceHint(observedTtl: Int): DeviceHint? {
 }
 
 /** design §3 Phase 6 - "62078 → iOS, 5555 → ADB, 9100 → printer, 8009 → Chromecast,
- * 445+139 → Windows/Samba, 32400 → Plex, and so on." Checked in order; the first match wins. */
+ * 445+139 → Windows/Samba, 32400 → Plex, and so on." Checked in order; the first match wins,
+ * so signatures that are a superset of another (e.g. an AD domain controller also has
+ * 445+139 open) must be listed before the more general one. */
 private fun portSignatureHint(openPorts: List<OpenPort>): DeviceHint? {
     val open = openPorts.map { it.port }.toSet()
     return PORT_SIGNATURES.firstOrNull { it.ports.all { port -> port in open } }?.let { signature ->
@@ -59,11 +61,18 @@ private val PORT_SIGNATURES =
         PortSignature(listOf(8009), "Chromecast"),
         PortSignature(listOf(9100), "Network printer"),
         PortSignature(listOf(32400), "Plex media server"),
+        // Checked before the plain Windows/Samba signature below: a domain controller also
+        // has 445+139 open, so the more specific match must win.
+        PortSignature(listOf(88, 636), "Windows domain controller (Active Directory)"),
         PortSignature(listOf(445, 139), "Windows/Samba file sharing"),
         PortSignature(listOf(3389), "Windows (RDP)"),
         PortSignature(listOf(548), "Apple File Sharing (AFP)"),
         PortSignature(listOf(631), "Network printer (IPP)"),
         PortSignature(listOf(5900), "VNC remote desktop"),
+        PortSignature(listOf(554), "IP camera / streaming device"),
+        PortSignature(listOf(3306), "Database server (MySQL)"),
+        PortSignature(listOf(1723), "VPN router (PPTP)"),
+        PortSignature(listOf(23), "Telnet-enabled device (legacy/insecure)"),
     )
 
 private const val TTL_UNIX_FAMILY = 64
