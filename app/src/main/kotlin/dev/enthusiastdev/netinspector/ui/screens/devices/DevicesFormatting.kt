@@ -24,18 +24,42 @@ internal val Inet4Address.addressString: String get() = hostAddress.orEmpty()
 
 internal fun Duration.asElapsedSeconds(): String = "${seconds.coerceAtLeast(0)}s"
 
+/** design §11.3 - a confirmed hostname always wins; absent that, a [DeviceHint] is a real but
+ * *inferred* signal, so it's only used as a stand-in for the name (never silently equated with
+ * one) and callers must style it distinctly - see [Host.hasInferredDisplayName]. */
 internal fun Host.displayName(): String =
     when {
         isSelf -> "This device"
         isGateway -> primaryHostname?.let { "$it (gateway)" } ?: "Gateway"
-        else -> primaryHostname ?: "Unknown device"
+        else -> primaryHostname ?: deviceHint?.label ?: "Unknown device"
     }
+
+/** Whether [displayName] fell back to the [DeviceHint] guess rather than a confirmed hostname
+ * - callers use this to render the name as visibly inferred (e.g. italic) and to skip a
+ * separate hint line that would otherwise just repeat the title verbatim. */
+internal val Host.hasInferredDisplayName: Boolean
+    get() = !isSelf && !isGateway && primaryHostname == null && deviceHint != null
 
 internal fun HostConfidence.label(): String =
     when (this) {
         HostConfidence.CONFIRMED -> "Confirmed"
         HostConfidence.ANNOUNCED -> "Announced only"
         HostConfidence.STALE -> "Not seen this sweep"
+    }
+
+internal fun HostConfidence.explanation(): String =
+    when (this) {
+        HostConfidence.CONFIRMED ->
+            "This device answered directly during the scan - a ping reply or a successful " +
+                "TCP connection - so it's definitely live and reachable right now."
+        HostConfidence.ANNOUNCED ->
+            "This device was only seen broadcasting a service announcement (mDNS, SSDP, or " +
+                "NetBIOS) - it never answered a direct probe. It may still be reachable but " +
+                "have ICMP/TCP probing blocked, or the announcement could be stale."
+        HostConfidence.STALE ->
+            "This device was seen in a previous scan but not in the most recent one - it's " +
+                "probably offline or out of range now. It stays visible, greyed out, for one " +
+                "more scan before being dropped from the list."
     }
 
 internal fun EvidenceSource.label(): String =

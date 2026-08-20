@@ -25,11 +25,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.unit.dp
 import dev.enthusiastdev.netinspector.core.designsystem.component.InfoCard
 import dev.enthusiastdev.netinspector.core.designsystem.component.InfoRow
 import dev.enthusiastdev.netinspector.core.model.lan.DeviceHint
 import dev.enthusiastdev.netinspector.core.model.lan.Host
+import dev.enthusiastdev.netinspector.core.model.lan.HostConfidence
 import dev.enthusiastdev.netinspector.core.model.lan.portRiskNote
 
 /** design §3 Phase 6 - the Devices detail pane counterpart to [DevicesListPane]'s [HostCard]
@@ -84,17 +86,17 @@ private fun DevicesDetailHeader(
     onPingHost: (String) -> Unit,
 ) {
     Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
-        Text(text = host.displayName(), style = MaterialTheme.typography.titleLarge)
+        Text(
+            text = host.displayName(),
+            style = MaterialTheme.typography.titleLarge,
+            fontStyle = if (host.hasInferredDisplayName) FontStyle.Italic else FontStyle.Normal,
+        )
         Text(
             text = host.address.addressString,
             style = MaterialTheme.typography.bodyMedium,
             fontFamily = FontFamily.Monospace,
         )
-        Text(
-            text = host.confidence.label(),
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
+        ConfidenceLabel(host.confidence)
         // design §3 Phase 6 - deep link into the ping tool, pre-filled. Pinging this device
         // (isSelf) is a no-op the tool would just resolve straight back to itself, so it's
         // skipped rather than offered as a dead-feeling action. The port-scan deep link the
@@ -104,6 +106,27 @@ private fun DevicesDetailHeader(
                 Text("Ping this host")
             }
         }
+    }
+}
+
+/** design §11.3 - "no field without a basis," extended to the confidence label itself: it's
+ * jargon on first read, so it's tappable rather than left to speak for itself. */
+@Composable
+private fun ConfidenceLabel(confidence: HostConfidence) {
+    var showExplanation by remember { mutableStateOf(false) }
+    Text(
+        text = confidence.label(),
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.clickable { showExplanation = true },
+    )
+    if (showExplanation) {
+        AlertDialog(
+            onDismissRequest = { showExplanation = false },
+            title = { Text("What does \"${confidence.label()}\" mean?") },
+            text = { Text(confidence.explanation()) },
+            confirmButton = { TextButton(onClick = { showExplanation = false }) { Text("Got it") } },
+        )
     }
 }
 

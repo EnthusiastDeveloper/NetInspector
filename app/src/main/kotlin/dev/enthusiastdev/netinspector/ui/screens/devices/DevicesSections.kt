@@ -19,6 +19,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.unit.dp
 import dev.enthusiastdev.netinspector.core.model.lan.Host
 import dev.enthusiastdev.netinspector.core.model.lan.HostConfidence
@@ -80,18 +81,26 @@ internal fun HostCard(
         ) {
             ConfidenceDot(host.confidence)
             Column(modifier = Modifier.weight(1f)) {
-                Text(text = host.displayName(), style = MaterialTheme.typography.titleMedium)
+                Text(
+                    text = host.displayName(),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontStyle = if (host.hasInferredDisplayName) FontStyle.Italic else FontStyle.Normal,
+                )
                 Text(
                     text = "${host.address.addressString} · ${host.confidence.label()}",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
-                host.deviceHint?.let { hint ->
-                    Text(
-                        text = hint.label,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.primary,
-                    )
+                // Skip this line when the title already shows the hint (design §11.3 - an
+                // inferred label stands in for the name, but is never shown twice).
+                if (!host.hasInferredDisplayName) {
+                    host.deviceHint?.let { hint ->
+                        Text(
+                            text = hint.label,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.primary,
+                        )
+                    }
                 }
             }
         }
