@@ -213,6 +213,8 @@ private fun DevicesDestination(onPingHost: (String) -> Unit) {
         onConfirmShortPrefixScan = devicesViewModel::confirmShortPrefixSweep,
         onDismissConfirmation = devicesViewModel::dismissConfirmation,
         onPingHost = onPingHost,
+        onSortOrderChange = devicesViewModel::setSortOrder,
+        onToggleConfidenceFilter = devicesViewModel::toggleConfidenceFilter,
     )
 }
 

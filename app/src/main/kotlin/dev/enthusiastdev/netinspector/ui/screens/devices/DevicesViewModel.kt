@@ -7,6 +7,7 @@ import dev.enthusiastdev.netinspector.core.common.net.Ipv4Subnet
 import dev.enthusiastdev.netinspector.core.model.lan.Host
 import dev.enthusiastdev.netinspector.core.model.lan.HostConfidence
 import dev.enthusiastdev.netinspector.core.model.lan.SweepOutcome
+import dev.enthusiastdev.netinspector.core.model.lan.SweepProgress
 import dev.enthusiastdev.netinspector.data.lan.LanDiscoveryRepository
 import dev.enthusiastdev.netinspector.data.persistence.preferences.LanAcknowledgementRepository
 import dev.enthusiastdev.netinspector.data.wifi.ConnectionRepository
@@ -16,6 +17,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.net.Inet4Address
 import javax.inject.Inject
@@ -29,7 +31,17 @@ class DevicesViewModel
         private val lanAcknowledgementRepository: LanAcknowledgementRepository,
     ) : ViewModel() {
         private val pendingConfirmationHostCount = MutableStateFlow<Long?>(null)
+        private val sortOrder = MutableStateFlow(DevicesSortOrder.GROUP)
+        private val confidenceFilter = MutableStateFlow(HostConfidence.entries.toSet())
         private var sweepJob: Job? = null
+
+        private data class RawState(
+            val hosts: List<Host>,
+            val progress: SweepProgress,
+            val acknowledged: Boolean,
+            val pendingConfirmation: Long?,
+            val isConnected: Boolean,
+        )
 
         val uiState =
             combine(
@@ -39,18 +51,33 @@ class DevicesViewModel
                 pendingConfirmationHostCount,
                 connectionRepository.connectionSnapshot,
             ) { hosts, progress, acknowledged, pendingConfirmation, connection ->
-                DevicesUiState.Content(
-                    hosts = hosts.sortedForDisplay(),
-                    progress = progress,
-                    isConnected = connection?.ipv4 != null,
-                    needsAcknowledgement = !acknowledged,
-                    pendingConfirmationHostCount = pendingConfirmation,
+                RawState(hosts, progress, acknowledged, pendingConfirmation, connection?.ipv4 != null)
+            }.combine(sortOrder) { raw, sort -> raw to sort }
+                .combine(confidenceFilter) { (raw, sort), filter ->
+                    DevicesUiState.Content(
+                        hosts = raw.hosts.filteredByConfidence(filter).sortedForDisplay(sort),
+                        progress = raw.progress,
+                        isConnected = raw.isConnected,
+                        needsAcknowledgement = !raw.acknowledged,
+                        pendingConfirmationHostCount = raw.pendingConfirmation,
+                        sortOrder = sort,
+                        confidenceFilter = filter,
+                    )
+                }.stateIn(
+                    scope = viewModelScope,
+                    started = SharingStarted.WhileSubscribed(5_000),
+                    initialValue = DevicesUiState.Loading,
                 )
-            }.stateIn(
-                scope = viewModelScope,
-                started = SharingStarted.WhileSubscribed(5_000),
-                initialValue = DevicesUiState.Loading,
-            )
+
+        fun setSortOrder(order: DevicesSortOrder) {
+            sortOrder.value = order
+        }
+
+        fun toggleConfidenceFilter(confidence: HostConfidence) {
+            confidenceFilter.update { current ->
+                if (confidence in current) current - confidence else current + confidence
+            }
+        }
 
         /** design §11.4 - the ack dialog gates the *first sweep*, not screen entry, so this is
          * called from the "Scan" action rather than an `onResumed()`-style lifecycle hook. */
@@ -104,27 +131,4 @@ class DevicesViewModel
                     pendingConfirmationHostCount.value = (outcome as? SweepOutcome.NeedsConfirmation)?.hostCount
                 }
         }
-    }
-
-/** Confirmed first, most useful; announced next; stale last since design §8.3 wants it
- * visually and positionally de-emphasised. Numeric within each group, not lexicographic. */
-private fun List<Host>.sortedForDisplay(): List<Host> =
-    sortedWith(
-        compareBy(
-            { host -> if (host.isSelf || host.isGateway) 0 else 1 },
-            { host -> host.confidence.sortOrder() },
-            { host -> host.address.toSortableString() },
-        ),
-    )
-
-private fun HostConfidence.sortOrder(): Int =
-    when (this) {
-        HostConfidence.CONFIRMED -> 0
-        HostConfidence.ANNOUNCED -> 1
-        HostConfidence.STALE -> 2
-    }
-
-private fun Inet4Address.toSortableString(): String =
-    address.joinToString(".") {
-        (it.toInt() and 0xFF).toString().padStart(3, '0')
     }

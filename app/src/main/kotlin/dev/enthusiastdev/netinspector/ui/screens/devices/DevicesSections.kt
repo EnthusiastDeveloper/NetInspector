@@ -1,21 +1,31 @@
 package dev.enthusiastdev.netinspector.ui.screens.devices
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -61,6 +71,49 @@ internal fun DevicesHeader(
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
+        }
+    }
+}
+
+/** A dropdown for [DevicesSortOrder] plus one [FilterChip] per [HostConfidence] tier - the chip
+ * row scrolls horizontally rather than wrapping, so three chips' worth of label text never
+ * pushes into a second line on a narrow/rotated screen (design §Phase 8's adaptive pass). */
+@Composable
+internal fun DevicesSortFilterBar(
+    sortOrder: DevicesSortOrder,
+    confidenceFilter: Set<HostConfidence>,
+    onSortOrderChange: (DevicesSortOrder) -> Unit,
+    onToggleConfidence: (HostConfidence) -> Unit,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        var sortMenuExpanded by remember { mutableStateOf(false) }
+        Box {
+            OutlinedButton(onClick = { sortMenuExpanded = true }) {
+                Text("Sort: ${sortOrder.label()}")
+            }
+            DropdownMenu(expanded = sortMenuExpanded, onDismissRequest = { sortMenuExpanded = false }) {
+                DevicesSortOrder.entries.forEach { entry ->
+                    DropdownMenuItem(
+                        text = { Text(entry.label()) },
+                        onClick = {
+                            onSortOrderChange(entry)
+                            sortMenuExpanded = false
+                        },
+                    )
+                }
+            }
+        }
+        Row(
+            modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            HostConfidence.entries.forEach { confidence ->
+                FilterChip(
+                    selected = confidence in confidenceFilter,
+                    onClick = { onToggleConfidence(confidence) },
+                    label = { Text(confidence.label()) },
+                )
+            }
         }
     }
 }

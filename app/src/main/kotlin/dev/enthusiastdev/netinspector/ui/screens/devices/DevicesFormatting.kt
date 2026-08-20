@@ -12,6 +12,12 @@ import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
+/** Numeric quad comparison, not lexicographic (`"10"` must sort after `"9"`, not before it). */
+internal fun Inet4Address.toSortableString(): String =
+    address.joinToString(".") {
+        (it.toInt() and 0xFF).toString().padStart(3, '0')
+    }
+
 private val CLOCK_FORMAT = DateTimeFormatter.ofPattern("HH:mm:ss").withZone(ZoneId.systemDefault())
 
 internal fun Instant.asClockTime(): String = CLOCK_FORMAT.format(this)
@@ -23,6 +29,64 @@ internal fun Instant.asClockTime(): String = CLOCK_FORMAT.format(this)
 internal val Inet4Address.addressString: String get() = hostAddress.orEmpty()
 
 internal fun Duration.asElapsedSeconds(): String = "${seconds.coerceAtLeast(0)}s"
+
+/** Every sort key the Devices list offers. [GROUP] is the original default (confidence tier,
+ * self/gateway pinned first) - every other value sorts the *whole* list by that key, including
+ * self/gateway, since choosing one explicitly means wanting that literal ordering rather than
+ * the pinned convenience view. */
+enum class DevicesSortOrder {
+    GROUP,
+    IP_ADDRESS,
+    NAME,
+    DEVICE_TYPE,
+    LATENCY,
+    LAST_SEEN,
+}
+
+internal fun DevicesSortOrder.label(): String =
+    when (this) {
+        DevicesSortOrder.GROUP -> "Group"
+        DevicesSortOrder.IP_ADDRESS -> "IP address"
+        DevicesSortOrder.NAME -> "Name"
+        DevicesSortOrder.DEVICE_TYPE -> "Device type"
+        DevicesSortOrder.LATENCY -> "Latency"
+        DevicesSortOrder.LAST_SEEN -> "Last seen"
+    }
+
+internal fun List<Host>.sortedForDisplay(sortOrder: DevicesSortOrder): List<Host> =
+    when (sortOrder) {
+        DevicesSortOrder.GROUP ->
+            sortedWith(
+                compareBy(
+                    { host -> if (host.isSelf || host.isGateway) 0 else 1 },
+                    { host -> host.confidence.sortOrder() },
+                    { host -> host.address.toSortableString() },
+                ),
+            )
+        DevicesSortOrder.IP_ADDRESS -> sortedBy { it.address.toSortableString() }
+        DevicesSortOrder.NAME -> sortedBy { it.displayName().lowercase() }
+        // Hosts with no guess sort last ("￿" - greater than any real label) rather than
+        // clumping at the front as an implicit empty string would.
+        DevicesSortOrder.DEVICE_TYPE ->
+            sortedWith(compareBy({ it.deviceHint?.label ?: "￿" }, { it.address.toSortableString() }))
+        // Hosts with no RTT sample (never answered ICMP) sort last, not first.
+        DevicesSortOrder.LATENCY ->
+            sortedWith(compareBy({ it.rttMedianMs ?: Double.MAX_VALUE }, { it.address.toSortableString() }))
+        DevicesSortOrder.LAST_SEEN ->
+            sortedByDescending { host -> host.evidence.maxOfOrNull { it.observedAt } ?: Instant.MIN }
+    }
+
+internal fun List<Host>.filteredByConfidence(visible: Set<HostConfidence>): List<Host> =
+    filter { it.confidence in visible }
+
+/** Confirmed first, most useful; announced next; stale last since design §8.3 wants it
+ * visually and positionally de-emphasised. */
+private fun HostConfidence.sortOrder(): Int =
+    when (this) {
+        HostConfidence.CONFIRMED -> 0
+        HostConfidence.ANNOUNCED -> 1
+        HostConfidence.STALE -> 2
+    }
 
 /** design §11.3 - a confirmed hostname always wins; absent that, a [DeviceHint] is a real but
  * *inferred* signal, so it's only used as a stand-in for the name (never silently equated with

@@ -23,6 +23,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import dev.enthusiastdev.netinspector.core.model.lan.HostConfidence
 import kotlinx.coroutines.launch
 
 @Composable
@@ -34,6 +35,8 @@ fun DevicesScreen(
     onConfirmShortPrefixScan: () -> Unit,
     onDismissConfirmation: () -> Unit,
     onPingHost: (String) -> Unit,
+    onSortOrderChange: (DevicesSortOrder) -> Unit,
+    onToggleConfidenceFilter: (HostConfidence) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     when (uiState) {
@@ -47,6 +50,8 @@ fun DevicesScreen(
                 onConfirmShortPrefixScan,
                 onDismissConfirmation,
                 onPingHost,
+                onSortOrderChange,
+                onToggleConfidenceFilter,
                 modifier,
             )
     }
@@ -80,6 +85,8 @@ private fun DevicesContent(
     onConfirmShortPrefixScan: () -> Unit,
     onDismissConfirmation: () -> Unit,
     onPingHost: (String) -> Unit,
+    onSortOrderChange: (DevicesSortOrder) -> Unit,
+    onToggleConfidenceFilter: (HostConfidence) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     // design §11.4 - the ack dialog gates the act of starting a sweep, not opening the screen,
@@ -104,6 +111,8 @@ private fun DevicesContent(
                     onHostClick = { address ->
                         coroutineScope.launch { navigator.navigateTo(ListDetailPaneScaffoldRole.Detail, address) }
                     },
+                    onSortOrderChange = onSortOrderChange,
+                    onToggleConfidenceFilter = onToggleConfidenceFilter,
                 )
             }
         },
@@ -141,6 +150,8 @@ private fun DevicesListPane(
     onScan: () -> Unit,
     onCancel: () -> Unit,
     onHostClick: (String) -> Unit,
+    onSortOrderChange: (DevicesSortOrder) -> Unit,
+    onToggleConfidenceFilter: (HostConfidence) -> Unit,
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -154,6 +165,14 @@ private fun DevicesListPane(
                 isConnected = state.isConnected,
                 onScan = onScan,
                 onCancel = onCancel,
+            )
+        }
+        item {
+            DevicesSortFilterBar(
+                sortOrder = state.sortOrder,
+                confidenceFilter = state.confidenceFilter,
+                onSortOrderChange = onSortOrderChange,
+                onToggleConfidence = onToggleConfidenceFilter,
             )
         }
         if (state.hosts.isEmpty() && !state.progress.isRunning) {
