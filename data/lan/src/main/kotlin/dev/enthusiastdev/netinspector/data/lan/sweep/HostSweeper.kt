@@ -59,8 +59,8 @@ class HostSweeper
                     .map { address ->
                         async(dispatcher) {
                             val result = icmpProbe.probe(address, timeoutMs)
-                            onProbed()
                             if (result != null) {
+                                onProbed()
                                 onObservation(
                                     HostObservation(
                                         address = address,
