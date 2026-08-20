@@ -8,4 +8,5 @@ enum class NotificationAccessState { GRANTED, PERMISSION_NEEDED }
 data class MonitoringUiState(
     val isRunning: Boolean,
     val notificationAccess: NotificationAccessState,
+    val isDismissed: Boolean = false,
 )

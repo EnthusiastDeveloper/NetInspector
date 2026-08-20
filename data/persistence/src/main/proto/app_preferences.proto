@@ -30,4 +30,8 @@ message AppPreferences {
   string default_port_preset = 6;
   int32 default_port_custom_start = 7;
   int32 default_port_custom_end = 8;
+
+  // User-dismissed the Connection dashboard's continuous-monitoring card. Persists across
+  // restarts; the Settings screen offers the only way back once dismissed.
+  bool monitoring_card_dismissed = 9;
 }

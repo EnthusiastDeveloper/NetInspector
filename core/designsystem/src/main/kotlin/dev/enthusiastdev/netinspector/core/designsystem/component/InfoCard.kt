@@ -11,15 +11,19 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 
-/** A titled group of [InfoRow]s - the list-detail pattern every screen's detail sections use. */
+/** A titled group of [InfoRow]s - the list-detail pattern every screen's detail sections use.
+ * [trailingContent] sits at the far end of the title row (e.g. a dismiss button) - empty by
+ * default so existing callers are unaffected. */
 @Composable
 fun InfoCard(
     title: String,
     modifier: Modifier = Modifier,
+    trailingContent: @Composable () -> Unit = {},
     content: @Composable () -> Unit,
 ) {
     Card(
@@ -27,7 +31,14 @@ fun InfoCard(
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
     ) {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text(text = title, style = MaterialTheme.typography.titleMedium)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(text = title, style = MaterialTheme.typography.titleMedium)
+                trailingContent()
+            }
             HorizontalDivider()
             content()
         }

@@ -1,22 +1,13 @@
 package dev.enthusiastdev.netinspector.ui.screens.connection
 
-import android.Manifest
-import android.app.Activity
-import android.content.Intent
-import android.net.Uri
-import android.provider.Settings
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.Button
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
-import androidx.compose.ui.platform.LocalContext
-import androidx.core.app.ActivityCompat
 import dev.enthusiastdev.netinspector.core.designsystem.component.InfoCard
 
 /** design §8 - "explicit user start/stop" for the continuous-monitoring foreground service,
@@ -29,19 +20,18 @@ internal fun MonitoringCard(
     onStart: () -> Unit,
     onStop: () -> Unit,
     onNotificationAccessChanged: () -> Unit,
+    onDismiss: () -> Unit,
 ) {
-    val context = LocalContext.current
-    val activity = context as Activity
-    var hasRequestedPermission by rememberSaveable { mutableStateOf(false) }
-
-    val permissionLauncher =
-        rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
-            hasRequestedPermission = true
-            onNotificationAccessChanged()
-            if (granted) onStart()
-        }
-
-    InfoCard(title = "Continuous monitoring") {
+    InfoCard(
+        title = "Continuous monitoring",
+        trailingContent = {
+            // Dismissing doesn't stop an already-running service - its own notification keeps a
+            // Stop action, so control isn't lost, only this card's presence on the dashboard.
+            IconButton(onClick = onDismiss) {
+                Icon(Icons.Filled.Close, contentDescription = "Dismiss continuous monitoring card")
+            }
+        },
+    ) {
         when {
             state.isRunning -> {
                 Text("Running - a persistent notification shows the live RSSI. Stops only when you stop it.")
@@ -59,24 +49,7 @@ internal fun MonitoringCard(
                     "Android requires notification access for the persistent monitoring notice - " +
                         "without it the foreground service would be running invisibly.",
                 )
-                val permanentlyDenied =
-                    hasRequestedPermission &&
-                        !ActivityCompat.shouldShowRequestPermissionRationale(
-                            activity,
-                            Manifest.permission.POST_NOTIFICATIONS,
-                        )
-                Button(
-                    onClick = {
-                        if (permanentlyDenied) {
-                            val uri = Uri.fromParts("package", context.packageName, null)
-                            activity.startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, uri))
-                        } else {
-                            permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-                        }
-                    },
-                ) {
-                    Text(if (permanentlyDenied) "Open app settings" else "Grant notification access")
-                }
+                NotificationAccessButton(onGranted = onStart, onNotificationAccessChanged = onNotificationAccessChanged)
             }
         }
     }

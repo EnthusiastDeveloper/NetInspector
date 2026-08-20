@@ -22,12 +22,15 @@ interface AppSettingsRepository {
     val themeMode: Flow<ThemeMode>
     val rssiDisplayUnit: Flow<RssiDisplayUnit>
     val defaultPortSelection: Flow<PortSelection>
+    val monitoringCardDismissed: Flow<Boolean>
 
     suspend fun setThemeMode(mode: ThemeMode)
 
     suspend fun setRssiDisplayUnit(unit: RssiDisplayUnit)
 
     suspend fun setDefaultPortSelection(selection: PortSelection)
+
+    suspend fun setMonitoringCardDismissed(dismissed: Boolean)
 }
 
 class DefaultAppSettingsRepository
@@ -43,6 +46,9 @@ class DefaultAppSettingsRepository
 
         override val defaultPortSelection: Flow<PortSelection> =
             dataStore.data.map { it.toPortSelection() }
+
+        override val monitoringCardDismissed: Flow<Boolean> =
+            dataStore.data.map { it.monitoringCardDismissed }
 
         override suspend fun setThemeMode(mode: ThemeMode) {
             dataStore.updateData { it.copy { themeMode = mode.name } }
@@ -62,6 +68,10 @@ class DefaultAppSettingsRepository
                     }
                 }
             }
+        }
+
+        override suspend fun setMonitoringCardDismissed(dismissed: Boolean) {
+            dataStore.updateData { it.copy { monitoringCardDismissed = dismissed } }
         }
     }
 

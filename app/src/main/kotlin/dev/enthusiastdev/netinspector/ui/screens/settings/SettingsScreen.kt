@@ -25,11 +25,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import dev.enthusiastdev.netinspector.core.designsystem.component.InfoCard
 import dev.enthusiastdev.netinspector.core.model.diagnostics.PortScanPresetKind
 import dev.enthusiastdev.netinspector.core.model.diagnostics.PortSelection
 import dev.enthusiastdev.netinspector.core.model.settings.RssiDisplayUnit
 import dev.enthusiastdev.netinspector.core.model.settings.ThemeMode
+import dev.enthusiastdev.netinspector.ui.screens.connection.NotificationAccessButton
+import dev.enthusiastdev.netinspector.ui.screens.connection.NotificationAccessState
 
 @Composable
 fun SettingsRoute(
@@ -37,6 +40,12 @@ fun SettingsRoute(
     viewModel: SettingsViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    // Granting POST_NOTIFICATIONS via the system Settings app fires no callback this screen
+    // would otherwise observe - re-check on resume, same as the Connection tab's own card.
+    LifecycleResumeEffect(Unit) {
+        viewModel.refreshNotificationAccess()
+        onPauseOrDispose {}
+    }
     SettingsScreen(
         uiState = uiState,
         onThemeModeChange = viewModel::setThemeMode,
@@ -44,6 +53,7 @@ fun SettingsRoute(
         onScanRetentionChange = viewModel::setScanHistoryRetentionDays,
         onDiagnosticRetentionChange = viewModel::setDiagnosticHistoryRetentionDays,
         onDefaultPortSelectionChange = viewModel::setDefaultPortSelection,
+        onNotificationAccessChanged = viewModel::refreshNotificationAccess,
         modifier = modifier,
     )
 }
@@ -56,6 +66,7 @@ fun SettingsScreen(
     onScanRetentionChange: (Int) -> Unit,
     onDiagnosticRetentionChange: (Int) -> Unit,
     onDefaultPortSelectionChange: (PortSelection) -> Unit,
+    onNotificationAccessChanged: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     LazyColumn(
@@ -69,6 +80,12 @@ fun SettingsScreen(
             RetentionSection(uiState, onScanRetentionChange, onDiagnosticRetentionChange)
         }
         item { PortScannerSection(uiState.defaultPortSelection, onDefaultPortSelectionChange) }
+        // Independent of the Connection tab's card and its dismiss state: this section is the
+        // only place granting notification access is guaranteed to be reachable, so it stays
+        // visible for as long as the permission itself is missing.
+        if (uiState.monitoringNotificationAccess != NotificationAccessState.GRANTED) {
+            item { MonitoringSection(onNotificationAccessChanged) }
+        }
     }
 }
 
@@ -218,5 +235,19 @@ private fun PortScannerSection(
                 )
             }
         }
+    }
+}
+
+@Composable
+private fun MonitoringSection(onNotificationAccessChanged: () -> Unit) {
+    InfoCard(title = "Continuous monitoring") {
+        Text(
+            "Notification access is required before continuous monitoring can run.",
+            style = MaterialTheme.typography.bodyMedium,
+        )
+        NotificationAccessButton(
+            onGranted = {},
+            onNotificationAccessChanged = onNotificationAccessChanged,
+        )
     }
 }

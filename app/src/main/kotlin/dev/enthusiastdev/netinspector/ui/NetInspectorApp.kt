@@ -114,7 +114,10 @@ private fun NavigationSuiteScope.navigationItems(
                 navController.navigate(destination.route) {
                     popUpTo(navController.graph.findStartDestination().id) { saveState = true }
                     launchSingleTop = true
-                    restoreState = true
+                    // The Tools tab always reopens on its own grid rather than restoring
+                    // whatever tool was last open - restoring here would resurrect Ping/DNS/etc.
+                    // from that tab's saved back stack instead of landing on ToolsHomeRoute.
+                    restoreState = destination.route != ToolsRoute
                 }
             },
             icon = { Icon(destination.icon, contentDescription = null) },
@@ -174,6 +177,7 @@ private fun ConnectionDestination() {
         onStartMonitoring = connectionViewModel::startMonitoring,
         onStopMonitoring = connectionViewModel::stopMonitoring,
         onNotificationAccessChanged = connectionViewModel::refreshNotificationAccess,
+        onDismissMonitoring = connectionViewModel::dismissMonitoringCard,
     )
 }
 

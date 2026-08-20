@@ -20,6 +20,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -29,7 +30,7 @@ class ConnectionViewModel
     constructor(
         connectionRepository: ConnectionRepository,
         private val monitoringController: MonitoringController,
-        appSettingsRepository: AppSettingsRepository,
+        private val appSettingsRepository: AppSettingsRepository,
         @ApplicationContext private val context: Context,
     ) : ViewModel() {
         // Granting location access - whether via the in-app prompt or the system Settings
@@ -67,8 +68,12 @@ class ConnectionViewModel
         private val notificationAccessTrigger = MutableStateFlow(0)
 
         val monitoringState: StateFlow<MonitoringUiState> =
-            combine(monitoringController.isRunning, notificationAccessTrigger) { isRunning, _ ->
-                MonitoringUiState(isRunning, currentNotificationAccessState())
+            combine(
+                monitoringController.isRunning,
+                notificationAccessTrigger,
+                appSettingsRepository.monitoringCardDismissed,
+            ) { isRunning, _, dismissed ->
+                MonitoringUiState(isRunning, context.currentNotificationAccessState(), dismissed)
             }.stateIn(
                 scope = viewModelScope,
                 started = SharingStarted.WhileSubscribed(5_000),
@@ -80,21 +85,18 @@ class ConnectionViewModel
         }
 
         fun startMonitoring() {
-            if (currentNotificationAccessState() == NotificationAccessState.GRANTED) monitoringController.start()
+            val granted = context.currentNotificationAccessState() == NotificationAccessState.GRANTED
+            if (granted) monitoringController.start()
         }
 
         fun stopMonitoring() {
             monitoringController.stop()
         }
 
-        // minSdk 33 (design §0) means POST_NOTIFICATIONS is a runtime permission on every
-        // supported level - no version gate needed, unlike most POST_NOTIFICATIONS call sites
-        // in the wild that also have to support pre-33 installs.
-        private fun currentNotificationAccessState(): NotificationAccessState {
-            val hasPermission =
-                ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) ==
-                    PackageManager.PERMISSION_GRANTED
-            return if (hasPermission) NotificationAccessState.GRANTED else NotificationAccessState.PERMISSION_NEEDED
+        // Monitoring keeps running if it was already active - dismissing only hides the card;
+        // the persistent notification's own Stop action remains the way to actually stop it.
+        fun dismissMonitoringCard() {
+            viewModelScope.launch { appSettingsRepository.setMonitoringCardDismissed(true) }
         }
 
         private fun currentLocationAccessState(): LocationAccessState {

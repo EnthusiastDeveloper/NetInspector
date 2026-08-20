@@ -21,6 +21,7 @@ fun ConnectionScreen(
     onStartMonitoring: () -> Unit = {},
     onStopMonitoring: () -> Unit = {},
     onNotificationAccessChanged: () -> Unit = {},
+    onDismissMonitoring: () -> Unit = {},
 ) {
     when (uiState) {
         ConnectionUiState.Loading -> CenteredMessage("Loading…", modifier)
@@ -34,6 +35,7 @@ fun ConnectionScreen(
                 onStartMonitoring,
                 onStopMonitoring,
                 onNotificationAccessChanged,
+                onDismissMonitoring,
             )
     }
 }
@@ -61,6 +63,7 @@ private fun ConnectedContent(
     onStartMonitoring: () -> Unit = {},
     onStopMonitoring: () -> Unit = {},
     onNotificationAccessChanged: () -> Unit = {},
+    onDismissMonitoring: () -> Unit = {},
 ) {
     val snapshot = state.snapshot
 
@@ -75,8 +78,16 @@ private fun ConnectedContent(
         }
         item { StatusBadges(snapshot) }
         item { RadioSection(snapshot) }
-        item {
-            MonitoringCard(monitoringState, onStartMonitoring, onStopMonitoring, onNotificationAccessChanged)
+        if (!monitoringState.isDismissed) {
+            item {
+                MonitoringCard(
+                    monitoringState,
+                    onStartMonitoring,
+                    onStopMonitoring,
+                    onNotificationAccessChanged,
+                    onDismissMonitoring,
+                )
+            }
         }
         item { Ipv4Section(snapshot) }
         if (snapshot.ipv6.isNotEmpty()) item { Ipv6Section(snapshot) }
