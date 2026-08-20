@@ -89,7 +89,17 @@ class SsdpProbe
                 address = address,
                 evidence = listOf(Evidence(EvidenceSource.SSDP, clock.instant(), detail = server)),
                 hostnames = friendlyName?.let { mapOf(EvidenceSource.SSDP to it) } ?: emptyMap(),
-                services = listOf(DiscoveredService(EvidenceSource.SSDP, headers["st"], friendlyName, detail)),
+                services =
+                    listOf(
+                        DiscoveredService(
+                            source = EvidenceSource.SSDP,
+                            serviceType = headers["st"],
+                            name = friendlyName,
+                            detail = detail,
+                            manufacturer = locationInfo?.manufacturer,
+                            modelName = locationInfo?.modelName,
+                        ),
+                    ),
             )
         }
 

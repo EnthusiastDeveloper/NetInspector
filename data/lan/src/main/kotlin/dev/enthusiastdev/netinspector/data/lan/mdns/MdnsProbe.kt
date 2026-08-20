@@ -179,9 +179,25 @@ class MdnsProbe
                 address = address,
                 evidence = listOf(Evidence(EvidenceSource.MDNS, clock.instant(), detail = serviceType)),
                 hostnames = serviceName?.let { mapOf(EvidenceSource.MDNS to it) } ?: emptyMap(),
-                services = listOf(DiscoveredService(EvidenceSource.MDNS, serviceType, serviceName, detail = null)),
+                services =
+                    listOf(
+                        DiscoveredService(
+                            source = EvidenceSource.MDNS,
+                            serviceType = serviceType,
+                            name = serviceName,
+                            detail = null,
+                            txtRecords = decodeTxtRecords(),
+                        ),
+                    ),
             )
         }
+
+        /** design §8.2 - TXT-record values are UTF-8 text by DNS-SD convention (RFC 6763 §6.5);
+         * a key with a `null` value is a boolean (presence-only) attribute. */
+        private fun NsdServiceInfo.decodeTxtRecords(): Map<String, String> =
+            attributes.mapValues { (_, value) ->
+                value?.toString(Charsets.UTF_8)?.take(MAX_TXT_VALUE_CHARS) ?: ""
+            }
 
         private companion object {
             const val META_QUERY_SERVICE_TYPE = "_services._dns-sd._udp"
@@ -189,5 +205,6 @@ class MdnsProbe
             const val PER_TYPE_BUDGET_MS = 800L
             const val MIN_PER_TYPE_BUDGET_MS = 400L
             const val MAX_TYPES_ASSUMED = 3
+            const val MAX_TXT_VALUE_CHARS = 200
         }
     }

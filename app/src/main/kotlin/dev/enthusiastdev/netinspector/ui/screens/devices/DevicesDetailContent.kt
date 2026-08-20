@@ -30,6 +30,7 @@ import dev.enthusiastdev.netinspector.core.designsystem.component.InfoCard
 import dev.enthusiastdev.netinspector.core.designsystem.component.InfoRow
 import dev.enthusiastdev.netinspector.core.model.lan.DeviceHint
 import dev.enthusiastdev.netinspector.core.model.lan.Host
+import dev.enthusiastdev.netinspector.core.model.lan.portRiskNote
 
 /** design §3 Phase 6 - the Devices detail pane counterpart to [DevicesListPane]'s [HostCard]
  * rows. Looks up the host by address string each recomposition rather than capturing a [Host]
@@ -174,6 +175,9 @@ private fun DevicesDetailOpenPortsCard(host: Host) {
         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
             host.openPorts.forEach { port ->
                 Text(port.label(), style = MaterialTheme.typography.bodyMedium)
+                portRiskNote(port.port)?.let { note ->
+                    Text(note, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
+                }
             }
         }
     }
@@ -184,6 +188,9 @@ private fun DevicesDetailServicesCard(host: Host) {
     InfoCard(title = "Discovered services") {
         host.services.forEach { service ->
             InfoRow(service.serviceType ?: "Service", service.name ?: service.detail ?: "-")
+            service.manufacturer?.let { InfoRow("Manufacturer", it) }
+            service.modelName?.let { InfoRow("Model", it) }
+            service.txtRecords.forEach { (key, value) -> InfoRow(key, value.ifBlank { "(present)" }) }
         }
     }
 }
