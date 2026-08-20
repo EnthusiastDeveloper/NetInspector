@@ -35,6 +35,8 @@ fun DevicesScreen(
     onConfirmShortPrefixScan: () -> Unit,
     onDismissConfirmation: () -> Unit,
     onPingHost: (String) -> Unit,
+    onTracerouteHost: (String) -> Unit,
+    onPortScanHost: (String) -> Unit,
     onSortOrderChange: (DevicesSortOrder) -> Unit,
     onToggleConfidenceFilter: (HostConfidence) -> Unit,
     modifier: Modifier = Modifier,
@@ -50,6 +52,8 @@ fun DevicesScreen(
                 onConfirmShortPrefixScan,
                 onDismissConfirmation,
                 onPingHost,
+                onTracerouteHost,
+                onPortScanHost,
                 onSortOrderChange,
                 onToggleConfidenceFilter,
                 modifier,
@@ -85,6 +89,8 @@ private fun DevicesContent(
     onConfirmShortPrefixScan: () -> Unit,
     onDismissConfirmation: () -> Unit,
     onPingHost: (String) -> Unit,
+    onTracerouteHost: (String) -> Unit,
+    onPortScanHost: (String) -> Unit,
     onSortOrderChange: (DevicesSortOrder) -> Unit,
     onToggleConfidenceFilter: (HostConfidence) -> Unit,
     modifier: Modifier = Modifier,
@@ -119,7 +125,7 @@ private fun DevicesContent(
         detailPane = {
             AnimatedPane {
                 navigator.currentDestination?.contentKey?.let { address ->
-                    DevicesDetailPane(address, state.hosts, onPingHost)
+                    DevicesDetailPane(address, state.hosts, onPingHost, onTracerouteHost, onPortScanHost)
                 }
             }
         },

@@ -136,7 +136,11 @@ private fun AppNavHost(navController: NavHostController) {
         composable<ConnectionRoute> { ConnectionDestination() }
         composable<WifiRoute> { WifiDestination() }
         composable<DevicesRoute> {
-            DevicesDestination(onPingHost = { target -> navController.navigateToPingDeepLink(target) })
+            DevicesDestination(
+                onPingHost = { target -> navController.navigateToToolDeepLink(PingToolRoute(target)) },
+                onTracerouteHost = { target -> navController.navigateToToolDeepLink(TracerouteToolRoute(target)) },
+                onPortScanHost = { target -> navController.navigateToToolDeepLink(PortScannerToolRoute(target)) },
+            )
         }
         navigation<ToolsRoute>(startDestination = ToolsHomeRoute) {
             composable<ToolsHomeRoute> {
@@ -202,7 +206,11 @@ private fun WifiDestination() {
 }
 
 @Composable
-private fun DevicesDestination(onPingHost: (String) -> Unit) {
+private fun DevicesDestination(
+    onPingHost: (String) -> Unit,
+    onTracerouteHost: (String) -> Unit,
+    onPortScanHost: (String) -> Unit,
+) {
     val devicesViewModel: DevicesViewModel = hiltViewModel()
     val devicesUiState by devicesViewModel.uiState.collectAsState()
     DevicesScreen(
@@ -213,6 +221,8 @@ private fun DevicesDestination(onPingHost: (String) -> Unit) {
         onConfirmShortPrefixScan = devicesViewModel::confirmShortPrefixSweep,
         onDismissConfirmation = devicesViewModel::dismissConfirmation,
         onPingHost = onPingHost,
+        onTracerouteHost = onTracerouteHost,
+        onPortScanHost = onPortScanHost,
         onSortOrderChange = devicesViewModel::setSortOrder,
         onToggleConfidenceFilter = devicesViewModel::toggleConfidenceFilter,
     )
@@ -223,12 +233,14 @@ private fun DevicesDestination(onPingHost: (String) -> Unit) {
  * saveState)/launchSingleTop back-stack handling the bottom-nav tab switch above uses - a plain
  * `navigate()` here leaves [DevicesRoute] *and* the Tools graph both live on the back stack
  * simultaneously, which then confuses the next bottom-nav tab switch's own popUpTo/restoreState
- * into landing back on Ping instead of the newly-tapped tab (reproduced on-device during Phase 6,
- * the first deep link into a nested tab graph). `restoreState` is left off deliberately: this
- * must always land on the freshly-targeted host, never a previously saved Ping run.
+ * into landing back on the deep-linked tool instead of the newly-tapped tab (reproduced on-device
+ * during Phase 6, the first deep link into a nested tab graph - originally Ping-only, generalized
+ * once Traceroute and Port scanner grew the same `target`-prefilled shape). `restoreState` is
+ * left off deliberately: this must always land on the freshly-targeted host, never a previously
+ * saved run of that tool.
  */
-private fun NavHostController.navigateToPingDeepLink(target: String) {
-    navigate(PingToolRoute(target)) {
+private fun NavHostController.navigateToToolDeepLink(route: Any) {
+    navigate(route) {
         popUpTo(graph.findStartDestination().id) { saveState = true }
         launchSingleTop = true
     }
