@@ -23,9 +23,10 @@ accounts, no telemetry, no analytics.
 
 ## Install
 
-Releases are published as APKs on the [Releases](../../releases) page and are built to
-be tracked via [Obtainium](https://github.com/ImranR98/Obtainium) for update
-notifications and one-tap installs. There is no Play Store listing.
+Releases are published as APKs on the [Releases](../../releases) page. There is no
+Play Store listing. See [docs/installing.md](docs/installing.md) for step-by-step
+instructions, whether you want a quick sideload to try it out or ongoing updates via
+[Obtainium](https://github.com/ImranR98/Obtainium).
 
 ## Building
 
@@ -36,12 +37,22 @@ notifications and one-tap installs. There is no Play Store listing.
 Requires JDK 17+. Compiled against Android SDK 35 (`compileSdk`/`targetSdk`), with a
 minimum supported version of Android 13 (`minSdk` 33).
 
+Signed release builds (`assembleRelease`) require a `keystore.properties` pointing at
+a release keystore, kept outside the repo - see [docs/releasing.md](docs/releasing.md)
+for the full release process.
+
 ## Scope
 
 Everything runs against the network you're currently connected to, using only
 public/unprivileged Android APIs - no packet capture, no monitor mode, no
 deauthentication or injection, no root requirement. Active discovery and port scanning
 should only be pointed at networks you own or are authorized to test.
+
+## Contributing
+
+Branch off `main`, keep it rebased, and make sure `./gradlew ktlintCheck detekt test
+assembleDebug` passes before opening a PR. See
+[CONTRIBUTING.md](CONTRIBUTING.md) for the full process.
 
 ## License
 
