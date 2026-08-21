@@ -57,6 +57,17 @@ android {
     }
 }
 
+androidComponents {
+    onVariants { variant ->
+        val versionName = libs.versions.appVersionName.get()
+        variant.outputs.forEach { output ->
+            (output as? com.android.build.api.variant.impl.VariantOutputImpl)
+                ?.outputFileName
+                ?.set("NetInspector-${variant.buildType}-$versionName.apk")
+        }
+    }
+}
+
 dependencies {
     implementation(project(":core:model"))
     implementation(project(":core:common"))
