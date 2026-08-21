@@ -14,6 +14,7 @@ import java.time.Instant
 
 private fun addr(host: String) = InetAddress.getByName(host) as Inet4Address
 
+@Suppress("LongParameterList") // test fixture builder - every field is a named, defaulted knob
 private fun host(
     address: String,
     confidence: HostConfidence = HostConfidence.CONFIRMED,
