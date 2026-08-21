@@ -87,6 +87,7 @@ private fun Chart(
                     "RSSI trend over the last 60 seconds, ${samples.size} samples, " +
                         "latest ${samples.last().toInt()} dBm, ranging from ${samples.min().toInt()} " +
                         "to ${samples.max().toInt()} dBm",
+                valueLabel = { "${it.toInt()} dBm" },
                 modifier = Modifier.fillMaxWidth(),
             )
         }

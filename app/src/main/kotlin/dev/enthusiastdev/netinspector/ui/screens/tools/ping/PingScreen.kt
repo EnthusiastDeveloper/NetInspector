@@ -13,9 +13,9 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Button
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -85,7 +85,11 @@ fun PingScreen(
                 },
             )
         } else {
-            Column(modifier = Modifier.align(Alignment.TopCenter).fillMaxHeight().widthIn(max = 600.dp)) {
+            // Capped wider than the shared 600.dp reading-width convention (WifiScreen,
+            // TracerouteScreen): a live chart benefits from horizontal resolution the way a
+            // block of text doesn't, and the previous 600.dp cap left a lot of unused width on
+            // landscape/tablet screens specifically for this screen's graph.
+            Column(modifier = Modifier.align(Alignment.TopCenter).fillMaxHeight().widthIn(max = 900.dp)) {
                 PingControls(uiState, onTargetChange, onLoopModeChange, onStart, onStop)
                 ResultLog(uiState, modifier = Modifier.weight(1f).fillMaxWidth())
             }
@@ -103,6 +107,10 @@ private fun PingControls(
     modifier: Modifier = Modifier,
 ) {
     Column(modifier = modifier) {
+        // One row rather than a separate mode-toggle row below: the loop-mode control used to
+        // be its own FilterChip row, which was extra height a short landscape screen doesn't
+        // have to spare (reported on-device: the chart didn't fit under it). A Switch is a
+        // fraction of a FilterChip's touch-target height and reads fine inline.
         Row(
             modifier = Modifier.fillMaxWidth().padding(16.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -115,21 +123,20 @@ private fun PingControls(
                 singleLine = true,
                 modifier = Modifier.weight(1f),
             )
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(
+                    text = if (uiState.isLoopMode) "Continuous" else "Fixed count",
+                    style = MaterialTheme.typography.labelSmall,
+                )
+                Switch(
+                    checked = uiState.isLoopMode,
+                    onCheckedChange = onLoopModeChange,
+                    enabled = !uiState.isRunning,
+                )
+            }
             Button(onClick = if (uiState.isRunning) onStop else onStart) {
                 Text(if (uiState.isRunning) "Stop" else "Ping")
             }
-        }
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            FilterChip(
-                selected = uiState.isLoopMode,
-                onClick = { onLoopModeChange(!uiState.isLoopMode) },
-                enabled = !uiState.isRunning,
-                label = { Text("Loop until stopped") },
-            )
         }
         uiState.errorMessage?.let {
             Text(text = it, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(horizontal = 16.dp))
@@ -158,6 +165,7 @@ private fun ResultLog(
                         contentDescription =
                             "Round-trip time trend over the last ${uiState.rttSamples.size} probes, " +
                                 "latest %.1f ms, up to %.1f ms".format(uiState.rttSamples.last(), maxSample),
+                        valueLabel = { "${it.toInt()} ms" },
                     )
                 }
             }
