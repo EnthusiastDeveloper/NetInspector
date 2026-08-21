@@ -154,7 +154,10 @@ private fun ResultLog(
         contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
-        if (uiState.rttSamples.size >= 2) {
+        // Continuous mode only: a fixed run's handful of points isn't really a "trend," and
+        // gating it here (rather than on sample count alone) keeps a stale chart from a
+        // previous fixed run showing once the mode switch flips without a new run started yet.
+        if (uiState.isLoopMode && uiState.rttSamples.size >= 2) {
             item {
                 val maxSample = uiState.rttSamples.max()
                 InfoCard(title = "RTT trend") {
@@ -170,7 +173,8 @@ private fun ResultLog(
                 }
             }
         }
-        items(uiState.results) { result -> ProbeResultRow(result) }
+        // Ahead of the probe log rather than after: in continuous mode that log can grow to 60
+        // rows, which buried the summary card below a long scroll (reported on-device).
         uiState.summary?.let { summary ->
             item {
                 InfoCard(title = "Summary (${summary.tier})") {
@@ -185,6 +189,7 @@ private fun ResultLog(
                 }
             }
         }
+        items(uiState.results) { result -> ProbeResultRow(result) }
     }
 }
 
