@@ -53,3 +53,8 @@ internal val md_theme_dark_onSurface = Color(0xFFE0E3E2)
 internal val md_theme_dark_surfaceVariant = Color(0xFF3F4948)
 internal val md_theme_dark_onSurfaceVariant = Color(0xFFBEC9C7)
 internal val md_theme_dark_outline = Color(0xFF899391)
+
+// Pure black, for the AMOLED true-black theme. Only background/surface pin to black, an
+// OLED panel then draws those pixels off entirely; the rest of the dark palette carries over.
+internal val md_theme_amoled_background = Color(0xFF000000)
+internal val md_theme_amoled_surface = Color(0xFF000000)

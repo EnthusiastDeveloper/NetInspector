@@ -129,6 +129,7 @@ private fun ThemeMode.label(): String =
         ThemeMode.SYSTEM -> "System"
         ThemeMode.LIGHT -> "Light"
         ThemeMode.DARK -> "Dark"
+        ThemeMode.AMOLED -> "AMOLED"
     }
 
 @Composable
