@@ -43,6 +43,7 @@ interface LanDiscoveryRepository {
         subnet: Ipv4Subnet,
         gateway: Inet4Address?,
         selfAddress: Inet4Address,
+        bssid: String?,
         confirmShortPrefix: Boolean = false,
     ): SweepOutcome
 }
@@ -61,6 +62,11 @@ class DefaultLanDiscoveryRepository
         private val hostMap = MutableStateFlow<Map<Inet4Address, Host>>(emptyMap())
         override val hosts: Flow<List<Host>> = hostMap.map { it.values.toList() }
 
+        // Keyed on subnet + BSSID, not subnet alone - two different access points very commonly
+        // reuse the same default subnet (e.g. 192.168.1.0/24), and subnet alone would then fail
+        // to detect the network switch at all.
+        private var lastNetwork: Pair<Ipv4Subnet, String?>? = null
+
         private val sweepProgress =
             MutableStateFlow(SweepProgress(isRunning = false, addressesProbed = 0, addressesTotal = 0))
         override val progress: Flow<SweepProgress> = sweepProgress.asStateFlow()
@@ -69,13 +75,14 @@ class DefaultLanDiscoveryRepository
             subnet: Ipv4Subnet,
             gateway: Inet4Address?,
             selfAddress: Inet4Address,
+            bssid: String?,
             confirmShortPrefix: Boolean,
         ): SweepOutcome {
             if (sweepProgress.value.isRunning) return SweepOutcome.AlreadyRunning
             if (subnet.prefixLength < MIN_UNCONFIRMED_PREFIX_LENGTH && !confirmShortPrefix) {
                 return SweepOutcome.NeedsConfirmation(subnet.hostCount)
             }
-            runSweep(subnet, gateway, selfAddress)
+            runSweep(subnet, gateway, selfAddress, bssid)
             return SweepOutcome.Started
         }
 
@@ -83,7 +90,10 @@ class DefaultLanDiscoveryRepository
             subnet: Ipv4Subnet,
             gateway: Inet4Address?,
             selfAddress: Inet4Address,
+            bssid: String?,
         ) {
+            resetIfNetworkChanged(subnet, bssid)
+
             val observedThisSweep = mutableSetOf<Inet4Address>()
             sweepProgress.value =
                 SweepProgress(isRunning = true, addressesProbed = 0, addressesTotal = subnet.hostCount.toInt())
@@ -154,6 +164,19 @@ class DefaultLanDiscoveryRepository
                 hostMap.update { finalizeSweep(it, observedThisSweep) }
                 sweepProgress.update { it.copy(isRunning = false) }
             }
+        }
+
+        // design §8.3's STALE grace period assumes consecutive sweeps of the same network (a
+        // host that's briefly offline); it shouldn't apply across a network switch, where every
+        // previous entry is simply from a different network and must be dropped outright.
+        private fun resetIfNetworkChanged(
+            subnet: Ipv4Subnet,
+            bssid: String?,
+        ) {
+            val network = subnet to bssid
+            if (network == lastNetwork) return
+            hostMap.value = emptyMap()
+            lastNetwork = network
         }
 
         private companion object {
