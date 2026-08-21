@@ -167,18 +167,8 @@ jobs:
             adb logcat -c
             adb shell monkey -p dev.enthusiastdev.netinspector -c android.intent.category.LAUNCHER 1
             sleep 10
-            if adb shell pidof dev.enthusiastdev.netinspector > /dev/null; then
-              echo "App is running after launch."
-            else
-              echo "::error::App process died shortly after launch."
-              adb logcat -d | grep -A 30 "FATAL EXCEPTION" || adb logcat -d | tail -n 100
-              exit 1
-            fi
-            if adb logcat -d | grep -q "FATAL EXCEPTION.*dev.enthusiastdev.netinspector"; then
-              echo "::error::Fatal exception found in logcat after launch."
-              adb logcat -d | grep -A 30 "FATAL EXCEPTION"
-              exit 1
-            fi
+            if adb shell pidof dev.enthusiastdev.netinspector > /dev/null; then echo "App is running after launch."; else echo "::error::App process died shortly after launch."; adb logcat -d | grep -A 30 "FATAL EXCEPTION" || adb logcat -d | tail -n 100; exit 1; fi
+            if adb logcat -d | grep -q "FATAL EXCEPTION.*dev.enthusiastdev.netinspector"; then echo "::error::Fatal exception found in logcat after launch."; adb logcat -d | grep -A 30 "FATAL EXCEPTION"; exit 1; fi
 
   publish:
     needs: [build, smoke-test]
