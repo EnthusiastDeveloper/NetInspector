@@ -53,3 +53,20 @@ internal val md_theme_dark_onSurface = Color(0xFFE0E3E2)
 internal val md_theme_dark_surfaceVariant = Color(0xFF3F4948)
 internal val md_theme_dark_onSurfaceVariant = Color(0xFFBEC9C7)
 internal val md_theme_dark_outline = Color(0xFF899391)
+
+// Pure black, for the AMOLED true-black theme. Only background/surface pin to black, an
+// OLED panel then draws those pixels off entirely; the rest of the dark palette carries over.
+internal val md_theme_amoled_background = Color(0xFF000000)
+internal val md_theme_amoled_surface = Color(0xFF000000)
+
+// DarkColorScheme's "neutral" tones are generated from the teal Seed color, so they carry a
+// faint green-teal cast even though they read as plain greys - about a 10-unit gap between the
+// green channel and the others. That's invisible next to the old #191C1C background, but stark
+// against pure black, especially on a high-fidelity OLED panel that renders the cast faithfully
+// rather than crushing it. These are the same tones desaturated to true neutral grey at matching
+// lightness, so contrast/legibility stays the same and only the hue cast is gone.
+internal val md_theme_amoled_onBackground = Color(0xFFE2E2E2)
+internal val md_theme_amoled_onSurface = Color(0xFFE2E2E2)
+internal val md_theme_amoled_surfaceVariant = Color(0xFF454545)
+internal val md_theme_amoled_onSurfaceVariant = Color(0xFFC5C5C5)
+internal val md_theme_amoled_outline = Color(0xFF8F8F8F)

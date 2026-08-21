@@ -30,9 +30,10 @@ class MainActivity : ComponentActivity() {
                 when (themeMode.themeMode) {
                     ThemeMode.SYSTEM -> systemInDarkTheme
                     ThemeMode.LIGHT -> false
-                    ThemeMode.DARK -> true
+                    ThemeMode.DARK, ThemeMode.AMOLED -> true
                 }
-            NetInspectorTheme(darkTheme = darkTheme) {
+            val trueBlack = themeMode.themeMode == ThemeMode.AMOLED
+            NetInspectorTheme(darkTheme = darkTheme, trueBlack = trueBlack) {
                 NetInspectorApp()
             }
         }

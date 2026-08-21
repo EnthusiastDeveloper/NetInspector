@@ -63,19 +63,41 @@ private val DarkColorScheme =
         outline = md_theme_dark_outline,
     )
 
+// AMOLED true-black: same accent palette as DarkColorScheme, but background/surface pin to pure
+// black so an OLED panel switches those pixels off, and the neutral tones (surfaceVariant,
+// onSurfaceVariant, outline, onBackground, onSurface) are desaturated to true grey rather than
+// DarkColorScheme's teal-seed-tinted versions, which read as a green cast against pure black.
+// Dynamic color is skipped for this scheme entirely, wallpaper-derived tones would overwrite the
+// pure black surfaces it exists to guarantee.
+private val AmoledColorScheme =
+    DarkColorScheme.copy(
+        background = md_theme_amoled_background,
+        onBackground = md_theme_amoled_onBackground,
+        surface = md_theme_amoled_surface,
+        onSurface = md_theme_amoled_onSurface,
+        surfaceVariant = md_theme_amoled_surfaceVariant,
+        onSurfaceVariant = md_theme_amoled_onSurfaceVariant,
+        outline = md_theme_amoled_outline,
+    )
+
 /**
  * App-wide theme. `useDynamicColor` defaults to on (API 33+ always supports it, per the
  * `minSdk` floor) but stays a parameter so screens that need reproducible colours - e.g. the
  * channel graph's fixed RSSI palette - can opt out without a second theme composable.
+ *
+ * `trueBlack` selects the AMOLED scheme and, when on, always wins over `useDynamicColor`
+ * since dynamic color would replace the pure black surfaces it is meant to guarantee.
  */
 @Composable
 fun NetInspectorTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
+    trueBlack: Boolean = false,
     useDynamicColor: Boolean = true,
     content: @Composable () -> Unit,
 ) {
     val colorScheme =
         when {
+            trueBlack -> AmoledColorScheme
             useDynamicColor -> {
                 val context = LocalContext.current
                 if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
