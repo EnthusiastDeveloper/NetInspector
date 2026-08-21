@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Button
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -33,6 +34,7 @@ import dev.enthusiastdev.netinspector.core.designsystem.adaptive.DevicePosture
 import dev.enthusiastdev.netinspector.core.designsystem.adaptive.TabletopSplitLayout
 import dev.enthusiastdev.netinspector.core.designsystem.adaptive.rememberDevicePosture
 import dev.enthusiastdev.netinspector.core.designsystem.adaptive.translatedTo
+import dev.enthusiastdev.netinspector.core.designsystem.chart.RollingLineChart
 import dev.enthusiastdev.netinspector.core.designsystem.component.InfoCard
 import dev.enthusiastdev.netinspector.core.designsystem.component.InfoRow
 import dev.enthusiastdev.netinspector.core.model.diagnostics.PingProbeResult
@@ -46,6 +48,7 @@ fun PingRoute(
     PingScreen(
         uiState = uiState,
         onTargetChange = viewModel::updateTarget,
+        onLoopModeChange = viewModel::setLoopMode,
         onStart = viewModel::start,
         onStop = viewModel::stop,
         modifier = modifier,
@@ -59,6 +62,7 @@ fun PingRoute(
 fun PingScreen(
     uiState: PingUiState,
     onTargetChange: (String) -> Unit,
+    onLoopModeChange: (Boolean) -> Unit,
     onStart: () -> Unit,
     onStop: () -> Unit,
     modifier: Modifier = Modifier,
@@ -76,11 +80,13 @@ fun PingScreen(
             TabletopSplitLayout(
                 hingeBounds = tabletopPosture.hingeBounds,
                 upper = { ResultLog(uiState, modifier = Modifier.fillMaxSize()) },
-                lower = { PingControls(uiState, onTargetChange, onStart, onStop, Modifier.fillMaxSize()) },
+                lower = {
+                    PingControls(uiState, onTargetChange, onLoopModeChange, onStart, onStop, Modifier.fillMaxSize())
+                },
             )
         } else {
             Column(modifier = Modifier.align(Alignment.TopCenter).fillMaxHeight().widthIn(max = 600.dp)) {
-                PingControls(uiState, onTargetChange, onStart, onStop)
+                PingControls(uiState, onTargetChange, onLoopModeChange, onStart, onStop)
                 ResultLog(uiState, modifier = Modifier.weight(1f).fillMaxWidth())
             }
         }
@@ -91,6 +97,7 @@ fun PingScreen(
 private fun PingControls(
     uiState: PingUiState,
     onTargetChange: (String) -> Unit,
+    onLoopModeChange: (Boolean) -> Unit,
     onStart: () -> Unit,
     onStop: () -> Unit,
     modifier: Modifier = Modifier,
@@ -112,6 +119,18 @@ private fun PingControls(
                 Text(if (uiState.isRunning) "Stop" else "Ping")
             }
         }
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            FilterChip(
+                selected = uiState.isLoopMode,
+                onClick = { onLoopModeChange(!uiState.isLoopMode) },
+                enabled = !uiState.isRunning,
+                label = { Text("Loop until stopped") },
+            )
+        }
         uiState.errorMessage?.let {
             Text(text = it, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(horizontal = 16.dp))
         }
@@ -128,6 +147,21 @@ private fun ResultLog(
         contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
+        if (uiState.rttSamples.size >= 2) {
+            item {
+                val maxSample = uiState.rttSamples.max()
+                InfoCard(title = "RTT trend") {
+                    RollingLineChart(
+                        samples = uiState.rttSamples,
+                        minValue = 0f,
+                        maxValue = (maxSample * 1.2f).coerceAtLeast(20f),
+                        contentDescription =
+                            "Round-trip time trend over the last ${uiState.rttSamples.size} probes, " +
+                                "latest %.1f ms, up to %.1f ms".format(uiState.rttSamples.last(), maxSample),
+                    )
+                }
+            }
+        }
         items(uiState.results) { result -> ProbeResultRow(result) }
         uiState.summary?.let { summary ->
             item {

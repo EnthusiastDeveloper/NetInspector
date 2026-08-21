@@ -51,9 +51,15 @@ class PingViewModel
             _uiState.update { it.copy(target = value) }
         }
 
+        fun setLoopMode(enabled: Boolean) {
+            if (_uiState.value.isRunning) return
+            _uiState.update { it.copy(isLoopMode = enabled) }
+        }
+
         fun start() {
             val host = _uiState.value.target.trim()
             if (host.isEmpty()) return
+            val loop = _uiState.value.isLoopMode
 
             runJob?.cancel()
             runJob =
@@ -65,19 +71,38 @@ class PingViewModel
                     }
 
                     _uiState.update {
-                        it.copy(isRunning = true, results = emptyList(), summary = null, errorMessage = null)
+                        it.copy(
+                            isRunning = true,
+                            results = emptyList(),
+                            rttSamples = emptyList(),
+                            summary = null,
+                            errorMessage = null,
+                        )
                     }
 
-                    val config = PingConfig()
+                    // Loop mode ("ping -t" style) reuses the same flow-based API with an
+                    // effectively unlimited count instead of adding a second streaming entry
+                    // point to PingRepository - stop() below cancels runJob to end it, the same
+                    // cancellation path a fixed-count run's Stop button always used.
+                    val config = if (loop) PingConfig(count = Int.MAX_VALUE) else PingConfig()
                     val startedAtMillis = System.currentTimeMillis()
-                    val collected = mutableListOf<PingProbeResult>()
+                    // Bounded so an hours-long loop run can't grow this (and the results/chart
+                    // state derived from it) without limit - oldest probes fall off the window.
+                    val window = ArrayDeque<PingProbeResult>()
                     pingRepository.ping(address, config).collect { result ->
-                        collected.add(result)
-                        _uiState.update { it.copy(results = collected.toList()) }
+                        window.addLast(result)
+                        if (window.size > MAX_ROLLING_SAMPLES) window.removeFirst()
+                        _uiState.update { it.copy(results = window.toList(), rttSamples = window.rttSamples()) }
                     }
 
+                    // Only reached when the flow completes on its own, i.e. the fixed-count
+                    // path. Loop mode's Int.MAX_VALUE count never gets here in practice - stop()
+                    // cancels runJob, which interrupts the collect above instead, and stop()
+                    // does its own (unrecorded) summary finalization for that case.
+                    val collected = window.toList()
                     val rtts = collected.filterIsInstance<PingProbeResult.Reply>().map { it.rttMs }
-                    val summary = summarizePing(PingTier.ICMP_SOCKET, config.count, rtts)
+                    val sent = if (loop) collected.size else config.count
+                    val summary = summarizePing(PingTier.ICMP_SOCKET, sent, rtts)
                     _uiState.update { it.copy(isRunning = false, summary = summary) }
 
                     recordHistory(host, config, collected, summary, System.currentTimeMillis() - startedAtMillis)
@@ -85,8 +110,23 @@ class PingViewModel
         }
 
         fun stop() {
+            val state = _uiState.value
             runJob?.cancel()
-            _uiState.update { it.copy(isRunning = false) }
+            if (state.isLoopMode && state.isRunning) {
+                // Loop mode is never persisted to diagnostic_run history: an indefinite run
+                // only ever keeps the last MAX_ROLLING_SAMPLES probes in memory (see start()),
+                // so a summary built from that window reflects a recent slice, not the whole
+                // run. Recording it as a diagnostic run would misrepresent it as a complete
+                // result the way a fixed-count run's summary is - e.g. loss over the run would
+                // silently mean "loss over the last minute or two". It's still computed and
+                // shown live so the user has final numbers to read after hitting Stop; anyone
+                // who wants a permanent record can use the fixed-count run instead.
+                val rtts = state.results.filterIsInstance<PingProbeResult.Reply>().map { it.rttMs }
+                val summary = summarizePing(PingTier.ICMP_SOCKET, state.results.size, rtts)
+                _uiState.update { it.copy(isRunning = false, summary = summary) }
+            } else {
+                _uiState.update { it.copy(isRunning = false) }
+            }
         }
 
         private suspend fun recordHistory(
@@ -125,7 +165,18 @@ class PingViewModel
                 }.getOrNull()
             }
 
+        private fun ArrayDeque<PingProbeResult>.rttSamples(): List<Float> =
+            filterIsInstance<PingProbeResult.Reply>().map { it.rttMs.toFloat() }
+
         override fun onCleared() {
             runJob?.cancel()
+        }
+
+        private companion object {
+            // At the default 1-second probe interval this is a 60-second rolling window,
+            // matching the signal meter's rolling-60-seconds convention (RollingLineChart's own
+            // doc comment) - short enough that a multi-hour loop run's results/chart state stay
+            // bounded, long enough to be a useful live trend.
+            const val MAX_ROLLING_SAMPLES = 60
         }
     }
