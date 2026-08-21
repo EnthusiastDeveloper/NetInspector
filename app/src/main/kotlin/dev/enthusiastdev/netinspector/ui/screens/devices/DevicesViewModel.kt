@@ -126,6 +126,7 @@ class DevicesViewModel
                             subnet,
                             connection.gateway,
                             selfAddress,
+                            connection.bssid,
                             confirmShortPrefix,
                         )
                     pendingConfirmationHostCount.value = (outcome as? SweepOutcome.NeedsConfirmation)?.hostCount
