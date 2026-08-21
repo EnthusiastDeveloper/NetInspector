@@ -31,9 +31,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.unit.dp
+import dev.enthusiastdev.netinspector.core.designsystem.component.InfoCard
+import dev.enthusiastdev.netinspector.core.designsystem.component.ScoreBadge
 import dev.enthusiastdev.netinspector.core.model.lan.Host
 import dev.enthusiastdev.netinspector.core.model.lan.HostConfidence
 import dev.enthusiastdev.netinspector.core.model.lan.SweepProgress
+import dev.enthusiastdev.netinspector.core.model.lan.networkHygieneScore
 
 @Composable
 internal fun DevicesHeader(
@@ -72,6 +75,24 @@ internal fun DevicesHeader(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
+    }
+}
+
+/** docs/improvement-ideas.md #1 - the network-wide read above the host list, aggregated over
+ * exactly the hosts currently visible in [hosts] (already confidence-filtered by the caller -
+ * design §Phase 8's "$hostCount devices" header count above this card reflects the same
+ * filtered list, so this stays consistent with it rather than silently scoring a different
+ * set). */
+@Composable
+internal fun DevicesNetworkHygieneCard(hosts: List<Host>) {
+    val score = networkHygieneScore(hosts)
+    InfoCard(title = "Network hygiene") {
+        ScoreBadge(score = score.value, label = score.rating.label())
+        Text(
+            text = score.findingsSummary(),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
 }
 
