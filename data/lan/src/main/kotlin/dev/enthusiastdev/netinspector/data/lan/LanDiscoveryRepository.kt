@@ -46,6 +46,17 @@ interface LanDiscoveryRepository {
         bssid: String?,
         confirmShortPrefix: Boolean = false,
     ): SweepOutcome
+
+    /**
+     * docs/improvement-ideas.md - folds a single [observation] made outside a [sweep] (the
+     * Tools port scanner, which can target any host the user types, not just ones this sweep
+     * already knows about) into the live host map with the same merge semantics a sweep's own
+     * probes use. Unlike [sweep], this never touches [progress] or the multicast/Wi-Fi locks -
+     * those exist for the sweep's own lifecycle, not a single ad hoc observation - and it never
+     * marks anything stale, since [finalizeSweep] only makes sense once a sweep has actually
+     * covered the address space.
+     */
+    fun recordObservation(observation: HostObservation)
 }
 
 @Singleton
@@ -70,6 +81,10 @@ class DefaultLanDiscoveryRepository
         private val sweepProgress =
             MutableStateFlow(SweepProgress(isRunning = false, addressesProbed = 0, addressesTotal = 0))
         override val progress: Flow<SweepProgress> = sweepProgress.asStateFlow()
+
+        override fun recordObservation(observation: HostObservation) {
+            hostMap.update { mergeObservation(it, observation) }
+        }
 
         override suspend fun sweep(
             subnet: Ipv4Subnet,

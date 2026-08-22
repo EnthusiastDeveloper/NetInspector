@@ -3,6 +3,8 @@ package dev.enthusiastdev.netinspector.ui.screens.devices
 import dev.enthusiastdev.netinspector.core.model.lan.Certainty
 import dev.enthusiastdev.netinspector.core.model.lan.EvidenceSource
 import dev.enthusiastdev.netinspector.core.model.lan.HostConfidence
+import dev.enthusiastdev.netinspector.core.model.lan.HygieneRating
+import dev.enthusiastdev.netinspector.core.model.lan.HygieneScore
 import dev.enthusiastdev.netinspector.core.model.lan.OpenPort
 import java.net.Inet4Address
 import java.time.Duration
@@ -74,3 +76,21 @@ internal fun OpenPort.label(): String {
     val portAndService = if (serviceGuess != null) "$port ($serviceGuess)" else port.toString()
     return if (banner != null) "$portAndService - $banner" else portAndService
 }
+
+internal fun HygieneRating.label(): String =
+    when (this) {
+        HygieneRating.EXCELLENT -> "Excellent"
+        HygieneRating.GOOD -> "Good"
+        HygieneRating.FAIR -> "Fair"
+        HygieneRating.POOR -> "Poor"
+        HygieneRating.CRITICAL -> "Critical"
+    }
+
+/** docs/improvement-ideas.md #1 - the caption under a hygiene score badge, naming what the
+ * score's basis actually is rather than leaving the number to speak for itself. */
+internal fun HygieneScore.findingsSummary(): String =
+    when (findings.size) {
+        0 -> "No known port risks found"
+        1 -> "1 risky open port found"
+        else -> "${findings.size} risky open ports found"
+    }

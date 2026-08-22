@@ -23,8 +23,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import dev.enthusiastdev.netinspector.core.designsystem.component.InfoCard
 import dev.enthusiastdev.netinspector.core.designsystem.component.InfoRow
+import dev.enthusiastdev.netinspector.core.designsystem.component.ScoreBadge
 import dev.enthusiastdev.netinspector.core.model.lan.DeviceHint
 import dev.enthusiastdev.netinspector.core.model.lan.Host
+import dev.enthusiastdev.netinspector.core.model.lan.hostHygieneScore
 import dev.enthusiastdev.netinspector.core.model.lan.portRiskNote
 
 @Composable
@@ -86,6 +88,25 @@ private fun MacAddressRow() {
 internal fun DevicesDetailHostnamesCard(host: Host) {
     InfoCard(title = "Hostnames") {
         host.hostnames.forEach { (source, name) -> InfoRow(source.label(), name) }
+    }
+}
+
+/** docs/improvement-ideas.md #1 - only rendered alongside [DevicesDetailOpenPortsCard] (same
+ * `host.openPorts.isNotEmpty()` gate in [DevicesDetailContent]), since a score computed before
+ * the extended port probe has even run would always read a meaningless "100, Excellent".
+ * [HygieneScoreInfoButton]/[RemediationList] (docs/improvement-ideas.md #2/#3) live in
+ * `DevicesHygiene.kt` alongside [DevicesNetworkHygieneCard], which shares both. */
+@Composable
+internal fun DevicesDetailHygieneScoreCard(host: Host) {
+    val score = hostHygieneScore(host)
+    InfoCard(title = "Hygiene score", trailingContent = { HygieneScoreInfoButton() }) {
+        ScoreBadge(score = score.value, label = score.rating.label())
+        Text(
+            text = score.findingsSummary(),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        RemediationList(score.findings)
     }
 }
 

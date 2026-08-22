@@ -75,6 +75,7 @@ internal fun DevicesDetailContent(
         host.deviceHint?.let { hint -> item { DevicesDetailHintCard(hint) } }
         item { DevicesDetailIdentificationCard(host) }
         if (host.hostnames.isNotEmpty()) item { DevicesDetailHostnamesCard(host) }
+        if (host.openPorts.isNotEmpty()) item { DevicesDetailHygieneScoreCard(host) }
         if (host.openPorts.isNotEmpty()) item { DevicesDetailOpenPortsCard(host) }
         if (host.services.isNotEmpty()) item { DevicesDetailServicesCard(host) }
         item { DevicesDetailEvidenceCard(host) }

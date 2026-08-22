@@ -3,7 +3,11 @@ package dev.enthusiastdev.netinspector.data.lan
 import android.net.wifi.WifiManager
 import com.google.common.truth.Truth.assertThat
 import dev.enthusiastdev.netinspector.core.common.net.Ipv4Subnet
+import dev.enthusiastdev.netinspector.core.model.lan.Evidence
+import dev.enthusiastdev.netinspector.core.model.lan.EvidenceSource
 import dev.enthusiastdev.netinspector.core.model.lan.HostConfidence
+import dev.enthusiastdev.netinspector.core.model.lan.HostObservation
+import dev.enthusiastdev.netinspector.core.model.lan.OpenPort
 import dev.enthusiastdev.netinspector.data.lan.mdns.MdnsProbe
 import dev.enthusiastdev.netinspector.data.lan.netbios.NetBiosProbe
 import dev.enthusiastdev.netinspector.data.lan.ssdp.SsdpProbe
@@ -92,6 +96,50 @@ class LanDiscoveryRepositoryTest {
             val hosts = repository.hosts.first()
             val gatewayHost = hosts.single { it.address == ip("192.168.1.1") }
             assertThat(gatewayHost.confidence).isEqualTo(HostConfidence.STALE)
+        }
+
+    @Test
+    fun `recording an observation for a host outside any sweep adds it with the reported open ports`() =
+        runTest {
+            val address = ip("192.168.1.77")
+
+            repository.recordObservation(
+                HostObservation(
+                    address = address,
+                    evidence = listOf(Evidence(EvidenceSource.TCP_CONNECT, clock.instant())),
+                    openPorts = listOf(OpenPort(port = 5900, serviceGuess = null, banner = null)),
+                ),
+            )
+
+            val host = repository.hosts.first().single { it.address == address }
+            assertThat(host.confidence).isEqualTo(HostConfidence.CONFIRMED)
+            assertThat(host.openPorts.map { it.port }).containsExactly(5900)
+        }
+
+    @Test
+    fun `recording an observation merges into an already-known host without dropping its other open ports`() =
+        runTest {
+            val subnet = Ipv4Subnet(ip("192.168.1.0"), 24)
+            val address = ip("192.168.1.77")
+            repository.sweep(subnet = subnet, gateway = null, selfAddress = ip("192.168.1.42"), bssid = "AA:BB")
+            repository.recordObservation(
+                HostObservation(
+                    address = address,
+                    evidence = listOf(Evidence(EvidenceSource.TCP_CONNECT, clock.instant())),
+                    openPorts = listOf(OpenPort(port = 80, serviceGuess = null, banner = null)),
+                ),
+            )
+
+            repository.recordObservation(
+                HostObservation(
+                    address = address,
+                    evidence = listOf(Evidence(EvidenceSource.TCP_CONNECT, clock.instant())),
+                    openPorts = listOf(OpenPort(port = 5900, serviceGuess = null, banner = null)),
+                ),
+            )
+
+            val host = repository.hosts.first().single { it.address == address }
+            assertThat(host.openPorts.map { it.port }).containsExactly(80, 5900)
         }
 
     private fun ip(text: String): Inet4Address = InetAddress.getByName(text) as Inet4Address

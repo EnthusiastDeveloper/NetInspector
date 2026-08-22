@@ -21,7 +21,35 @@ having to parse a raw port list.
 
 ---
 
-## 2. Dark / AMOLED true-black theme
+## 2. Hygiene score methodology explainer
+The score in #1 is currently opaque - a number and a rating with no visible explanation of
+what's being measured or why. Surface the methodology in-app: what counts as a finding, the
+severity tiers and their point deductions, and which ports are currently flagged, following
+the same tap-to-expand pattern `DevicesDetailCards.kt`'s "why no MAC address?" dialog already
+uses for a similar "explain a non-obvious number" need.
+
+**Requirements:**
+- Info/help affordance on the score badge or hygiene card
+- Explanatory copy: severity tiers, per-tier penalty, and the current flagged-port list
+- No new data or logic - purely surfaces what `HygieneScore`/`PortRiskHeuristics` already
+  compute
+
+---
+
+## 3. Actionable remediation list from hygiene findings
+Turn a hygiene score's findings into a concrete "what to fix" checklist, per host and
+network-wide, rather than leaving the user to infer action items from a raw score.
+
+**Requirements:**
+- A remediation suggestion per flagged port/protocol (extends the existing `PortRisk` map
+  in `PortRiskHeuristics.kt` with a third field, reusing its established shape - e.g.
+  "Telnet (23): disable it, use SSH instead")
+- Checklist UI presenting findings + suggested fixes, per host and network-wide
+- Tap-through from the network-level card to the specific host(s)/port(s) responsible
+
+---
+
+## 4. Dark / AMOLED true-black theme
 **Status:** Implemented (PR #3, merged)
 
 A pure-black theme option for OLED screens, cheap to add given `ThemeMode` already exists
@@ -33,7 +61,7 @@ as a settings concept.
 
 ---
 
-## 3. Configurable connection alert thresholds
+## 5. Configurable connection alert thresholds
 Let the existing monitoring notification actually alert the user (not just display state)
 when RSSI drops below a threshold or the connection drops/restores.
 
@@ -44,7 +72,7 @@ when RSSI drops below a threshold or the connection drops/restores.
 
 ---
 
-## 4. Scan session comparison view
+## 6. Scan session comparison view
 Diff two persisted scan sessions side by side ("before/after I moved the router") using
 data that's already stored.
 
@@ -55,7 +83,7 @@ data that's already stored.
 
 ---
 
-## 5. Trend charts & historical channel congestion
+## 7. Trend charts & historical channel congestion
 Chart RSSI and channel-occupancy history over days/weeks instead of only per-session
 snapshots - reuses the existing `RollingLineChart` and `ChannelOccupancyGraph` components.
 
@@ -66,7 +94,7 @@ snapshots - reuses the existing `RollingLineChart` and `ChannelOccupancyGraph` c
 
 ---
 
-## 6. Finish tablet/Chromebook two-pane layouts
+## 8. Finish tablet/Chromebook two-pane layouts
 The adaptive-UI foundation (window size classes, `DevicePosture`, `TabletopSplitLayout`)
 already exists; apply it consistently to list-detail screens that don't use it yet
 (Devices, Wi-Fi, History).
@@ -78,7 +106,7 @@ already exists; apply it consistently to list-detail screens that don't use it y
 
 ---
 
-## 7. Continuous ping with a live graph
+## 9. Continuous ping with a live graph
 **Status:** Implemented (PR #4, merged)
 
 A "ping -t" style loop mode with a live-updating chart, built on the ping engine and
@@ -91,7 +119,7 @@ chart components that already exist.
 
 ---
 
-## 8. Device grouping/tagging
+## 10. Device grouping/tagging
 Manual labels ("IoT", "guest", "trusted") for LAN hosts, since OUI/mDNS guesses won't
 always be right.
 
@@ -102,7 +130,7 @@ always be right.
 
 ---
 
-## 9. AP capability diffing
+## 11. AP capability diffing
 Flag when a known AP's stored capabilities change (e.g. WPA3 → WPA2, 802.11ax dropped) -
 compares against data already stored in `KnownApEntity`.
 
@@ -113,7 +141,7 @@ compares against data already stored in `KnownApEntity`.
 
 ---
 
-## 10. Logical network map
+## 12. Logical network map
 **Status:** Implemented (PR #6, open for review)
 
 A visual hub-and-spoke graph of discovered hosts around the gateway. Real switch-level
@@ -128,7 +156,7 @@ already has.
 
 ---
 
-## 11. DNS-over-HTTPS / DoT tester
+## 13. DNS-over-HTTPS / DoT tester
 Query a resolver over DoH and DoT and compare against plain DNS results - builds directly
 on the existing `DnsWireCodec`/`DnsRepository`.
 
@@ -139,7 +167,7 @@ on the existing `DnsWireCodec`/`DnsRepository`.
 
 ---
 
-## 12. TLS certificate inspector
+## 14. TLS certificate inspector
 Show cert chain, expiry, and common misconfigurations for a host, following the same
 pattern as the existing HTTP header inspector.
 
@@ -150,7 +178,7 @@ pattern as the existing HTTP header inspector.
 
 ---
 
-## 13. Bandwidth-aware host list
+## 15. Bandwidth-aware host list
 A rough per-host responsiveness indicator from periodic latency sampling, reusing the
 sweep probes already built for LAN discovery.
 
@@ -161,7 +189,7 @@ sweep probes already built for LAN discovery.
 
 ---
 
-## 14. Dashboard/home screen
+## 16. Dashboard/home screen
 A single "network health at a glance" screen combining Wi-Fi quality, device count, and
 active diagnostics, rather than requiring navigation into each tool separately.
 
@@ -173,7 +201,7 @@ active diagnostics, rather than requiring navigation into each tool separately.
 
 ---
 
-## 15. Search across tools & history
+## 17. Search across tools & history
 One search bar to jump to a host, past scan, or diagnostic run instead of navigating the
 bottom nav tree.
 
@@ -185,7 +213,7 @@ bottom nav tree.
 
 ---
 
-## 16. WPS/UPnP exposure flags
+## 18. WPS/UPnP exposure flags
 Surface when SSDP-discovered UPnP devices are exposing more services than a typical user
 would expect - builds on the existing `SsdpProbe`.
 
@@ -196,7 +224,7 @@ would expect - builds on the existing `SsdpProbe`.
 
 ---
 
-## 17. Onboarding / first-run tour
+## 19. Onboarding / first-run tour
 A brief guided tour given how many tools are packed into the bottom nav.
 
 **Requirements:**
@@ -206,7 +234,7 @@ A brief guided tour given how many tools are packed into the bottom nav.
 
 ---
 
-## 18. PDF/shareable report generation
+## 20. PDF/shareable report generation
 A formatted network health report (Wi-Fi + LAN + diagnostics summary) for e.g. handing to
 an ISP support line or landlord.
 
@@ -217,7 +245,7 @@ an ISP support line or landlord.
 
 ---
 
-## 19. Opt-in local crash reporting
+## 21. Opt-in local crash reporting
 Capture uncaught exceptions to a local file the user can export, rather than a telemetry
 SDK - consistent with the app's privacy stance. `ReleaseTree.kt` is an existing precedent
 for structured local logging.
@@ -229,9 +257,9 @@ for structured local logging.
 
 ---
 
-## 20. In-app debug-bundle export
+## 22. In-app debug-bundle export
 Bundle recent logs plus current scan/diagnostic state into a shareable file, so bug
-reports don't require ADB. Shares infrastructure with #20.
+reports don't require ADB. Shares infrastructure with #21.
 
 **Requirements:**
 - Log ring buffer
@@ -240,7 +268,7 @@ reports don't require ADB. Shares infrastructure with #20.
 
 ---
 
-## 21. Scheduled/automatic periodic scans
+## 23. Scheduled/automatic periodic scans
 Opt-in background snapshots so history builds up without manual runs, using the same
 WorkManager pattern already used for `RetentionCleanupWorker`.
 
@@ -251,28 +279,28 @@ WorkManager pattern already used for `RetentionCleanupWorker`.
 
 ---
 
-## 22. New/vanished device alerts
+## 24. New/vanished device alerts
 Notify when an unrecognized MAC joins the LAN, or a normally-present device disappears.
 
 **Requirements:**
-- Background/periodic LAN sweep (depends on #22's scheduling work, or a dedicated job)
+- Background/periodic LAN sweep (depends on #23's scheduling work, or a dedicated job)
 - Diffing logic against previously observed host sets
 - Notification channel + false-positive tuning (DHCP churn, guest devices)
 
 ---
 
-## 23. Rogue AP / evil-twin detection
+## 25. Rogue AP / evil-twin detection
 Flag when a known SSID suddenly appears with a different BSSID, a downgraded security
 type, or an unexpected vendor OUI.
 
 **Requirements:**
-- Detection logic layered on top of #10's AP-diffing work
+- Detection logic layered on top of #11's AP-diffing work
 - Alert UI/notification
 - False-positive tuning (legitimate AP replacement, mesh roaming, guest APs)
 
 ---
 
-## 24. Roaming/handoff tracker
+## 26. Roaming/handoff tracker
 For mesh networks, log which AP the phone is actually associated with over time and flag
 roam events - useful for diagnosing sticky-client issues.
 
@@ -284,7 +312,7 @@ roam events - useful for diagnosing sticky-client issues.
 
 ---
 
-## 25. MTU / path MTU discovery
+## 27. MTU / path MTU discovery
 Binary-search packet sizes with the DF flag to find path MTU - useful for VPN/tunnel
 troubleshooting.
 
@@ -297,7 +325,7 @@ troubleshooting.
 
 ---
 
-## 26. Default-credential hints
+## 28. Default-credential hints
 An informational nudge ("this device has an admin panel open") for recognized device
 types with known default admin ports.
 
@@ -309,7 +337,7 @@ types with known default admin ports.
 
 ---
 
-## 27. Home-screen & quick-settings widgets
+## 29. Home-screen & quick-settings widgets
 Glanceable signal strength and LAN device count without opening the app.
 
 **Requirements:**
@@ -320,7 +348,7 @@ Glanceable signal strength and LAN device count without opening the app.
 
 ---
 
-## 28. Bufferbloat test
+## 30. Bufferbloat test
 Compare idle vs. loaded latency to score bufferbloat - directly relevant to the app's
 networking focus.
 
@@ -334,7 +362,7 @@ networking focus.
 
 ---
 
-## 29. Speed test integration
+## 31. Speed test integration
 Simple throughput test correlated against RSSI/channel.
 
 **Requirements:**
@@ -346,7 +374,7 @@ Simple throughput test correlated against RSSI/channel.
 
 ---
 
-## 30. Benchmark/perf test suite for the LAN sweep pipeline
+## 32. Benchmark/perf test suite for the LAN sweep pipeline
 Dev-facing only - given how parallel and timing-sensitive host discovery is, a benchmark
 harness would catch regressions, but it delivers no direct user value.
 
@@ -357,7 +385,7 @@ harness would catch regressions, but it delivers no direct user value.
 
 ---
 
-## 31. Wear OS / lock-screen glanceable
+## 33. Wear OS / lock-screen glanceable
 A companion signal-strength view on the wrist or lock screen.
 
 **Requirements:**
@@ -369,7 +397,7 @@ A companion signal-strength view on the wrist or lock screen.
 
 ---
 
-## 32. iperf3-compatible throughput mode
+## 34. iperf3-compatible throughput mode
 Real throughput numbers against a companion `iperf3` server elsewhere on the LAN.
 
 **Requirements:**
@@ -381,7 +409,7 @@ Real throughput numbers against a companion `iperf3` server elsewhere on the LAN
 
 ---
 
-## 33. F-Droid listing
+## 35. F-Droid listing
 Matches the app's existing no-telemetry/no-accounts positioning and Obtainium support;
 mostly a packaging/process task, not new code.
 

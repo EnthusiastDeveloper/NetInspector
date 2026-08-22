@@ -185,6 +185,12 @@ private fun DevicesListPane(
                 onCancel = onCancel,
             )
         }
+        // docs/improvement-ideas.md #1 - meaningless (always "100, Excellent") until at least
+        // one host has been through the extended port probe, same gate DevicesDetailCards
+        // uses per-host, so this doesn't misrepresent a network nobody has scanned ports on yet.
+        if (state.hosts.any { it.openPorts.isNotEmpty() }) {
+            item { DevicesNetworkHygieneCard(state.hosts, onHostClick = onHostClick) }
+        }
         item {
             DevicesSortFilterBar(
                 sortOrder = state.sortOrder,
