@@ -114,6 +114,8 @@ compares against data already stored in `KnownApEntity`.
 ---
 
 ## 10. Logical network map
+**Status:** Implemented (PR #6, open for review)
+
 A visual hub-and-spoke graph of discovered hosts around the gateway. Real switch-level
 topology isn't discoverable without SNMP/LLDP, so this is framed honestly as a logical
 map, not physical topology - pure visualization over data `LanDiscoveryRepository`
