@@ -15,6 +15,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -33,6 +34,7 @@ import dev.enthusiastdev.netinspector.core.designsystem.adaptive.DevicePosture
 import dev.enthusiastdev.netinspector.core.designsystem.adaptive.TabletopSplitLayout
 import dev.enthusiastdev.netinspector.core.designsystem.adaptive.rememberDevicePosture
 import dev.enthusiastdev.netinspector.core.designsystem.adaptive.translatedTo
+import dev.enthusiastdev.netinspector.core.designsystem.chart.RollingLineChart
 import dev.enthusiastdev.netinspector.core.designsystem.component.InfoCard
 import dev.enthusiastdev.netinspector.core.designsystem.component.InfoRow
 import dev.enthusiastdev.netinspector.core.model.diagnostics.PingProbeResult
@@ -46,6 +48,7 @@ fun PingRoute(
     PingScreen(
         uiState = uiState,
         onTargetChange = viewModel::updateTarget,
+        onLoopModeChange = viewModel::setLoopMode,
         onStart = viewModel::start,
         onStop = viewModel::stop,
         modifier = modifier,
@@ -59,6 +62,7 @@ fun PingRoute(
 fun PingScreen(
     uiState: PingUiState,
     onTargetChange: (String) -> Unit,
+    onLoopModeChange: (Boolean) -> Unit,
     onStart: () -> Unit,
     onStop: () -> Unit,
     modifier: Modifier = Modifier,
@@ -76,11 +80,17 @@ fun PingScreen(
             TabletopSplitLayout(
                 hingeBounds = tabletopPosture.hingeBounds,
                 upper = { ResultLog(uiState, modifier = Modifier.fillMaxSize()) },
-                lower = { PingControls(uiState, onTargetChange, onStart, onStop, Modifier.fillMaxSize()) },
+                lower = {
+                    PingControls(uiState, onTargetChange, onLoopModeChange, onStart, onStop, Modifier.fillMaxSize())
+                },
             )
         } else {
-            Column(modifier = Modifier.align(Alignment.TopCenter).fillMaxHeight().widthIn(max = 600.dp)) {
-                PingControls(uiState, onTargetChange, onStart, onStop)
+            // Capped wider than the shared 600.dp reading-width convention (WifiScreen,
+            // TracerouteScreen): a live chart benefits from horizontal resolution the way a
+            // block of text doesn't, and the previous 600.dp cap left a lot of unused width on
+            // landscape/tablet screens specifically for this screen's graph.
+            Column(modifier = Modifier.align(Alignment.TopCenter).fillMaxHeight().widthIn(max = 900.dp)) {
+                PingControls(uiState, onTargetChange, onLoopModeChange, onStart, onStop)
                 ResultLog(uiState, modifier = Modifier.weight(1f).fillMaxWidth())
             }
         }
@@ -91,11 +101,16 @@ fun PingScreen(
 private fun PingControls(
     uiState: PingUiState,
     onTargetChange: (String) -> Unit,
+    onLoopModeChange: (Boolean) -> Unit,
     onStart: () -> Unit,
     onStop: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(modifier = modifier) {
+        // One row rather than a separate mode-toggle row below: the loop-mode control used to
+        // be its own FilterChip row, which was extra height a short landscape screen doesn't
+        // have to spare (reported on-device: the chart didn't fit under it). A Switch is a
+        // fraction of a FilterChip's touch-target height and reads fine inline.
         Row(
             modifier = Modifier.fillMaxWidth().padding(16.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -108,6 +123,17 @@ private fun PingControls(
                 singleLine = true,
                 modifier = Modifier.weight(1f),
             )
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(
+                    text = if (uiState.isLoopMode) "Continuous" else "Fixed count",
+                    style = MaterialTheme.typography.labelSmall,
+                )
+                Switch(
+                    checked = uiState.isLoopMode,
+                    onCheckedChange = onLoopModeChange,
+                    enabled = !uiState.isRunning,
+                )
+            }
             Button(onClick = if (uiState.isRunning) onStop else onStart) {
                 Text(if (uiState.isRunning) "Stop" else "Ping")
             }
@@ -128,7 +154,28 @@ private fun ResultLog(
         contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
-        items(uiState.results) { result -> ProbeResultRow(result) }
+        // Continuous mode only: a fixed run's handful of points isn't really a "trend." Relies
+        // on PingViewModel.setLoopMode clearing rttSamples on every toggle - otherwise this gate
+        // alone doesn't stop a stale chart from a previous fixed run showing the instant the
+        // mode switch flips, before a new run has even started.
+        if (uiState.isLoopMode && uiState.rttSamples.size >= 2) {
+            item {
+                val maxSample = uiState.rttSamples.max()
+                InfoCard(title = "RTT trend") {
+                    RollingLineChart(
+                        samples = uiState.rttSamples,
+                        minValue = 0f,
+                        maxValue = (maxSample * 1.2f).coerceAtLeast(20f),
+                        contentDescription =
+                            "Round-trip time trend over the last ${uiState.rttSamples.size} probes, " +
+                                "latest %.1f ms, up to %.1f ms".format(uiState.rttSamples.last(), maxSample),
+                        valueLabel = { "${it.toInt()} ms" },
+                    )
+                }
+            }
+        }
+        // Ahead of the probe log rather than after: in continuous mode that log can grow to 60
+        // rows, which buried the summary card below a long scroll (reported on-device).
         uiState.summary?.let { summary ->
             item {
                 InfoCard(title = "Summary (${summary.tier})") {
@@ -143,6 +190,7 @@ private fun ResultLog(
                 }
             }
         }
+        items(uiState.results) { result -> ProbeResultRow(result) }
     }
 }
 

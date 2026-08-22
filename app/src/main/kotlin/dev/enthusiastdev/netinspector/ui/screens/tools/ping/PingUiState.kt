@@ -6,7 +6,9 @@ import dev.enthusiastdev.netinspector.core.model.diagnostics.PingProbeResult
 data class PingUiState(
     val target: String = "",
     val isRunning: Boolean = false,
+    val isLoopMode: Boolean = false,
     val results: List<PingProbeResult> = emptyList(),
+    val rttSamples: List<Float> = emptyList(),
     val summary: PingSummary? = null,
     val errorMessage: String? = null,
 )
