@@ -3,6 +3,7 @@ package dev.enthusiastdev.netinspector.ui.navigation
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.Devices
+import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.NetworkWifi
 import androidx.compose.material.icons.filled.Wifi
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -14,6 +15,8 @@ import kotlinx.serialization.Serializable
 
 // Type-safe nav routes - kept as bare markers (no UI metadata) so kotlinx.serialization never
 // has to serialize an ImageVector.
+@Serializable data object DashboardRoute
+
 @Serializable data object ConnectionRoute
 
 @Serializable data object WifiRoute
@@ -43,6 +46,9 @@ data class TopLevelDestination(
 // one lambda per destination here rather than a generic KClass comparison at the call site.
 val topLevelDestinations: List<TopLevelDestination> =
     listOf(
+        TopLevelDestination(DashboardRoute, R.string.destination_dashboard, Icons.Filled.Home) {
+            it.isInHierarchy<DashboardRoute>()
+        },
         TopLevelDestination(ConnectionRoute, R.string.destination_connection, Icons.Filled.NetworkWifi) {
             it.isInHierarchy<ConnectionRoute>()
         },
