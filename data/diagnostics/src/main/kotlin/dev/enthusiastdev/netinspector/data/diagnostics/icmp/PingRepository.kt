@@ -7,8 +7,12 @@ import kotlinx.coroutines.flow.flow
 import java.net.Inet4Address
 import javax.inject.Inject
 
+/** [count] `null` means unbounded ("ping -t" style, run until the caller cancels the flow)
+ * rather than overloading a finite sentinel like [Int.MAX_VALUE] - any code that reasons about
+ * "how many pings will this send" (duration estimates, history records, ...) sees an explicit
+ * absence instead of a number that looks meaningful but isn't. */
 data class PingConfig(
-    val count: Int = 5,
+    val count: Int? = 5,
     val intervalMs: Long = 1_000,
     val timeoutMs: Int = 1_000,
     val ttl: Int = 64,
@@ -42,7 +46,8 @@ class DefaultPingRepository
             config: PingConfig,
         ): Flow<PingProbeResult> =
             flow {
-                for (sequence in 0 until config.count) {
+                var sequence = 0
+                while (config.count == null || sequence < config.count) {
                     val result =
                         if (icmpSocketSupported) {
                             icmpSocketEngine.probe(address, sequence, config.timeoutMs, config.ttl, config.payloadSize)
@@ -50,7 +55,9 @@ class DefaultPingRepository
                             pingBinaryEngine.probe(address, sequence, config.timeoutMs)
                         }
                     emit(result)
-                    if (sequence < config.count - 1) delay(config.intervalMs)
+                    sequence++
+                    val isLastProbe = config.count != null && sequence >= config.count
+                    if (!isLastProbe) delay(config.intervalMs)
                 }
             }
     }

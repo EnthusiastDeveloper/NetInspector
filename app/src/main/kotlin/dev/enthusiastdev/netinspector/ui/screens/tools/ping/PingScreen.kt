@@ -154,9 +154,10 @@ private fun ResultLog(
         contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
-        // Continuous mode only: a fixed run's handful of points isn't really a "trend," and
-        // gating it here (rather than on sample count alone) keeps a stale chart from a
-        // previous fixed run showing once the mode switch flips without a new run started yet.
+        // Continuous mode only: a fixed run's handful of points isn't really a "trend." Relies
+        // on PingViewModel.setLoopMode clearing rttSamples on every toggle - otherwise this gate
+        // alone doesn't stop a stale chart from a previous fixed run showing the instant the
+        // mode switch flips, before a new run has even started.
         if (uiState.isLoopMode && uiState.rttSamples.size >= 2) {
             item {
                 val maxSample = uiState.rttSamples.max()

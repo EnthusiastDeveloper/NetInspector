@@ -69,8 +69,13 @@ class PingViewModel
         }
 
         fun setLoopMode(enabled: Boolean) {
-            if (_uiState.value.isRunning) return
-            _uiState.update { it.copy(isLoopMode = enabled) }
+            if (_uiState.value.isRunning || enabled == _uiState.value.isLoopMode) return
+            // Clears the *display* only (window/results/rttSamples), not sessionTarget/
+            // sessionSent/sessionRtts: a mode toggle hasn't run anything, so it must not erase
+            // an accumulating loop session's totals, only the stale chart/log left over from
+            // whatever last ran under the other mode.
+            window.clear()
+            _uiState.update { it.copy(isLoopMode = enabled, results = emptyList(), rttSamples = emptyList()) }
         }
 
         fun start() {
@@ -101,7 +106,16 @@ class PingViewModel
                             window.clear()
                         }
                     } else {
+                        // A fixed-count run always invalidates any in-progress loop session,
+                        // not just its window: leaving sessionTarget/sessionSent/sessionRtts
+                        // untouched here let a later loop run on the same host see
+                        // `host == sessionTarget` and wrongly "continue" a session whose window
+                        // had actually been overwritten by this intervening fixed-count run's
+                        // own results.
                         window.clear()
+                        sessionTarget = null
+                        sessionSent = 0
+                        sessionRtts.clear()
                     }
 
                     _uiState.update {
@@ -115,14 +129,21 @@ class PingViewModel
                     }
 
                     // Loop mode ("ping -t" style) reuses the same flow-based API with an
-                    // effectively unlimited count instead of adding a second streaming entry
-                    // point to PingRepository - stop() below cancels runJob to end it, the same
+                    // unbounded count instead of adding a second streaming entry point to
+                    // PingRepository - stop() below cancels runJob to end it, the same
                     // cancellation path a fixed-count run's Stop button always used.
-                    val config = if (loop) PingConfig(count = Int.MAX_VALUE) else PingConfig()
+                    val config = if (loop) PingConfig(count = null) else PingConfig()
                     val startedAtMillis = System.currentTimeMillis()
+                    // Unbounded, unlike `window` (which is deliberately capped at
+                    // MAX_ROLLING_SAMPLES for display): the completion summary/history below
+                    // must reflect every probe this run actually sent, not just whatever's
+                    // still in the display window, the same reasoning sessionRtts exists for
+                    // loop mode's own Stop-time summary.
+                    val runResults = mutableListOf<PingProbeResult>()
                     pingRepository.ping(address, config).collect { result ->
                         window.addLast(result)
                         if (window.size > MAX_ROLLING_SAMPLES) window.removeFirst()
+                        runResults.add(result)
                         if (loop) {
                             sessionSent += 1
                             (result as? PingProbeResult.Reply)?.let { sessionRtts.add(it.rttMs) }
@@ -131,15 +152,14 @@ class PingViewModel
                     }
 
                     // Only reached when the flow completes on its own, i.e. the fixed-count
-                    // path - loop mode's Int.MAX_VALUE count never gets here in practice, stop()
+                    // path - loop mode's unbounded count never gets here in practice, stop()
                     // cancels runJob, which interrupts the collect above instead, and stop()
                     // does its own summary finalization for that case from the session totals.
-                    val collected = window.toList()
-                    val rtts = collected.filterIsInstance<PingProbeResult.Reply>().map { it.rttMs }
-                    val summary = summarizePing(PingTier.ICMP_SOCKET, config.count, rtts)
+                    val rtts = runResults.filterIsInstance<PingProbeResult.Reply>().map { it.rttMs }
+                    val summary = summarizePing(PingTier.ICMP_SOCKET, runResults.size, rtts)
                     _uiState.update { it.copy(isRunning = false, summary = summary) }
 
-                    recordHistory(host, config, collected, summary, System.currentTimeMillis() - startedAtMillis)
+                    recordHistory(host, config, runResults, summary, System.currentTimeMillis() - startedAtMillis)
                 }
         }
 
@@ -177,7 +197,7 @@ class PingViewModel
                     parametersJson =
                         diagnosticRunParametersJson(
                             mapOf(
-                                "count" to config.count.toString(),
+                                "count" to (config.count?.toString() ?: "unbounded"),
                                 "intervalMs" to config.intervalMs.toString(),
                                 "timeoutMs" to config.timeoutMs.toString(),
                                 "ttl" to config.ttl.toString(),

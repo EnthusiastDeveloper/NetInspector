@@ -66,7 +66,11 @@ fun RollingLineChart(
                     strokeWidth = 1.dp.toPx(),
                 )
                 val label = textMeasurer.measure(valueLabel(value), labelStyle)
-                val labelY = (y - label.size.height / 2f).coerceIn(0f, size.height - label.size.height)
+                // maxOf(0f, ...) rather than a bare coerceIn upper bound: at a large enough
+                // accessibility font scale the measured label can be taller than this chart's
+                // fixed height, which would otherwise make the upper bound negative and
+                // coerceIn throw (its bounds must satisfy minimum <= maximum).
+                val labelY = (y - label.size.height / 2f).coerceIn(0f, maxOf(0f, size.height - label.size.height))
                 drawText(textLayoutResult = label, topLeft = Offset(4.dp.toPx(), labelY))
             }
 
