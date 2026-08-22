@@ -85,6 +85,25 @@ class ConnectivityDataSource
 
                 connectivityManager.registerNetworkCallback(request, callback)
 
+                // registerNetworkCallback only delivers *future* changes - onCapabilities/
+                // LinkPropertiesChanged never fire for a network that already existed before
+                // this flow was collected, and onUnavailable() is never invoked for this
+                // registration method (Android reserves it for requestNetwork()'s timeout case).
+                // A device that's already off Wi-Fi (or already connected) when this flow is
+                // first collected would otherwise never emit anything at all - callers would
+                // spin on a permanent "loading" state rather than see "not connected." Seed the
+                // flow with whatever's true right now.
+                val activeNetwork = connectivityManager.activeNetwork
+                val activeCapabilities = activeNetwork?.let(connectivityManager::getNetworkCapabilities)
+                if (activeCapabilities != null &&
+                    activeCapabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) &&
+                    activeCapabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+                ) {
+                    lastCapabilities = activeCapabilities
+                    lastLinkProperties = connectivityManager.getLinkProperties(activeNetwork)
+                }
+                emitMerged()
+
                 awaitClose { connectivityManager.unregisterNetworkCallback(callback) }
             }
     }
