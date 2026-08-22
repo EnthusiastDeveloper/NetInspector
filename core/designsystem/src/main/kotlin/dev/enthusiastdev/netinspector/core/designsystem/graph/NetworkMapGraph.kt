@@ -2,14 +2,23 @@ package dev.enthusiastdev.netinspector.core.designsystem.graph
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.gestures.detectTransformGestures
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
@@ -19,13 +28,15 @@ import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Constraints
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import kotlin.math.roundToInt
 
-private const val CANVAS_HEIGHT_DP = 320
 private const val HUB_RADIUS_DP = 28f
 private const val NODE_RADIUS_DP = 16f
 private const val LABEL_OFFSET_DP = 4f
+private const val MIN_SCALE = 1f
+private const val MAX_SCALE = 4f
 
 // A resolved hostname/device-hint label can run far longer than the node spacing at this map's
 // scale allows (e.g. a device-hint fallback like "Linux/Android/iOS/macOS family") - clipped
@@ -37,6 +48,13 @@ private const val LABEL_MAX_WIDTH_DP = 64f
  * A hub-and-spoke visualization of a *logical* network - who was discovered around the gateway,
  * not real switch-level wiring (unavailable without SNMP/LLDP). [hub] is drawn at the center;
  * [spokes] ring it, packed into concentric rings by [computeRadialSlots] as their count grows.
+ * Sizing is entirely up to [modifier] - a dense map benefits from as much room as the caller can
+ * give it, so this never imposes its own fixed height.
+ *
+ * Pinch-to-zoom/pan (via `detectTransformGestures`) is the main way to pull crowded labels apart
+ * once a real sweep's host count packs several rings tightly - a fixed extra layout pass to avoid
+ * every possible collision would fight the radial layout's whole point (position mirrors ring/
+ * angle, not label width), so letting the user zoom into a crowded area is the more honest fix.
  *
  * Tap hit-testing recomputes the same [networkMapOffsets] geometry the draw pass used (the
  * `ChannelOccupancyGraph` pattern this module already follows) rather than attaching one
@@ -52,23 +70,62 @@ fun NetworkMapGraph(
     onNodeClick: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val hubColor = MaterialTheme.colorScheme.primary
-    val selfColor = MaterialTheme.colorScheme.tertiary
-    val atRiskColor = MaterialTheme.colorScheme.error
-    val normalColor = MaterialTheme.colorScheme.secondary
-    val spokeLineColor = MaterialTheme.colorScheme.outlineVariant
-    val labelStyle = MaterialTheme.typography.labelSmall.copy(color = MaterialTheme.colorScheme.onSurfaceVariant)
-    val textMeasurer = rememberTextMeasurer()
+    var scale by remember { mutableStateOf(MIN_SCALE) }
+    var offset by remember { mutableStateOf(Offset.Zero) }
+    var containerSize by remember { mutableStateOf(IntSize.Zero) }
 
-    val hubRadiusPx = with(LocalDensity.current) { HUB_RADIUS_DP.dp.toPx() }
-    val nodeRadiusPx = with(LocalDensity.current) { NODE_RADIUS_DP.dp.toPx() }
+    Box(
+        modifier =
+            modifier
+                .clipToBounds()
+                .onSizeChanged { containerSize = it }
+                .pointerInput(Unit) {
+                    detectTransformGestures { _, pan, zoom, _ ->
+                        val newScale = (scale * zoom).coerceIn(MIN_SCALE, MAX_SCALE)
+                        val maxOffsetX = (containerSize.width * (newScale - 1) / 2f).coerceAtLeast(0f)
+                        val maxOffsetY = (containerSize.height * (newScale - 1) / 2f).coerceAtLeast(0f)
+                        offset =
+                            Offset(
+                                x = (offset.x + pan.x).coerceIn(-maxOffsetX, maxOffsetX),
+                                y = (offset.y + pan.y).coerceIn(-maxOffsetY, maxOffsetY),
+                            )
+                        scale = newScale
+                    }
+                },
+    ) {
+        NetworkMapCanvas(hub, spokes, onNodeClick, scale, offset)
+    }
+}
+
+@Composable
+private fun NetworkMapCanvas(
+    hub: NetworkMapNode?,
+    spokes: List<NetworkMapNode>,
+    onNodeClick: (String) -> Unit,
+    scale: Float,
+    offset: Offset,
+) {
+    val paint =
+        NetworkMapPaint(
+            textMeasurer = rememberTextMeasurer(),
+            labelStyle = MaterialTheme.typography.labelSmall.copy(color = MaterialTheme.colorScheme.onSurfaceVariant),
+            colors = networkMapColors(),
+            hubRadiusPx = with(LocalDensity.current) { HUB_RADIUS_DP.dp.toPx() },
+            nodeRadiusPx = with(LocalDensity.current) { NODE_RADIUS_DP.dp.toPx() },
+        )
+    val hubRadiusPx = paint.hubRadiusPx
+    val nodeRadiusPx = paint.nodeRadiusPx
 
     Canvas(
         modifier =
-            modifier
-                .fillMaxWidth()
-                .height(CANVAS_HEIGHT_DP.dp)
-                .pointerInput(hub, spokes) {
+            Modifier
+                .fillMaxSize()
+                .graphicsLayer {
+                    scaleX = scale
+                    scaleY = scale
+                    translationX = offset.x
+                    translationY = offset.y
+                }.pointerInput(hub, spokes) {
                     detectTapGestures { tapOffset ->
                         val geometry =
                             NetworkMapGeometry(
@@ -82,7 +139,7 @@ fun NetworkMapGraph(
                             hitTestNode(
                                 tap = tapOffset,
                                 hub = hub?.let { it.id to geometry.center },
-                                spokes = geometry.spokeOffsets.mapIndexed { i, offset -> spokes[i].id to offset },
+                                spokes = geometry.spokeOffsets.mapIndexed { i, o -> spokes[i].id to o },
                                 hitRadiusPx = nodeRadiusPx,
                             )
                         hitId?.let(onNodeClick)
@@ -90,27 +147,63 @@ fun NetworkMapGraph(
                 }.clearAndSetSemantics { contentDescription = describeMap(hub, spokes) },
     ) {
         val geometry = NetworkMapGeometry(size.width, size.height, hubRadiusPx, nodeRadiusPx, spokes)
+        drawNetworkMap(geometry, hub, spokes, paint)
+    }
+}
 
-        geometry.spokeOffsets.forEach { offset ->
-            drawLine(spokeLineColor, geometry.center, offset, strokeWidth = 1.dp.toPx())
-        }
-        if (hub != null) {
-            drawCircle(hubColor, radius = hubRadiusPx, center = geometry.center)
-            drawNodeLabel(textMeasurer, hub.label, geometry.center, hubRadiusPx, labelStyle)
-        }
-        spokes.forEachIndexed { index, node ->
-            val offset = geometry.spokeOffsets[index]
-            val color =
-                if (node.isAtRisk) {
-                    atRiskColor
-                } else if (node.isSelf) {
-                    selfColor
-                } else {
-                    normalColor
-                }
-            drawCircle(color, radius = nodeRadiusPx, center = offset)
-            drawNodeLabel(textMeasurer, node.label, offset, nodeRadiusPx, labelStyle)
-        }
+private data class NetworkMapColors(
+    val hub: Color,
+    val self: Color,
+    val atRisk: Color,
+    val normal: Color,
+    val spokeLine: Color,
+)
+
+@Composable
+private fun networkMapColors() =
+    NetworkMapColors(
+        hub = MaterialTheme.colorScheme.primary,
+        self = MaterialTheme.colorScheme.tertiary,
+        atRisk = MaterialTheme.colorScheme.error,
+        normal = MaterialTheme.colorScheme.secondary,
+        spokeLine = MaterialTheme.colorScheme.outlineVariant,
+    )
+
+/** Everything the draw pass needs besides geometry, bundled so [drawNetworkMap] stays under a
+ * plain parameter-count lint threshold without losing any of it. */
+private class NetworkMapPaint(
+    val textMeasurer: TextMeasurer,
+    val labelStyle: TextStyle,
+    val colors: NetworkMapColors,
+    val hubRadiusPx: Float,
+    val nodeRadiusPx: Float,
+)
+
+private fun DrawScope.drawNetworkMap(
+    geometry: NetworkMapGeometry,
+    hub: NetworkMapNode?,
+    spokes: List<NetworkMapNode>,
+    paint: NetworkMapPaint,
+) {
+    geometry.spokeOffsets.forEach { spokeOffset ->
+        drawLine(paint.colors.spokeLine, geometry.center, spokeOffset, strokeWidth = 1.dp.toPx())
+    }
+    if (hub != null) {
+        drawCircle(paint.colors.hub, radius = paint.hubRadiusPx, center = geometry.center)
+        drawNodeLabel(paint.textMeasurer, hub.label, geometry.center, paint.hubRadiusPx, paint.labelStyle)
+    }
+    spokes.forEachIndexed { index, node ->
+        val spokeOffset = geometry.spokeOffsets[index]
+        val color =
+            if (node.isAtRisk) {
+                paint.colors.atRisk
+            } else if (node.isSelf) {
+                paint.colors.self
+            } else {
+                paint.colors.normal
+            }
+        drawCircle(color, radius = paint.nodeRadiusPx, center = spokeOffset)
+        drawNodeLabel(paint.textMeasurer, node.label, spokeOffset, paint.nodeRadiusPx, paint.labelStyle)
     }
 }
 

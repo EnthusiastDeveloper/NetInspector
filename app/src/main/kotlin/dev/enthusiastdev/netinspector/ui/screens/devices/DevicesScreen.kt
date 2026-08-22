@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -173,6 +174,10 @@ private fun DevicesContent(
     }
 }
 
+/** The header/toggle/filter block is fixed-height at the top; the body below it fills whatever
+ * space remains. Map mode needs that - a `LazyColumn` sized to its content (the original shape
+ * of this pane) left the map stuck at whatever fixed height it asked for, wasting the rest of
+ * the pane instead of giving a dense host set the room [NetworkMapGraph] can actually use. */
 @Composable
 private fun DevicesListPane(
     state: DevicesUiState.Content,
@@ -184,20 +189,17 @@ private fun DevicesListPane(
     onSortOrderChange: (DevicesSortOrder) -> Unit,
     onToggleConfidenceFilter: (HostConfidence) -> Unit,
 ) {
-    LazyColumn(
-        modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(16.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        item {
+    Column(modifier = Modifier.fillMaxSize()) {
+        Column(
+            modifier = Modifier.fillMaxWidth().padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
             Text(
                 stringResource(R.string.destination_devices),
                 style = MaterialTheme.typography.headlineSmall,
                 textAlign = TextAlign.Center,
                 modifier = Modifier.fillMaxWidth(),
             )
-        }
-        item {
             DevicesHeader(
                 hostCount = state.hosts.size,
                 progress = state.progress,
@@ -205,15 +207,13 @@ private fun DevicesListPane(
                 onScan = onScan,
                 onCancel = onCancel,
             )
-        }
-        // docs/improvement-ideas.md #1 - meaningless (always "100, Excellent") until at least
-        // one host has been through the extended port probe, same gate DevicesDetailCards
-        // uses per-host, so this doesn't misrepresent a network nobody has scanned ports on yet.
-        if (state.hosts.any { it.openPorts.isNotEmpty() }) {
-            item { DevicesNetworkHygieneCard(state.hosts, onHostClick = onHostClick) }
-        }
-        item { DevicesViewModeToggle(viewMode, onViewModeChange) }
-        item {
+            // docs/improvement-ideas.md #1 - meaningless (always "100, Excellent") until at least
+            // one host has been through the extended port probe, same gate DevicesDetailCards
+            // uses per-host, so this doesn't misrepresent a network nobody has scanned ports on yet.
+            if (state.hosts.any { it.openPorts.isNotEmpty() }) {
+                DevicesNetworkHygieneCard(state.hosts, onHostClick = onHostClick)
+            }
+            DevicesViewModeToggle(viewMode, onViewModeChange)
             DevicesSortFilterBar(
                 sortOrder = state.sortOrder,
                 confidenceFilter = state.confidenceFilter,
@@ -221,19 +221,29 @@ private fun DevicesListPane(
                 onToggleConfidence = onToggleConfidenceFilter,
             )
         }
-        if (state.hosts.isEmpty() && !state.progress.isRunning) {
-            item {
+        when {
+            state.hosts.isEmpty() && !state.progress.isRunning ->
                 Text(
                     "No devices found yet. Tap Scan to discover hosts on this network.",
                     style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.padding(horizontal = 16.dp),
                 )
-            }
-        } else if (viewMode == DevicesViewMode.MAP) {
-            item { DevicesNetworkMap(hosts = state.hosts, onHostClick = onHostClick) }
-        } else {
-            items(state.hosts, key = { it.address.addressString }) { host ->
-                HostCard(host, onClick = { onHostClick(host.address.addressString) })
-            }
+            viewMode == DevicesViewMode.MAP ->
+                DevicesNetworkMap(
+                    hosts = state.hosts,
+                    onHostClick = onHostClick,
+                    modifier = Modifier.weight(1f).fillMaxWidth(),
+                )
+            else ->
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    items(state.hosts, key = { it.address.addressString }) { host ->
+                        HostCard(host, onClick = { onHostClick(host.address.addressString) })
+                    }
+                }
         }
     }
 }
@@ -264,14 +274,21 @@ private fun DevicesViewModeToggle(
 private fun DevicesNetworkMap(
     hosts: List<Host>,
     onHostClick: (String) -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     val mapData = remember(hosts) { hosts.toNetworkMapData() }
-    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        NetworkMapGraph(hub = mapData.hub, spokes = mapData.spokes, onNodeClick = onHostClick)
+    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        NetworkMapGraph(
+            hub = mapData.hub,
+            spokes = mapData.spokes,
+            onNodeClick = onHostClick,
+            modifier = Modifier.weight(1f).fillMaxWidth(),
+        )
         Text(
-            "Logical view based on discovered hosts - not physical wiring topology.",
+            "Logical view based on discovered hosts - not physical wiring topology. Pinch to zoom.",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
         )
     }
 }
