@@ -18,11 +18,12 @@ private fun host(
     isGateway: Boolean = false,
     isSelf: Boolean = false,
     openPorts: List<OpenPort> = emptyList(),
+    hostname: String? = null,
 ) = Host(
     address = addr(address),
     confidence = HostConfidence.CONFIRMED,
     evidence = listOf(Evidence(EvidenceSource.ICMP, Instant.EPOCH)),
-    hostnames = emptyMap(),
+    hostnames = hostname?.let { mapOf(EvidenceSource.REVERSE_DNS to it) }.orEmpty(),
     macAddress = null,
     vendor = null,
     deviceHint = null,
@@ -71,17 +72,30 @@ class DevicesMapMappingTest {
     }
 
     @Test
-    fun `mapLabel uses the last IP octet for a regular host`() {
-        assertThat(host("192.168.1.42").mapLabel()).isEqualTo("42")
+    fun `toNetworkMapData labels a regular host with its resolved hostname`() {
+        val hosts = listOf(host("192.168.1.42", hostname = "printer.lan"))
+        val data = hosts.toNetworkMapData()
+        assertThat(data.spokes.single().label).isEqualTo("printer.lan")
     }
 
     @Test
-    fun `mapLabel uses You for the self host`() {
-        assertThat(host("192.168.1.2", isSelf = true).mapLabel()).isEqualTo("You")
+    fun `toNetworkMapData falls back to Unknown device when nothing resolved a name`() {
+        val hosts = listOf(host("192.168.1.42"))
+        val data = hosts.toNetworkMapData()
+        assertThat(data.spokes.single().label).isEqualTo("Unknown device")
     }
 
     @Test
-    fun `mapLabel uses the full display name for the gateway`() {
-        assertThat(host("192.168.1.1", isGateway = true).mapLabel()).isEqualTo("Gateway")
+    fun `toNetworkMapData labels the self host This device`() {
+        val hosts = listOf(host("192.168.1.2", isSelf = true))
+        val data = hosts.toNetworkMapData()
+        assertThat(data.spokes.single().label).isEqualTo("This device")
+    }
+
+    @Test
+    fun `toNetworkMapData labels the gateway with its full display name`() {
+        val hosts = listOf(host("192.168.1.1", isGateway = true))
+        val data = hosts.toNetworkMapData()
+        assertThat(data.hub?.label).isEqualTo("Gateway")
     }
 }

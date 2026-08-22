@@ -17,12 +17,21 @@ import androidx.compose.ui.text.TextMeasurer
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
+import kotlin.math.roundToInt
 
 private const val CANVAS_HEIGHT_DP = 320
 private const val HUB_RADIUS_DP = 28f
 private const val NODE_RADIUS_DP = 16f
 private const val LABEL_OFFSET_DP = 4f
+
+// A resolved hostname/device-hint label can run far longer than the node spacing at this map's
+// scale allows (e.g. a device-hint fallback like "Linux/Android/iOS/macOS family") - clipped
+// with an ellipsis rather than left to overlap neighboring nodes, matching the collision-avoidance
+// the channel occupancy graph already applies to its own labels.
+private const val LABEL_MAX_WIDTH_DP = 64f
 
 /**
  * A hub-and-spoke visualization of a *logical* network - who was discovered around the gateway,
@@ -131,7 +140,15 @@ private fun DrawScope.drawNodeLabel(
     nodeRadiusPx: Float,
     style: TextStyle,
 ) {
-    val measured = textMeasurer.measure(label, style)
+    val measured =
+        textMeasurer.measure(
+            text = label,
+            style = style,
+            overflow = TextOverflow.Ellipsis,
+            softWrap = false,
+            maxLines = 1,
+            constraints = Constraints(maxWidth = LABEL_MAX_WIDTH_DP.dp.toPx().roundToInt()),
+        )
     drawText(
         textLayoutResult = measured,
         topLeft =

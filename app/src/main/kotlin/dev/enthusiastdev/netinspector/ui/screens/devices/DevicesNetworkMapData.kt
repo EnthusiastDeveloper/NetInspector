@@ -25,17 +25,7 @@ internal fun List<Host>.toNetworkMapData(): DevicesNetworkMapData {
 private fun Host.toNetworkMapNode(): NetworkMapNode =
     NetworkMapNode(
         id = address.addressString,
-        label = mapLabel(),
+        label = displayName(),
         isSelf = isSelf,
         isAtRisk = openPorts.isNotEmpty(),
     )
-
-/** [displayName] is too wide for a node packed among several others at the map's scale - this
- * favors the last IP octet for a regular host, since that's still enough to tell nodes apart at
- * a glance, and "You"/the full gateway label for the two nodes the map singles out anyway. */
-internal fun Host.mapLabel(): String =
-    when {
-        isGateway -> displayName()
-        isSelf -> "You"
-        else -> address.addressString.substringAfterLast('.')
-    }
