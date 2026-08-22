@@ -43,4 +43,26 @@ class PortRiskHeuristicsTest {
     fun `portRiskSeverity returns null for a port with no notable risk`() {
         assertThat(portRiskSeverity(8009)).isNull()
     }
+
+    @Test
+    fun `portRiskRemediation suggests SSH in place of telnet`() {
+        assertThat(portRiskRemediation(23)).contains("SSH")
+    }
+
+    @Test
+    fun `portRiskRemediation returns null for a port with no notable risk`() {
+        assertThat(portRiskRemediation(8009)).isNull()
+    }
+
+    @Test
+    fun `allFlaggedPorts covers every port portRiskNote flags, sorted ascending`() {
+        val ports = allFlaggedPorts()
+        assertThat(ports.map { it.first }).isEqualTo(ports.map { it.first }.sorted())
+        assertThat(ports.map { it.first }).containsExactly(21, 23, 25, 110, 143, 1723, 3389, 5900)
+        ports.forEach { (port, risk) ->
+            assertThat(portRiskNote(port)).isEqualTo("${risk.protocol} - ${risk.reason}")
+            assertThat(portRiskSeverity(port)).isEqualTo(risk.severity)
+            assertThat(portRiskRemediation(port)).isEqualTo(risk.remediation)
+        }
+    }
 }

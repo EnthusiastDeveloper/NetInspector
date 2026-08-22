@@ -189,7 +189,7 @@ private fun DevicesListPane(
         // one host has been through the extended port probe, same gate DevicesDetailCards
         // uses per-host, so this doesn't misrepresent a network nobody has scanned ports on yet.
         if (state.hosts.any { it.openPorts.isNotEmpty() }) {
-            item { DevicesNetworkHygieneCard(state.hosts) }
+            item { DevicesNetworkHygieneCard(state.hosts, onHostClick = onHostClick) }
         }
         item {
             DevicesSortFilterBar(
