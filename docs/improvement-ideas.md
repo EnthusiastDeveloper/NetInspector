@@ -62,6 +62,8 @@ as a settings concept.
 ---
 
 ## 5. Configurable connection alert thresholds
+**Status:** Implemented (PR #8, open for review)
+
 Let the existing monitoring notification actually alert the user (not just display state)
 when RSSI drops below a threshold or the connection drops/restores.
 
