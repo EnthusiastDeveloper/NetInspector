@@ -8,6 +8,8 @@ what the app already has.
 ---
 
 ## 1. Network hygiene score
+**Status:** Implemented (PR #5, open for review)
+
 Turn the open-port risk heuristics you already compute per host into a single glanceable
 score per host and per network, so users get an instant "is this okay?" read instead of
 having to parse a raw port list.
@@ -20,6 +22,8 @@ having to parse a raw port list.
 ---
 
 ## 2. Dark / AMOLED true-black theme
+**Status:** Implemented (PR #3, merged)
+
 A pure-black theme option for OLED screens, cheap to add given `ThemeMode` already exists
 as a settings concept.
 
@@ -75,6 +79,8 @@ already exists; apply it consistently to list-detail screens that don't use it y
 ---
 
 ## 7. Continuous ping with a live graph
+**Status:** Implemented (PR #4, merged)
+
 A "ping -t" style loop mode with a live-updating chart, built on the ping engine and
 chart components that already exist.
 
