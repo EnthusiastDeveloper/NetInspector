@@ -7,8 +7,13 @@ import androidx.navigation.toRoute
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dev.enthusiastdev.netinspector.core.model.diagnostics.PortScanFinding
 import dev.enthusiastdev.netinspector.core.model.diagnostics.PortSelection
+import dev.enthusiastdev.netinspector.core.model.lan.Evidence
+import dev.enthusiastdev.netinspector.core.model.lan.EvidenceSource
+import dev.enthusiastdev.netinspector.core.model.lan.HostObservation
+import dev.enthusiastdev.netinspector.core.model.lan.OpenPort
 import dev.enthusiastdev.netinspector.data.diagnostics.portscan.PortScanEvent
 import dev.enthusiastdev.netinspector.data.diagnostics.portscan.PortScannerRepository
+import dev.enthusiastdev.netinspector.data.lan.LanDiscoveryRepository
 import dev.enthusiastdev.netinspector.data.persistence.diagnostics.DiagnosticRunRecord
 import dev.enthusiastdev.netinspector.data.persistence.diagnostics.DiagnosticRunRepository
 import dev.enthusiastdev.netinspector.data.persistence.preferences.AppSettingsRepository
@@ -30,6 +35,7 @@ import kotlinx.coroutines.withContext
 import kotlinx.serialization.encodeToString
 import java.net.Inet4Address
 import java.net.InetAddress
+import java.time.Clock
 import javax.inject.Inject
 
 @HiltViewModel
@@ -39,6 +45,8 @@ class PortScannerViewModel
         private val portScannerRepository: PortScannerRepository,
         private val diagnosticRunRepository: DiagnosticRunRepository,
         private val appSettingsRepository: AppSettingsRepository,
+        private val lanDiscoveryRepository: LanDiscoveryRepository,
+        private val clock: Clock,
         savedStateHandle: SavedStateHandle,
     ) : ViewModel() {
         private val _uiState =
@@ -126,6 +134,30 @@ class PortScannerViewModel
                         _uiState.value.findings,
                         System.currentTimeMillis() - startedAtMillis,
                     )
+
+                    // Feeds a scan's open ports into the same host map the Devices screen (and
+                    // its hygiene score/remediation list) reads from - otherwise a manual scan's
+                    // findings would only ever exist in this screen and diagnostic history,
+                    // invisible everywhere else even for a host the network sweep already knows
+                    // about. Only fires when something was actually found: a scan with nothing
+                    // open has no evidence to contribute, and merging never removes a
+                    // previously-recorded port, so a narrow-range or partial scan can't be
+                    // mistaken for proof the rest closed. EvidenceSource.TCP_CONNECT is the same
+                    // evidence source HostSweeper uses for a successful TCP probe, so a scan of
+                    // a host outside the current sweep's known set confirms it into the Devices
+                    // list rather than leaving it unlisted.
+                    if (_uiState.value.findings.isNotEmpty()) {
+                        lanDiscoveryRepository.recordObservation(
+                            HostObservation(
+                                address = address,
+                                evidence = listOf(Evidence(EvidenceSource.TCP_CONNECT, clock.instant())),
+                                openPorts =
+                                    _uiState.value.findings.map {
+                                        OpenPort(port = it.port, serviceGuess = null, banner = it.banner)
+                                    },
+                            ),
+                        )
+                    }
                 }
         }
 
