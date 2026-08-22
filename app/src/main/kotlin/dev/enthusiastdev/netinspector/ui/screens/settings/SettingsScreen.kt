@@ -17,6 +17,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -54,6 +55,10 @@ fun SettingsRoute(
         onDiagnosticRetentionChange = viewModel::setDiagnosticHistoryRetentionDays,
         onDefaultPortSelectionChange = viewModel::setDefaultPortSelection,
         onNotificationAccessChanged = viewModel::refreshNotificationAccess,
+        onRssiAlertThresholdChange = viewModel::setRssiAlertThresholdDbm,
+        onAlertOnRssiDropChange = viewModel::setAlertOnRssiDrop,
+        onAlertOnDisconnectChange = viewModel::setAlertOnDisconnect,
+        onAlertOnReconnectChange = viewModel::setAlertOnReconnect,
         modifier = modifier,
     )
 }
@@ -67,6 +72,10 @@ fun SettingsScreen(
     onDiagnosticRetentionChange: (Int) -> Unit,
     onDefaultPortSelectionChange: (PortSelection) -> Unit,
     onNotificationAccessChanged: () -> Unit,
+    onRssiAlertThresholdChange: (Int) -> Unit,
+    onAlertOnRssiDropChange: (Boolean) -> Unit,
+    onAlertOnDisconnectChange: (Boolean) -> Unit,
+    onAlertOnReconnectChange: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     LazyColumn(
@@ -80,6 +89,15 @@ fun SettingsScreen(
             RetentionSection(uiState, onScanRetentionChange, onDiagnosticRetentionChange)
         }
         item { PortScannerSection(uiState.defaultPortSelection, onDefaultPortSelectionChange) }
+        item {
+            ConnectionAlertsSection(
+                uiState = uiState,
+                onThresholdChange = onRssiAlertThresholdChange,
+                onRssiDropChange = onAlertOnRssiDropChange,
+                onDisconnectChange = onAlertOnDisconnectChange,
+                onReconnectChange = onAlertOnReconnectChange,
+            )
+        }
         // Independent of the Connection tab's card and its dismiss state: this section is the
         // only place granting notification access is guaranteed to be reachable, so it stays
         // visible for as long as the permission itself is missing.
@@ -175,6 +193,67 @@ private fun RetentionField(
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
         modifier = modifier,
     )
+}
+
+/** improvement-ideas.md #5 - the continuous-monitoring notification (`MonitoringService`) only
+ * ever displayed live state until now; these three toggles are what actually turn a
+ * disconnect/reconnect/weak-signal reading into a distinct alert notification, each read
+ * straight from `AppSettingsRepository` the same way [RetentionSection]'s fields are. */
+@Composable
+private fun ConnectionAlertsSection(
+    uiState: SettingsUiState,
+    onThresholdChange: (Int) -> Unit,
+    onRssiDropChange: (Boolean) -> Unit,
+    onDisconnectChange: (Boolean) -> Unit,
+    onReconnectChange: (Boolean) -> Unit,
+) {
+    InfoCard(title = "Connection alerts") {
+        Text(
+            "Alert while continuous monitoring is running, in addition to the ongoing status " +
+                "notification.",
+            style = MaterialTheme.typography.bodySmall,
+        )
+        AlertToggleRow(
+            label = "Alert on disconnect",
+            checked = uiState.alertOnDisconnect,
+            onCheckedChange = onDisconnectChange,
+        )
+        AlertToggleRow(
+            label = "Alert on reconnect",
+            checked = uiState.alertOnReconnect,
+            onCheckedChange = onReconnectChange,
+        )
+        AlertToggleRow(
+            label = "Alert on weak signal",
+            checked = uiState.alertOnRssiDrop,
+            onCheckedChange = onRssiDropChange,
+        )
+        if (uiState.alertOnRssiDrop) {
+            OutlinedTextField(
+                value = uiState.rssiAlertThresholdDbm.toString(),
+                onValueChange = { value -> value.toIntOrNull()?.let(onThresholdChange) },
+                label = { Text("Weak signal threshold (dBm)") },
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
+    }
+}
+
+@Composable
+private fun AlertToggleRow(
+    label: String,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+    ) {
+        Text(label, style = MaterialTheme.typography.bodyMedium)
+        Switch(checked = checked, onCheckedChange = onCheckedChange)
+    }
 }
 
 @Composable

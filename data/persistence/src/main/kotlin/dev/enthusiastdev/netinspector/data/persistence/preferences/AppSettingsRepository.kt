@@ -24,6 +24,14 @@ interface AppSettingsRepository {
     val defaultPortSelection: Flow<PortSelection>
     val monitoringCardDismissed: Flow<Boolean>
 
+    // improvement-ideas.md #5 - opt-in, default off, matching this codebase's convention for
+    // other notification-adjacent settings (see docs/open-items.md #5): a user who just started
+    // continuous monitoring shouldn't be surprised by alerts they never asked for.
+    val rssiAlertThresholdDbm: Flow<Int>
+    val alertOnRssiDrop: Flow<Boolean>
+    val alertOnDisconnect: Flow<Boolean>
+    val alertOnReconnect: Flow<Boolean>
+
     suspend fun setThemeMode(mode: ThemeMode)
 
     suspend fun setRssiDisplayUnit(unit: RssiDisplayUnit)
@@ -31,6 +39,20 @@ interface AppSettingsRepository {
     suspend fun setDefaultPortSelection(selection: PortSelection)
 
     suspend fun setMonitoringCardDismissed(dismissed: Boolean)
+
+    suspend fun setRssiAlertThresholdDbm(thresholdDbm: Int)
+
+    suspend fun setAlertOnRssiDrop(enabled: Boolean)
+
+    suspend fun setAlertOnDisconnect(enabled: Boolean)
+
+    suspend fun setAlertOnReconnect(enabled: Boolean)
+
+    companion object {
+        /** A widely used "weak signal" cutoff - offered as the threshold field's starting
+         * value once a user opts into RSSI-drop alerts, not a value enforced on them. */
+        const val DEFAULT_RSSI_ALERT_THRESHOLD_DBM = -75
+    }
 }
 
 class DefaultAppSettingsRepository
@@ -49,6 +71,18 @@ class DefaultAppSettingsRepository
 
         override val monitoringCardDismissed: Flow<Boolean> =
             dataStore.data.map { it.monitoringCardDismissed }
+
+        override val rssiAlertThresholdDbm: Flow<Int> =
+            dataStore.data.map {
+                it.rssiAlertThresholdDbm.takeIf { dbm -> dbm != 0 }
+                    ?: AppSettingsRepository.DEFAULT_RSSI_ALERT_THRESHOLD_DBM
+            }
+
+        override val alertOnRssiDrop: Flow<Boolean> = dataStore.data.map { it.alertOnRssiDrop }
+
+        override val alertOnDisconnect: Flow<Boolean> = dataStore.data.map { it.alertOnDisconnect }
+
+        override val alertOnReconnect: Flow<Boolean> = dataStore.data.map { it.alertOnReconnect }
 
         override suspend fun setThemeMode(mode: ThemeMode) {
             dataStore.updateData { it.copy { themeMode = mode.name } }
@@ -72,6 +106,22 @@ class DefaultAppSettingsRepository
 
         override suspend fun setMonitoringCardDismissed(dismissed: Boolean) {
             dataStore.updateData { it.copy { monitoringCardDismissed = dismissed } }
+        }
+
+        override suspend fun setRssiAlertThresholdDbm(thresholdDbm: Int) {
+            dataStore.updateData { it.copy { rssiAlertThresholdDbm = thresholdDbm } }
+        }
+
+        override suspend fun setAlertOnRssiDrop(enabled: Boolean) {
+            dataStore.updateData { it.copy { alertOnRssiDrop = enabled } }
+        }
+
+        override suspend fun setAlertOnDisconnect(enabled: Boolean) {
+            dataStore.updateData { it.copy { alertOnDisconnect = enabled } }
+        }
+
+        override suspend fun setAlertOnReconnect(enabled: Boolean) {
+            dataStore.updateData { it.copy { alertOnReconnect = enabled } }
         }
     }
 
