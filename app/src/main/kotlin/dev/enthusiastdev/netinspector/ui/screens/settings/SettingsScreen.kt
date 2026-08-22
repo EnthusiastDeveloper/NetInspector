@@ -19,6 +19,7 @@ import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -59,6 +60,7 @@ fun SettingsRoute(
         onAlertOnRssiDropChange = viewModel::setAlertOnRssiDrop,
         onAlertOnDisconnectChange = viewModel::setAlertOnDisconnect,
         onAlertOnReconnectChange = viewModel::setAlertOnReconnect,
+        onResumeMonitoringCard = viewModel::resumeMonitoringCard,
         modifier = modifier,
     )
 }
@@ -76,6 +78,7 @@ fun SettingsScreen(
     onAlertOnRssiDropChange: (Boolean) -> Unit,
     onAlertOnDisconnectChange: (Boolean) -> Unit,
     onAlertOnReconnectChange: (Boolean) -> Unit,
+    onResumeMonitoringCard: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     LazyColumn(
@@ -98,11 +101,19 @@ fun SettingsScreen(
                 onReconnectChange = onAlertOnReconnectChange,
             )
         }
-        // Independent of the Connection tab's card and its dismiss state: this section is the
-        // only place granting notification access is guaranteed to be reachable, so it stays
-        // visible for as long as the permission itself is missing.
-        if (uiState.monitoringNotificationAccess != NotificationAccessState.GRANTED) {
-            item { MonitoringSection(onNotificationAccessChanged) }
+        // This is the only place either blocker on continuous monitoring can be cleared: a
+        // missing permission, or the Connection tab's card having been dismissed (a one-way
+        // action from that screen - ConnectionViewModel.dismissMonitoringCard has no undo).
+        val notificationAccessGranted = uiState.monitoringNotificationAccess == NotificationAccessState.GRANTED
+        if (!notificationAccessGranted || uiState.monitoringCardDismissed) {
+            item {
+                MonitoringSection(
+                    notificationAccessGranted = notificationAccessGranted,
+                    cardDismissed = uiState.monitoringCardDismissed,
+                    onNotificationAccessChanged = onNotificationAccessChanged,
+                    onResumeMonitoringCard = onResumeMonitoringCard,
+                )
+            }
         }
     }
 }
@@ -319,15 +330,29 @@ private fun PortScannerSection(
 }
 
 @Composable
-private fun MonitoringSection(onNotificationAccessChanged: () -> Unit) {
+private fun MonitoringSection(
+    notificationAccessGranted: Boolean,
+    cardDismissed: Boolean,
+    onNotificationAccessChanged: () -> Unit,
+    onResumeMonitoringCard: () -> Unit,
+) {
     InfoCard(title = "Continuous monitoring") {
-        Text(
-            "Notification access is required before continuous monitoring can run.",
-            style = MaterialTheme.typography.bodyMedium,
-        )
-        NotificationAccessButton(
-            onGranted = {},
-            onNotificationAccessChanged = onNotificationAccessChanged,
-        )
+        if (!notificationAccessGranted) {
+            Text(
+                "Notification access is required before continuous monitoring can run.",
+                style = MaterialTheme.typography.bodyMedium,
+            )
+            NotificationAccessButton(
+                onGranted = {},
+                onNotificationAccessChanged = onNotificationAccessChanged,
+            )
+        }
+        if (cardDismissed) {
+            Text(
+                "You've hidden the monitoring card from the Connection tab.",
+                style = MaterialTheme.typography.bodyMedium,
+            )
+            TextButton(onClick = onResumeMonitoringCard) { Text("Show monitoring card again") }
+        }
     }
 }
