@@ -18,4 +18,5 @@ data class SettingsUiState(
     val alertOnRssiDrop: Boolean = false,
     val alertOnDisconnect: Boolean = false,
     val alertOnReconnect: Boolean = false,
+    val monitoringCardDismissed: Boolean = false,
 )

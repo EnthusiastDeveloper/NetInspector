@@ -76,6 +76,8 @@ class SettingsViewModel
                         alertOnDisconnect = alerts.alertOnDisconnect,
                         alertOnReconnect = alerts.alertOnReconnect,
                     )
+                }.combine(appSettingsRepository.monitoringCardDismissed) { state, cardDismissed ->
+                    state.copy(monitoringCardDismissed = cardDismissed)
                 }.combine(notificationAccessTrigger) { state, _ ->
                     state.copy(monitoringNotificationAccess = context.currentNotificationAccessState())
                 }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SettingsUiState())
@@ -124,5 +126,11 @@ class SettingsViewModel
 
         fun setAlertOnReconnect(enabled: Boolean) {
             viewModelScope.launch { appSettingsRepository.setAlertOnReconnect(enabled) }
+        }
+
+        /** The Connection tab's monitoring card dismiss button (`ConnectionViewModel
+         * .dismissMonitoringCard`) is otherwise one-way - this is the only way back. */
+        fun resumeMonitoringCard() {
+            viewModelScope.launch { appSettingsRepository.setMonitoringCardDismissed(false) }
         }
     }
