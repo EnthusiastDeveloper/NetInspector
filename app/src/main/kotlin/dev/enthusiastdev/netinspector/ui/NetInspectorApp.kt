@@ -37,6 +37,7 @@ import dev.enthusiastdev.netinspector.core.designsystem.adaptive.LocalDevicePost
 import dev.enthusiastdev.netinspector.core.designsystem.adaptive.rememberDevicePosture
 import dev.enthusiastdev.netinspector.core.designsystem.adaptive.translatedTo
 import dev.enthusiastdev.netinspector.ui.navigation.ConnectionRoute
+import dev.enthusiastdev.netinspector.ui.navigation.DashboardRoute
 import dev.enthusiastdev.netinspector.ui.navigation.DevicesRoute
 import dev.enthusiastdev.netinspector.ui.navigation.DiagnosticHistoryToolRoute
 import dev.enthusiastdev.netinspector.ui.navigation.DnsToolRoute
@@ -56,6 +57,8 @@ import dev.enthusiastdev.netinspector.ui.navigation.WifiRoute
 import dev.enthusiastdev.netinspector.ui.navigation.topLevelDestinations
 import dev.enthusiastdev.netinspector.ui.screens.connection.ConnectionScreen
 import dev.enthusiastdev.netinspector.ui.screens.connection.ConnectionViewModel
+import dev.enthusiastdev.netinspector.ui.screens.dashboard.DashboardScreen
+import dev.enthusiastdev.netinspector.ui.screens.dashboard.DashboardViewModel
 import dev.enthusiastdev.netinspector.ui.screens.devices.DevicesScreen
 import dev.enthusiastdev.netinspector.ui.screens.devices.DevicesViewModel
 import dev.enthusiastdev.netinspector.ui.screens.settings.SettingsRoute
@@ -110,19 +113,24 @@ private fun NavigationSuiteScope.navigationItems(
     topLevelDestinations.forEach { destination ->
         item(
             selected = destination.isSelected(currentDestination),
-            onClick = {
-                navController.navigate(destination.route) {
-                    popUpTo(navController.graph.findStartDestination().id) { saveState = true }
-                    launchSingleTop = true
-                    // The Tools tab always reopens on its own grid rather than restoring
-                    // whatever tool was last open - restoring here would resurrect Ping/DNS/etc.
-                    // from that tab's saved back stack instead of landing on ToolsHomeRoute.
-                    restoreState = destination.route != ToolsRoute
-                }
-            },
+            onClick = { navController.navigateToTopLevel(destination.route) },
             icon = { Icon(destination.icon, contentDescription = null) },
             label = { Text(stringResource(destination.labelRes)) },
         )
+    }
+}
+
+/** Shared by the bottom-nav items above and the dashboard's shortcut cards, so tapping "Devices"
+ * on the dashboard behaves exactly like tapping the Devices tab - not a separate navigation path
+ * that could drift out of sync with it. */
+private fun NavHostController.navigateToTopLevel(route: Any) {
+    navigate(route) {
+        popUpTo(graph.findStartDestination().id) { saveState = true }
+        launchSingleTop = true
+        // The Tools tab always reopens on its own grid rather than restoring whatever tool was
+        // last open - restoring here would resurrect Ping/DNS/etc. from that tab's saved back
+        // stack instead of landing on ToolsHomeRoute.
+        restoreState = route != ToolsRoute
     }
 }
 
@@ -130,9 +138,16 @@ private fun NavigationSuiteScope.navigationItems(
 private fun AppNavHost(navController: NavHostController) {
     NavHost(
         navController = navController,
-        startDestination = ConnectionRoute,
+        startDestination = DashboardRoute,
         modifier = Modifier.windowInsetsPadding(WindowInsets.statusBars.union(WindowInsets.displayCutout)),
     ) {
+        composable<DashboardRoute> {
+            DashboardDestination(
+                onOpenWifi = { navController.navigateToTopLevel(WifiRoute) },
+                onOpenDevices = { navController.navigateToTopLevel(DevicesRoute) },
+                onOpenTools = { navController.navigateToTopLevel(ToolsRoute) },
+            )
+        }
         composable<ConnectionRoute> { ConnectionDestination() }
         composable<WifiRoute> { WifiDestination() }
         composable<DevicesRoute> {
@@ -160,6 +175,22 @@ private fun AppNavHost(navController: NavHostController) {
             composable<SettingsToolRoute> { SettingsRoute() }
         }
     }
+}
+
+@Composable
+private fun DashboardDestination(
+    onOpenWifi: () -> Unit,
+    onOpenDevices: () -> Unit,
+    onOpenTools: () -> Unit,
+) {
+    val dashboardViewModel: DashboardViewModel = hiltViewModel()
+    val dashboardUiState by dashboardViewModel.uiState.collectAsState()
+    DashboardScreen(
+        uiState = dashboardUiState,
+        onOpenWifi = onOpenWifi,
+        onOpenDevices = onOpenDevices,
+        onOpenTools = onOpenTools,
+    )
 }
 
 @Composable
