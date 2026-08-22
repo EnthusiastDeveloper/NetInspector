@@ -8,7 +8,7 @@ what the app already has.
 ---
 
 ## 1. Network hygiene score
-**Status:** Implemented (PR #5, open for review)
+**Status:** Implemented (PR #5, merged)
 
 Turn the open-port risk heuristics you already compute per host into a single glanceable
 score per host and per network, so users get an instant "is this okay?" read instead of
@@ -22,6 +22,8 @@ having to parse a raw port list.
 ---
 
 ## 2. Hygiene score methodology explainer
+**Status:** Implemented (PR #5, merged)
+
 The score in #1 is currently opaque - a number and a rating with no visible explanation of
 what's being measured or why. Surface the methodology in-app: what counts as a finding, the
 severity tiers and their point deductions, and which ports are currently flagged, following
@@ -37,6 +39,8 @@ uses for a similar "explain a non-obvious number" need.
 ---
 
 ## 3. Actionable remediation list from hygiene findings
+**Status:** Implemented (PR #5, merged)
+
 Turn a hygiene score's findings into a concrete "what to fix" checklist, per host and
 network-wide, rather than leaving the user to infer action items from a raw score.
 
@@ -144,7 +148,7 @@ compares against data already stored in `KnownApEntity`.
 ---
 
 ## 12. Logical network map
-**Status:** Implemented (PR #6, open for review)
+**Status:** Implemented (PR #6, merged)
 
 A visual hub-and-spoke graph of discovered hosts around the gateway. Real switch-level
 topology isn't discoverable without SNMP/LLDP, so this is framed honestly as a logical
@@ -192,6 +196,8 @@ sweep probes already built for LAN discovery.
 ---
 
 ## 16. Dashboard/home screen
+**Status:** Implemented (PR #7, merged)
+
 A single "network health at a glance" screen combining Wi-Fi quality, device count, and
 active diagnostics, rather than requiring navigation into each tool separately.
 

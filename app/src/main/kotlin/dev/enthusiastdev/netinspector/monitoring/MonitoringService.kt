@@ -15,16 +15,19 @@ import dev.enthusiastdev.netinspector.MainActivity
 import dev.enthusiastdev.netinspector.R
 import dev.enthusiastdev.netinspector.core.common.wifi.rssiToQualityPercent
 import dev.enthusiastdev.netinspector.core.model.connection.ConnectionSnapshot
+import dev.enthusiastdev.netinspector.data.persistence.preferences.AppSettingsRepository
 import dev.enthusiastdev.netinspector.data.wifi.ConnectionRepository
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.launchIn
-import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 /** design §8 / C-09 / C-10 - the one optional, explicitly user-started continuous-monitoring
@@ -40,12 +43,26 @@ class MonitoringService : Service() {
     @Inject
     lateinit var connectionRepository: ConnectionRepository
 
+    @Inject
+    lateinit var appSettingsRepository: AppSettingsRepository
+
     private val serviceScope = CoroutineScope(SupervisorJob())
     private var collectJob: Job? = null
 
+    /** improvement-ideas.md #5 - the previous emission, so [connectionAlertsFor] can tell a
+     * fresh disconnect/reconnect/threshold-crossing apart from an already-settled state. Reset
+     * implicitly every service (re)start, same lifetime as [collectJob]. */
+    private var previousSnapshot: ConnectionSnapshot? = null
+
+    /** The very first emission after a service (re)start only establishes [previousSnapshot]
+     * as a baseline - it must not be evaluated as a transition, or starting monitoring while
+     * already connected would immediately misfire a "Reconnected" alert (there was no real
+     * prior disconnect to reconnect from). */
+    private var hasBaselineSnapshot = false
+
     override fun onCreate() {
         super.onCreate()
-        createNotificationChannel()
+        createNotificationChannels()
     }
 
     override fun onStartCommand(
@@ -81,12 +98,48 @@ class MonitoringService : Service() {
         }
     }
 
+    @OptIn(FlowPreview::class)
     private fun observeConnection() {
         collectJob?.cancel()
+        previousSnapshot = null
+        hasBaselineSnapshot = false
+        val alertSettings =
+            combine(
+                appSettingsRepository.rssiAlertThresholdDbm,
+                appSettingsRepository.alertOnRssiDrop,
+                appSettingsRepository.alertOnDisconnect,
+                appSettingsRepository.alertOnReconnect,
+            ) { thresholdDbm, onRssiDrop, onDisconnect, onReconnect ->
+                ConnectionAlertSettings(thresholdDbm, onRssiDrop, onDisconnect, onReconnect)
+            }
+        val snapshots = connectionRepository.connectionSnapshot
         collectJob =
-            connectionRepository.connectionSnapshot
-                .onEach { snapshot -> notificationManager.notify(NOTIFICATION_ID, buildNotification(snapshot)) }
-                .launchIn(serviceScope)
+            serviceScope.launch {
+                launch {
+                    snapshots.collect { snapshot ->
+                        notificationManager.notify(NOTIFICATION_ID, buildNotification(snapshot))
+                    }
+                }
+                // ConnectivityManager.NetworkCallback delivers capabilities and link properties
+                // separately: a fresh registration while already connected emits a transient
+                // null (capabilities arrived, link properties haven't yet) immediately followed
+                // by the real snapshot. Debounced here so that startup churn settles into one
+                // reading before it's compared for a disconnect/reconnect/threshold transition -
+                // undebounced, every service start would misfire a spurious "Reconnected" alert.
+                combine(snapshots.debounce(DEBOUNCE_MILLIS), alertSettings) { snapshot, settings ->
+                    snapshot to settings
+                }.collect { (snapshot, settings) ->
+                    if (hasBaselineSnapshot) {
+                        postAlerts(connectionAlertsFor(previousSnapshot, snapshot, settings))
+                    }
+                    previousSnapshot = snapshot
+                    hasBaselineSnapshot = true
+                }
+            }
+    }
+
+    private fun postAlerts(alerts: List<ConnectionAlert>) {
+        alerts.forEach { alert -> notificationManager.notify(NOTIFICATION_ID_ALERT, buildAlertNotification(alert)) }
     }
 
     private fun buildNotification(snapshot: ConnectionSnapshot?): Notification {
@@ -126,12 +179,44 @@ class MonitoringService : Service() {
             .build()
     }
 
-    private fun createNotificationChannel() {
-        val channel =
+    /** improvement-ideas.md #5 - a disconnect/reconnect/weak-signal alert, distinct from
+     * [buildNotification]'s ongoing status notification: dismissible rather than
+     * [NotificationCompat.Builder.setOngoing], and alerts every time rather than
+     * [NotificationCompat.Builder.setOnlyAlertOnce], since each one represents a discrete event
+     * rather than a continuously-updating state. */
+    private fun buildAlertNotification(alert: ConnectionAlert): Notification {
+        val contentIntent =
+            PendingIntent.getActivity(
+                this,
+                0,
+                Intent(this, MainActivity::class.java),
+                PendingIntent.FLAG_IMMUTABLE,
+            )
+        return NotificationCompat
+            .Builder(this, CHANNEL_ID_ALERTS)
+            .setSmallIcon(R.drawable.ic_notification_monitoring)
+            .setContentTitle("NetInspector")
+            .setContentText(alert.message)
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setAutoCancel(true)
+            .setContentIntent(contentIntent)
+            .build()
+    }
+
+    private fun createNotificationChannels() {
+        val statusChannel =
             NotificationChannel(CHANNEL_ID, "Connection monitoring", NotificationManager.IMPORTANCE_LOW).apply {
                 description = "Persistent notification while continuous Wi-Fi monitoring is running"
             }
-        notificationManager.createNotificationChannel(channel)
+        val alertChannel =
+            NotificationChannel(
+                CHANNEL_ID_ALERTS,
+                "Connection alerts",
+                NotificationManager.IMPORTANCE_HIGH,
+            ).apply {
+                description = "Disconnect, reconnect, and weak-signal alerts while monitoring is running"
+            }
+        notificationManager.createNotificationChannels(listOf(statusChannel, alertChannel))
     }
 
     private val notificationManager: NotificationManager
@@ -139,7 +224,10 @@ class MonitoringService : Service() {
 
     companion object {
         private const val CHANNEL_ID = "monitoring"
+        private const val CHANNEL_ID_ALERTS = "monitoring_alerts"
         private const val NOTIFICATION_ID = 1001
+        private const val NOTIFICATION_ID_ALERT = 1002
+        private const val DEBOUNCE_MILLIS = 750L
         const val ACTION_STOP = "dev.enthusiastdev.netinspector.action.STOP_MONITORING"
 
         private val _isRunning = MutableStateFlow(false)

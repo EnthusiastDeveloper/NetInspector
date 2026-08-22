@@ -34,4 +34,13 @@ message AppPreferences {
   // User-dismissed the Connection dashboard's continuous-monitoring card. Persists across
   // restarts; the Settings screen offers the only way back once dismissed.
   bool monitoring_card_dismissed = 9;
+
+  // improvement-ideas.md #5 - lets the continuous-monitoring notification (MonitoringService)
+  // actually alert on a weak signal / drop / reconnect instead of only displaying live state.
+  // 0 is never a realistic Wi-Fi RSSI reading, so it doubles as "unset" the same way the
+  // retention fields above use 0, substituted with a sane weak-signal default by the repository.
+  int32 rssi_alert_threshold_dbm = 10;
+  bool alert_on_rssi_drop = 11;
+  bool alert_on_disconnect = 12;
+  bool alert_on_reconnect = 13;
 }

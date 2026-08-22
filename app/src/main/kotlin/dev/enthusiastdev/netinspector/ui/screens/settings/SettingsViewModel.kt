@@ -10,6 +10,7 @@ import dev.enthusiastdev.netinspector.core.model.settings.RssiDisplayUnit
 import dev.enthusiastdev.netinspector.core.model.settings.ThemeMode
 import dev.enthusiastdev.netinspector.data.persistence.preferences.AppSettingsRepository
 import dev.enthusiastdev.netinspector.data.persistence.preferences.RetentionSettingsRepository
+import dev.enthusiastdev.netinspector.monitoring.ConnectionAlertSettings
 import dev.enthusiastdev.netinspector.ui.screens.connection.currentNotificationAccessState
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -37,7 +38,7 @@ class SettingsViewModel
             notificationAccessTrigger.update { it + 1 }
         }
 
-        val uiState: StateFlow<SettingsUiState> =
+        private val baseSettings =
             combine(
                 appSettingsRepository.themeMode,
                 appSettingsRepository.rssiDisplayUnit,
@@ -52,9 +53,32 @@ class SettingsViewModel
                     diagnosticHistoryRetentionDays = diagnosticRetention,
                     defaultPortSelection = portSelection,
                 )
-            }.combine(notificationAccessTrigger) { state, _ ->
-                state.copy(monitoringNotificationAccess = context.currentNotificationAccessState())
-            }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SettingsUiState())
+            }
+
+        // Kotlin's fixed-arity combine() overloads top out below the 9 flows this screen now
+        // reads from, so the alert settings are combined separately and merged into baseSettings
+        // below rather than growing one combine() call past its available overload.
+        private val alertSettings =
+            combine(
+                appSettingsRepository.rssiAlertThresholdDbm,
+                appSettingsRepository.alertOnRssiDrop,
+                appSettingsRepository.alertOnDisconnect,
+                appSettingsRepository.alertOnReconnect,
+                ::ConnectionAlertSettings,
+            )
+
+        val uiState: StateFlow<SettingsUiState> =
+            baseSettings
+                .combine(alertSettings) { state, alerts ->
+                    state.copy(
+                        rssiAlertThresholdDbm = alerts.rssiAlertThresholdDbm,
+                        alertOnRssiDrop = alerts.alertOnRssiDrop,
+                        alertOnDisconnect = alerts.alertOnDisconnect,
+                        alertOnReconnect = alerts.alertOnReconnect,
+                    )
+                }.combine(notificationAccessTrigger) { state, _ ->
+                    state.copy(monitoringNotificationAccess = context.currentNotificationAccessState())
+                }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SettingsUiState())
 
         fun setThemeMode(mode: ThemeMode) {
             viewModelScope.launch { appSettingsRepository.setThemeMode(mode) }
@@ -79,5 +103,26 @@ class SettingsViewModel
             viewModelScope.launch {
                 retentionSettingsRepository.setDiagnosticHistoryRetentionDays(days.coerceIn(1, 365))
             }
+        }
+
+        /** RSSI never reads outside roughly -100..0 dBm in practice - clamped here for the same
+         * reason retention days are clamped above: the number field can't refuse out-of-range
+         * input on its own. */
+        fun setRssiAlertThresholdDbm(thresholdDbm: Int) {
+            viewModelScope.launch {
+                appSettingsRepository.setRssiAlertThresholdDbm(thresholdDbm.coerceIn(-100, -1))
+            }
+        }
+
+        fun setAlertOnRssiDrop(enabled: Boolean) {
+            viewModelScope.launch { appSettingsRepository.setAlertOnRssiDrop(enabled) }
+        }
+
+        fun setAlertOnDisconnect(enabled: Boolean) {
+            viewModelScope.launch { appSettingsRepository.setAlertOnDisconnect(enabled) }
+        }
+
+        fun setAlertOnReconnect(enabled: Boolean) {
+            viewModelScope.launch { appSettingsRepository.setAlertOnReconnect(enabled) }
         }
     }
