@@ -58,6 +58,7 @@ fun DevicesScreen(
     onPortScanHost: (String) -> Unit,
     onSortOrderChange: (DevicesSortOrder) -> Unit,
     onToggleConfidenceFilter: (HostConfidence) -> Unit,
+    onSetNickname: (String, String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     when (uiState) {
@@ -75,6 +76,7 @@ fun DevicesScreen(
                 onPortScanHost,
                 onSortOrderChange,
                 onToggleConfidenceFilter,
+                onSetNickname,
                 modifier,
             )
     }
@@ -119,6 +121,7 @@ private fun DevicesContent(
     onPortScanHost: (String) -> Unit,
     onSortOrderChange: (DevicesSortOrder) -> Unit,
     onToggleConfidenceFilter: (HostConfidence) -> Unit,
+    onSetNickname: (String, String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     // design §11.4 - the ack dialog gates the act of starting a sweep, not opening the screen,
@@ -156,7 +159,14 @@ private fun DevicesContent(
         detailPane = {
             AnimatedPane {
                 navigator.currentDestination?.contentKey?.let { address ->
-                    DevicesDetailPane(address, state.hosts, onPingHost, onTracerouteHost, onPortScanHost)
+                    DevicesDetailPane(
+                        address,
+                        state.hosts,
+                        onPingHost,
+                        onTracerouteHost,
+                        onPortScanHost,
+                        onSetNickname,
+                    )
                 }
             }
         },

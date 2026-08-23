@@ -23,6 +23,11 @@ data class Host(
     val rttMedianMs: Double?,
     val isGateway: Boolean,
     val isSelf: Boolean,
+    /** docs/device-identification-ideas.md D - a user-set label overriding every automated
+     * naming signal. Never populated by [mergeObservation] (no observation source produces
+     * one); the UI layer overlays it from [nicknameKey], since a nickname outlives any single
+     * host record still being rebuilt sweep to sweep. */
+    val nickname: String? = null,
 )
 
 /** design §11.3 - hostname precedence for the primary display name; every variant stays
@@ -32,3 +37,11 @@ private val HOSTNAME_PRECEDENCE =
 
 val Host.primaryHostname: String?
     get() = HOSTNAME_PRECEDENCE.firstNotNullOfOrNull { hostnames[it] }
+
+/** docs/device-identification-ideas.md D - "keyed by MAC when available, or a stable IP+
+ * hostname combo otherwise": [macAddress] only exists for NetBIOS-observed hosts (A3), so most
+ * hosts fall back to address+hostname. Plain [address] alone isn't stable across a DHCP lease
+ * change, but address+hostname together are the closest stable identity available without a
+ * MAC. */
+fun Host.nicknameKey(): String =
+    macAddress?.let { "mac:$it" } ?: "addr:${address.hostAddress}|${primaryHostname.orEmpty()}"

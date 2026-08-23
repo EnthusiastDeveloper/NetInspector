@@ -258,6 +258,7 @@ private fun DevicesDestination(
         onPortScanHost = onPortScanHost,
         onSortOrderChange = devicesViewModel::setSortOrder,
         onToggleConfidenceFilter = devicesViewModel::toggleConfidenceFilter,
+        onSetNickname = devicesViewModel::setNickname,
     )
 }
 

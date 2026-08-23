@@ -173,16 +173,25 @@ OS/device fingerprint (this is what Fingerbank's DHCP fingerprinting is built on
 ---
 
 ## D. Manual nickname/tag per device
+**Status:** Implemented
+
 Not a new identification *technique* - the fallback improvement independent of how good
-automated ID gets. There is currently no way to override a `Host`'s displayed name at all: no
-Room entity, no UI (see `improvement-ideas.md` #10, which already scopes this as
-IoT/guest/trusted-style tagging - a plain per-host nickname is the same underlying feature,
-narrower). Cheap, and fixes "which one is my printer" immediately regardless of automated
-accuracy.
+automated ID gets. There was previously no way to override a `Host`'s displayed name at all
+(see `improvement-ideas.md` #10, which scopes the broader IoT/guest/trusted-style tagging idea
+- a plain per-host nickname is the same underlying feature, narrower: no tag categories, no
+filter/sort by tag, just a label that wins over every automated naming signal). Fixes "which
+one is my printer" immediately regardless of automated accuracy.
 
 **Requirements:**
-- Same as `improvement-ideas.md` #10: a DB migration adding a label field to the host schema,
-  management UI, keyed by MAC when available (A3) or a stable IP+hostname combo otherwise
+- A `saved_host` Room table (`SavedHostEntity`: `key`, `nickname`), migration 2→3
+- `Host.nicknameKey()` in `core/model` - MAC-based when available (A3), address+hostname
+  otherwise, never plain IP alone (unstable across a DHCP lease change)
+- `SavedHostRepository` joined into `DevicesViewModel`'s host flow, overlaying `Host.nickname`
+  after every sweep merge (nicknames aren't part of the sweep pipeline itself)
+- `displayName()` gives a nickname top precedence over hostname/device-hint/self/gateway
+  labelling
+- Edit affordance on the device detail screen's header (pencil icon → dialog with a text
+  field); saving a blank value clears the nickname
 
 ---
 

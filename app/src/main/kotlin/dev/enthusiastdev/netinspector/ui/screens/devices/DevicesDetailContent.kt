@@ -7,14 +7,20 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -30,6 +36,7 @@ import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.unit.dp
 import dev.enthusiastdev.netinspector.core.model.lan.Host
 import dev.enthusiastdev.netinspector.core.model.lan.HostConfidence
+import dev.enthusiastdev.netinspector.core.model.lan.nicknameKey
 
 /** design §3 Phase 6 - the Devices detail pane counterpart to [DevicesListPane]'s [HostCard]
  * rows. Looks up the host by address string each recomposition rather than capturing a [Host]
@@ -42,6 +49,7 @@ internal fun DevicesDetailPane(
     onPingHost: (String) -> Unit,
     onTracerouteHost: (String) -> Unit,
     onPortScanHost: (String) -> Unit,
+    onSetNickname: (String, String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val host = hosts.firstOrNull { it.address.addressString == address }
@@ -55,7 +63,7 @@ internal fun DevicesDetailPane(
         }
         return
     }
-    DevicesDetailContent(host, onPingHost, onTracerouteHost, onPortScanHost, modifier)
+    DevicesDetailContent(host, onPingHost, onTracerouteHost, onPortScanHost, onSetNickname, modifier)
 }
 
 @Composable
@@ -64,6 +72,7 @@ internal fun DevicesDetailContent(
     onPingHost: (String) -> Unit,
     onTracerouteHost: (String) -> Unit,
     onPortScanHost: (String) -> Unit,
+    onSetNickname: (String, String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     LazyColumn(
@@ -71,7 +80,7 @@ internal fun DevicesDetailContent(
         contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        item { DevicesDetailHeader(host, onPingHost, onTracerouteHost, onPortScanHost) }
+        item { DevicesDetailHeader(host, onPingHost, onTracerouteHost, onPortScanHost, onSetNickname) }
         host.deviceHint?.let { hint -> item { DevicesDetailHintCard(hint) } }
         item { DevicesDetailIdentificationCard(host) }
         if (host.hostnames.isNotEmpty()) item { DevicesDetailHostnamesCard(host) }
@@ -88,14 +97,21 @@ private fun DevicesDetailHeader(
     onPingHost: (String) -> Unit,
     onTracerouteHost: (String) -> Unit,
     onPortScanHost: (String) -> Unit,
+    onSetNickname: (String, String) -> Unit,
 ) {
     val context = LocalContext.current
+    var showNicknameEditor by remember { mutableStateOf(false) }
     Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
-        Text(
-            text = host.displayName(),
-            style = MaterialTheme.typography.titleLarge,
-            fontStyle = if (host.hasInferredDisplayName) FontStyle.Italic else FontStyle.Normal,
-        )
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                text = host.displayName(),
+                style = MaterialTheme.typography.titleLarge,
+                fontStyle = if (host.hasInferredDisplayName) FontStyle.Italic else FontStyle.Normal,
+            )
+            IconButton(onClick = { showNicknameEditor = true }) {
+                Icon(Icons.Filled.Edit, contentDescription = "Set a nickname for this device")
+            }
+        }
         // Android 13+ (this app's minSdk) shows its own "Copied" confirmation UI on every
         // clipboard write, so no in-app snackbar/toast is needed here.
         Text(
@@ -129,6 +145,42 @@ private fun DevicesDetailHeader(
             }
         }
     }
+    if (showNicknameEditor) {
+        NicknameEditorDialog(
+            currentNickname = host.nickname.orEmpty(),
+            onSave = { nickname ->
+                onSetNickname(host.nicknameKey(), nickname)
+                showNicknameEditor = false
+            },
+            onDismiss = { showNicknameEditor = false },
+        )
+    }
+}
+
+/** docs/device-identification-ideas.md D - overrides every automated naming signal with a
+ * plain user-entered label; saving a blank value clears it (`SavedHostRepository.setNickname`),
+ * so there's no separate "remove" action to offer here. */
+@Composable
+private fun NicknameEditorDialog(
+    currentNickname: String,
+    onSave: (String) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    var text by remember { mutableStateOf(currentNickname) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Nickname") },
+        text = {
+            OutlinedTextField(
+                value = text,
+                onValueChange = { text = it },
+                label = { Text("e.g. \"Living room printer\"") },
+                singleLine = true,
+            )
+        },
+        confirmButton = { Button(onClick = { onSave(text) }) { Text("Save") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+    )
 }
 
 /** design §11.3 - "no field without a basis," extended to the confidence label itself: it's

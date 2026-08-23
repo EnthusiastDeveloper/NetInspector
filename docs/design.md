@@ -735,7 +735,7 @@ trips IDS on managed networks and can destabilise cheap consumer routers.
 
 ## 10. Persistence
 
-Room, schema version 1, with `exportSchema = true` and schema files committed for future
+Room, schema version 3, with `exportSchema = true` and schema files committed for future
 migrations.
 
 | Entity | Purpose | Retention |
@@ -743,7 +743,8 @@ migrations.
 | `scan_session` | One row per scan snapshot: timestamp, connected BSSID, location-free | 30 days, configurable |
 | `scan_observation` | AP observation joined to a session: BSSID, RSSI, channel, width | Cascade with session |
 | `known_ap` | Stable per-BSSID record: SSID, vendor, first/last seen, best RSSI | Indefinite |
-| `saved_host` | User-pinned LAN host: label, IP, MAC (manual, for WOL), notes | Indefinite |
+| `saved_wol_target` | Manually-entered Wake-on-LAN target: label, MAC, broadcast address | Indefinite |
+| `saved_host` | Manual per-host nickname (docs/device-identification-ideas.md D), keyed by MAC when known or a stable address+hostname combo otherwise | Indefinite |
 | `diagnostic_run` | Ping/traceroute/scan runs with parameters and serialised results | 90 days |
 | `oui` | Prepopulated MAC prefix → vendor, variable prefix length | Static, bundled |
 

@@ -65,16 +65,18 @@ private fun HostConfidence.sortOrder(): Int =
 
 /** design §11.3 - a confirmed hostname always wins; absent that, a [DeviceHint] is a real but
  * *inferred* signal, so it's only used as a stand-in for the name (never silently equated with
- * one) and callers must style it distinctly - see [Host.hasInferredDisplayName]. */
+ * one) and callers must style it distinctly - see [Host.hasInferredDisplayName]. A manual
+ * [Host.nickname] (docs/device-identification-ideas.md D) outranks all of that: it's the one
+ * signal here that's authoritative rather than observed or guessed. */
 internal fun Host.displayName(): String =
-    when {
+    nickname ?: when {
         isSelf -> "This device"
         isGateway -> primaryHostname?.let { "$it (gateway)" } ?: "Gateway"
         else -> primaryHostname ?: deviceHint?.label ?: "Unknown device"
     }
 
 /** Whether [displayName] fell back to the [DeviceHint] guess rather than a confirmed hostname
- * - callers use this to render the name as visibly inferred (e.g. italic) and to skip a
- * separate hint line that would otherwise just repeat the title verbatim. */
+ * or a manual nickname - callers use this to render the name as visibly inferred (e.g. italic)
+ * and to skip a separate hint line that would otherwise just repeat the title verbatim. */
 internal val Host.hasInferredDisplayName: Boolean
-    get() = !isSelf && !isGateway && primaryHostname == null && deviceHint != null
+    get() = nickname == null && !isSelf && !isGateway && primaryHostname == null && deviceHint != null

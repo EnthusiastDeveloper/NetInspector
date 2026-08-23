@@ -127,10 +127,14 @@ chart components that already exist.
 
 ## 10. Device grouping/tagging
 Manual labels ("IoT", "guest", "trusted") for LAN hosts, since OUI/mDNS guesses won't
-always be right.
+always be right. The narrower "plain per-host nickname" half of this (see
+`docs/device-identification-ideas.md` item D, implemented) already covers "which one is my
+printer" - what's left here is tag *categories* plus filter/sort by tag, not the underlying
+storage or display-name override.
 
 **Requirements:**
-- DB migration adding a tag/group field (or table) to the host schema
+- Tag category field/table (`saved_host`'s `SavedHostEntity` already exists for the
+  single-nickname case - extending it or adding a sibling table both work)
 - Tag management UI
 - Filter/sort by tag in `DevicesScreen`
 
@@ -421,7 +425,28 @@ Real throughput numbers against a companion `iperf3` server elsewhere on the LAN
 
 ---
 
-## 35. F-Droid listing
+## 36. Adjustable UI/font scale
+A settings slider that scales text and UI element sizing app-wide, independent of the
+system's own accessibility font-size setting - surfaced after simulating several screen
+densities during Phase 4 verification (`wm density`), where the smaller-density renders read
+noticeably better for this app's information-dense screens (Devices list, network map) than
+the default. Rather than only supporting that indirectly through the OS setting (which affects
+every app, not just this one, and most users won't go find it in system settings for one app),
+a first-party in-app slider is a cheap, self-contained way to offer the same benefit.
+
+**Requirements:**
+- A persisted scale factor (reuse `AppSettingsRepository`'s existing DataStore-backed pattern,
+  same shape as `ThemeMode`)
+- A `CompositionLocalProvider(LocalDensity provides ...)` wrapper applying the scale to
+  `fontScale` at the app root, so every screen picks it up with no per-screen changes
+- Settings screen slider control with a live preview
+- A sane clamped range (too small becomes illegible, too large breaks layouts already tuned
+  for a default scale - `NetworkMapLayout.kt`'s `nodeScaleFor` is a precedent for "how far can
+  this go before it needs its own compensating logic")
+
+---
+
+## 37. F-Droid listing
 Matches the app's existing no-telemetry/no-accounts positioning and Obtainium support;
 mostly a packaging/process task, not new code.
 

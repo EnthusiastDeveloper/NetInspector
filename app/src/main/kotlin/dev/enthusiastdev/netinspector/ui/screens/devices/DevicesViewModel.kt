@@ -8,10 +8,13 @@ import dev.enthusiastdev.netinspector.core.model.lan.Host
 import dev.enthusiastdev.netinspector.core.model.lan.HostConfidence
 import dev.enthusiastdev.netinspector.core.model.lan.SweepOutcome
 import dev.enthusiastdev.netinspector.core.model.lan.SweepProgress
+import dev.enthusiastdev.netinspector.core.model.lan.nicknameKey
 import dev.enthusiastdev.netinspector.data.lan.LanDiscoveryRepository
+import dev.enthusiastdev.netinspector.data.persistence.host.SavedHostRepository
 import dev.enthusiastdev.netinspector.data.persistence.preferences.LanAcknowledgementRepository
 import dev.enthusiastdev.netinspector.data.wifi.ConnectionRepository
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
@@ -29,6 +32,7 @@ class DevicesViewModel
         private val connectionRepository: ConnectionRepository,
         private val lanDiscoveryRepository: LanDiscoveryRepository,
         private val lanAcknowledgementRepository: LanAcknowledgementRepository,
+        private val savedHostRepository: SavedHostRepository,
     ) : ViewModel() {
         private val pendingConfirmationHostCount = MutableStateFlow<Long?>(null)
         private val sortOrder = MutableStateFlow(DevicesSortOrder.GROUP)
@@ -43,9 +47,18 @@ class DevicesViewModel
             val isConnected: Boolean,
         )
 
+        /** docs/device-identification-ideas.md D - a nickname isn't part of the sweep pipeline
+         * at all (no `HostObservation` ever produces one), so it's joined in here rather than
+         * touching `mergeObservation`: every host from the live sweep gets overlaid with
+         * whatever `SavedHostRepository` has for its `nicknameKey()`, or nothing if unset. */
+        private val hostsWithNicknames: Flow<List<Host>> =
+            combine(lanDiscoveryRepository.hosts, savedHostRepository.observeNicknames()) { hosts, nicknames ->
+                hosts.map { host -> host.copy(nickname = nicknames[host.nicknameKey()]) }
+            }
+
         val uiState =
             combine(
-                lanDiscoveryRepository.hosts,
+                hostsWithNicknames,
                 lanDiscoveryRepository.progress,
                 lanAcknowledgementRepository.isAcknowledged,
                 pendingConfirmationHostCount,
@@ -105,6 +118,16 @@ class DevicesViewModel
 
         fun cancelSweep() {
             sweepJob?.cancel()
+        }
+
+        /** docs/device-identification-ideas.md D - [key] is a `Host.nicknameKey()` computed by
+         * the caller (it already has the `Host` in hand from the detail screen); a blank
+         * [nickname] clears the entry, see `SavedHostRepository.setNickname`. */
+        fun setNickname(
+            key: String,
+            nickname: String,
+        ) {
+            viewModelScope.launch { savedHostRepository.setNickname(key, nickname) }
         }
 
         private fun startSweep(confirmShortPrefix: Boolean = false) {
