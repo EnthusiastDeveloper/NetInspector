@@ -143,6 +143,8 @@ self-signed router/NAS/camera certs frequently set to the product name (`Synolog
   `DeviceHintHeuristics.kt`, `CONFIRMED` tier like B1's SNMP `sysDescr` (a tie between the two
   favors SNMP's usually more specific firmware string over a certificate's often generic
   company-name CN)
+- A matching `EvidenceSource.TLS` entry on the detail screen's timeline, same as every other
+  Stage A/C signal - verified live against a real TP-Link Deco mesh node (CN `tplinkdeco.net`)
 
 ---
 
