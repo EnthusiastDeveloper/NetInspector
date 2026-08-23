@@ -32,11 +32,10 @@ class SnmpProbe
             withContext(Dispatchers.IO) {
                 val socket = DatagramSocket()
                 try {
-                    socket.soTimeout = timeoutMs
                     val requestId = (System.nanoTime() and REQUEST_ID_MASK).toInt()
                     val request = SnmpBer.buildGetRequest(community, requestId, listOf(OID_SYS_DESCR, OID_SYS_NAME))
                     socket.send(DatagramPacket(request, request.size, address, SNMP_PORT))
-                    receiveResult(socket)
+                    receiveResult(socket, address, timeoutMs)
                 } catch (ignored: IOException) {
                     null
                 } finally {
@@ -44,14 +43,28 @@ class SnmpProbe
                 }
             }
 
-        private fun receiveResult(socket: DatagramSocket): Result? {
+        /** This is a unicast one-to-one query (unlike NetBIOS/SSDP's intentionally one-to-many
+         * broadcast probes), so a reply from any address other than the one just queried is
+         * discarded rather than attributed to it. The remaining time shrinks on every stray
+         * packet rather than resetting [timeoutMs] in full, so a burst of unrelated broadcast
+         * traffic can't stretch this past its own budget. */
+        private fun receiveResult(
+            socket: DatagramSocket,
+            address: Inet4Address,
+            timeoutMs: Int,
+        ): Result? {
             val buffer = ByteArray(RECEIVE_BUFFER_SIZE)
-            val packet = DatagramPacket(buffer, buffer.size)
-            socket.receive(packet)
-            val values = SnmpBer.parseGetResponse(packet.data, packet.length)
-            val sysDescr = values[OID_SYS_DESCR]
-            val sysName = values[OID_SYS_NAME]
-            return if (sysDescr == null && sysName == null) null else Result(sysDescr, sysName)
+            val deadline = System.currentTimeMillis() + timeoutMs
+            while (true) {
+                socket.soTimeout = (deadline - System.currentTimeMillis()).toInt().coerceAtLeast(1)
+                val packet = DatagramPacket(buffer, buffer.size)
+                socket.receive(packet)
+                if (packet.address != address) continue
+                val values = SnmpBer.parseGetResponse(packet.data, packet.length)
+                val sysDescr = values[OID_SYS_DESCR]
+                val sysName = values[OID_SYS_NAME]
+                return if (sysDescr == null && sysName == null) null else Result(sysDescr, sysName)
+            }
         }
 
         private companion object {

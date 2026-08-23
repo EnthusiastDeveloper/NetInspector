@@ -32,7 +32,7 @@ class UpnpHostsProbe
             timeoutMs: Int,
         ): List<HostObservation> {
             val entryCount = getHostNumberOfEntries(controlUrl, serviceType, timeoutMs) ?: return emptyList()
-            return (0 until entryCount).mapNotNull { index ->
+            return (0 until entryCount.coerceIn(0, MAX_HOST_ENTRIES)).mapNotNull { index ->
                 getGenericHostEntry(controlUrl, serviceType, index, timeoutMs)
             }
         }
@@ -110,6 +110,11 @@ class UpnpHostsProbe
          * SOAP-response parsing directly - same rationale as [dev.enthusiastdev.netinspector
          * .data.lan.netbios.NetBiosProbe.parseNbstatResponse]. */
         internal companion object {
+            // A malformed or hostile response could report an enormous entry count; each entry
+            // costs its own HTTP round trip, so this is capped well above any real home LAN's
+            // device count rather than trusting the router not to stall the whole sweep.
+            const val MAX_HOST_ENTRIES = 512
+
             /** A flat regex scan rather than a full pull-parser: every field this probe reads
              * back (`NewIPAddress`, `NewMACAddress`, `NewHostName`, `NewHostNumberOfEntries`) is
              * a single leaf element with no nested markup, and `android.util.Xml`'s pull parser
