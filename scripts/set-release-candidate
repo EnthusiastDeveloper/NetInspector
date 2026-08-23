@@ -1,0 +1,159 @@
+#!/usr/bin/env bash
+# Marks the top of main as the current release candidate: builds a signed release APK from
+# it, moves a floating `release-candidate` tag to that commit, and - for any device serials
+# given - installs it fresh for manual device-matrix testing (docs/design.md §12).
+#
+# This is deliberately separate from docs/releasing.md's actual release flow: tagging
+# release-candidate never publishes anything and is meant to be moved repeatedly as main
+# advances, unlike an immutable vX.Y.Z tag. Run this by hand when you want to soak-test a
+# commit, not from a hook - a hook would move the candidate on every merge with no human
+# judgment involved, which defeats the point of having a deliberate checkpoint before the
+# real tag-and-auto-publish step.
+#
+# Debug and release builds share one applicationId (no debug suffix), so a device that
+# already has a debug build installed cannot be upgraded in place - Android refuses to
+# install a differently-signed APK over an existing one. This script always uninstalls
+# whatever is currently installed before installing the release candidate, for exactly
+# that reason, and grants the two runtime permissions the app requests lazily
+# (ACCESS_FINE_LOCATION, POST_NOTIFICATIONS) so a tester isn't stuck behind them either.
+# It cannot approve the one-time in-app LAN-scan acknowledgement (design.md §11.4) since
+# that is an app-level dialog, not an Android permission - tap through it once per install.
+#
+# Requires keystore.properties at the repo root (see docs/releasing.md) - without it,
+# assembleRelease fails cleanly rather than shipping a debug-signed build.
+#
+# Usage:
+#   scripts/set-release-candidate.sh                    build and tag only
+#   scripts/set-release-candidate.sh <serial> [<serial>...]   build, tag, and install fresh
+#
+# Run `adb devices -l` first to find serials; if you're not sure which physical device is
+# free to use, ask before running this against one - a listed device can already be in use
+# by someone or something else.
+if [ "${1:-}" = "-h" ] || [ "${1:-}" = "--help" ]; then
+    # Only the leading comment block (the header above) - awk stops at the first line that
+    # isn't a comment, so it can't pick up an unrelated `#` comment further down the file.
+    awk '/^#!/{next} /^#/{sub(/^# ?/, ""); print; next} {exit}' "${BASH_SOURCE[0]}"
+    exit 0
+fi
+
+set -euo pipefail
+cd "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+
+APP_ID="dev.enthusiastdev.netinspector"
+RUNTIME_PERMISSIONS=(
+    "android.permission.ACCESS_FINE_LOCATION"
+    "android.permission.POST_NOTIFICATIONS"
+)
+
+# A shell that can run ./gradlew often still doesn't have platform-tools on PATH (it's not
+# needed for a plain build) - check for adb up front, when serials were actually given, so
+# a missing adb fails in a second rather than after a multi-minute assembleRelease.
+resolve_adb() {
+    command -v adb >/dev/null 2>&1 && return 0
+    for candidate in "${ANDROID_HOME:-}" "${ANDROID_SDK_ROOT:-}" "$HOME/Android/Sdk" "$HOME/Library/Android/sdk"; do
+        if [ -n "$candidate" ] && [ -x "$candidate/platform-tools/adb" ]; then
+            export PATH="$candidate/platform-tools:$PATH"
+            return 0
+        fi
+    done
+    return 1
+}
+
+if [ "$#" -gt 0 ] && ! resolve_adb; then
+    echo "error: adb not found on PATH, and not found under ANDROID_HOME, ANDROID_SDK_ROOT," \
+        "or the usual SDK install locations" >&2
+    echo "  set ANDROID_HOME to your SDK path, or add platform-tools to PATH, and try again" >&2
+    exit 1
+fi
+
+branch="$(git rev-parse --abbrev-ref HEAD)"
+if [ "$branch" != "main" ]; then
+    echo "error: not on main (currently on $branch) - checkout and pull main first" >&2
+    exit 1
+fi
+
+git fetch origin main --quiet
+local_head="$(git rev-parse HEAD)"
+remote_head="$(git rev-parse origin/main)"
+if [ "$local_head" != "$remote_head" ]; then
+    echo "error: local main ($local_head) does not match origin/main ($remote_head)" >&2
+    echo "  pull or push to line them up first" >&2
+    exit 1
+fi
+
+if ! git diff --quiet || ! git diff --cached --quiet; then
+    echo "error: working tree is not clean - a release candidate must match a committed state" >&2
+    exit 1
+fi
+
+if [ ! -f keystore.properties ]; then
+    echo "error: keystore.properties not found - see docs/releasing.md" >&2
+    exit 1
+fi
+
+echo "building release APK from $local_head..."
+./gradlew assembleRelease --no-daemon
+
+apk="$(find app/build/outputs/apk/release -name '*.apk' 2>/dev/null | sort | tail -1)" || true
+if [ -z "$apk" ]; then
+    echo "error: assembleRelease succeeded but no APK was found under app/build/outputs/apk/release" >&2
+    exit 1
+fi
+echo "built: $apk"
+
+echo "moving release-candidate tag to $local_head..."
+git tag -f release-candidate "$local_head"
+git push --force origin refs/tags/release-candidate
+
+version_name="$(grep -m1 '^appVersionName' gradle/libs.versions.toml | cut -d'"' -f2)" || true
+version_code="$(grep -m1 '^appVersionCode' gradle/libs.versions.toml | cut -d'"' -f2)" || true
+echo "release-candidate -> $local_head (version ${version_name:-unknown}, code ${version_code:-unknown})"
+
+if [ "$#" -eq 0 ]; then
+    echo "no device serials given - built and tagged only, nothing installed"
+    exit 0
+fi
+
+# A per-device function, rather than inlining the loop body, so one device's failure (a
+# transient adb hiccup, an unauthorized device, a bad serial) is reported and skipped
+# rather than - under `set -e` - silently aborting the whole run before later serials, or
+# even later steps for the same device, ever execute.
+install_to_device() {
+    local serial="$1" model
+    echo
+    echo "=== $serial ==="
+    model="$(adb -s "$serial" shell getprop ro.product.model 2>/dev/null | tr -d '\r')" || true
+    echo "device: ${model:-unknown}"
+
+    echo "removing any existing install of $APP_ID..."
+    adb -s "$serial" uninstall "$APP_ID" >/dev/null 2>&1 || true
+
+    echo "installing $apk..."
+    if ! adb -s "$serial" install "$apk"; then
+        echo "error: install failed on $serial" >&2
+        return 1
+    fi
+
+    for permission in "${RUNTIME_PERMISSIONS[@]}"; do
+        echo "granting $permission..."
+        adb -s "$serial" shell pm grant "$APP_ID" "$permission" \
+            || echo "  warning: could not grant $permission - grant it manually if the app needs it" >&2
+    done
+
+    echo "$serial ready - the one-time in-app scan acknowledgement (design.md §11.4) still needs a manual tap"
+    return 0
+}
+
+failed=()
+for serial in "$@"; do
+    if ! install_to_device "$serial"; then
+        echo "error: failed to install on $serial, continuing to the next device" >&2
+        failed+=("$serial")
+    fi
+done
+
+if [ "${#failed[@]}" -gt 0 ]; then
+    echo
+    echo "error: install failed on: ${failed[*]}" >&2
+    exit 1
+fi

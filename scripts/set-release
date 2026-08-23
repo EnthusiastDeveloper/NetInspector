@@ -1,0 +1,103 @@
+#!/usr/bin/env bash
+# Cuts a new release: bumps appVersionCode by one, shows the current appVersionName and
+# prompts for the new one, commits the bump on main, tags the commit, and pushes both -
+# the tag push is what .github/workflows/release.yml (see docs/releasing.md) picks up to
+# build, verify, and publish.
+#
+# Usage:
+#   scripts/cut-release.sh
+#
+# Must be run from a clean main that matches origin/main, since the release is built from
+# a real pushed commit, not local-only state.
+if [ "${1:-}" = "-h" ] || [ "${1:-}" = "--help" ]; then
+    # Only the leading comment block (the header above) - awk stops at the first line that
+    # isn't a comment, so it can't pick up an unrelated `#` comment further down the file.
+    awk '/^#!/{next} /^#/{sub(/^# ?/, ""); print; next} {exit}' "${BASH_SOURCE[0]}"
+    exit 0
+fi
+
+set -euo pipefail
+cd "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+
+VERSIONS_FILE="gradle/libs.versions.toml"
+
+branch="$(git rev-parse --abbrev-ref HEAD)"
+if [ "$branch" != "main" ]; then
+    echo "error: not on main (currently on $branch) - checkout and pull main first" >&2
+    exit 1
+fi
+
+git fetch origin main --quiet
+local_head="$(git rev-parse HEAD)"
+remote_head="$(git rev-parse origin/main)"
+if [ "$local_head" != "$remote_head" ]; then
+    echo "error: local main ($local_head) does not match origin/main ($remote_head)" >&2
+    echo "  pull or push to line them up first" >&2
+    exit 1
+fi
+
+if ! git diff --quiet || ! git diff --cached --quiet; then
+    echo "error: working tree is not clean - commit or stash first" >&2
+    exit 1
+fi
+
+current_version_code="$(grep -m1 '^appVersionCode = "' "$VERSIONS_FILE" | cut -d'"' -f2)"
+current_version_name="$(grep -m1 '^appVersionName = "' "$VERSIONS_FILE" | cut -d'"' -f2)"
+if [ -z "$current_version_code" ] || [ -z "$current_version_name" ]; then
+    echo "error: could not read current appVersionCode/appVersionName from $VERSIONS_FILE" >&2
+    exit 1
+fi
+
+case "$current_version_code" in
+    '' | *[!0-9]*)
+        echo "error: current appVersionCode ($current_version_code) is not an integer" >&2
+        exit 1
+        ;;
+esac
+new_version_code=$((current_version_code + 1))
+
+echo "current appVersionName: $current_version_name"
+read -r -p "new appVersionName: " new_version_name
+if [ -z "$new_version_name" ]; then
+    echo "error: no version name entered, aborting" >&2
+    exit 1
+fi
+if [ "$new_version_name" = "$current_version_name" ]; then
+    echo "error: new appVersionName matches the current one ($current_version_name)" >&2
+    exit 1
+fi
+
+new_tag="v$new_version_name"
+if git rev-parse -q --verify "refs/tags/$new_tag" >/dev/null \
+    || git ls-remote --exit-code --tags origin "$new_tag" >/dev/null 2>&1; then
+    echo "error: tag $new_tag already exists locally or on origin" >&2
+    exit 1
+fi
+
+sed -i \
+    -e "s/^appVersionCode = \"$current_version_code\"/appVersionCode = \"$new_version_code\"/" \
+    -e "s/^appVersionName = \"$current_version_name\"/appVersionName = \"$new_version_name\"/" \
+    "$VERSIONS_FILE"
+
+echo
+echo "$VERSIONS_FILE now reads:"
+grep -E '^appVersion(Code|Name)' "$VERSIONS_FILE"
+echo
+
+read -r -p "commit, tag $new_tag, and push to origin/main to start the release? [y/N] " confirm
+if [ "$confirm" != "y" ] && [ "$confirm" != "Y" ]; then
+    echo "aborted - reverting $VERSIONS_FILE"
+    git checkout -- "$VERSIONS_FILE"
+    exit 1
+fi
+
+git add "$VERSIONS_FILE"
+git commit -m "Bump version to $new_version_name ($new_version_code)"
+git tag "$new_tag"
+git push origin main "$new_tag"
+
+repo_slug="$(git config --get remote.origin.url \
+    | sed -E 's#^git@github\.com:##; s#^https://github\.com/##; s#\.git$##')"
+echo
+echo "pushed main and $new_tag"
+echo "watch the Release workflow: https://github.com/$repo_slug/actions"
