@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+# Installed by scripts/install-git-hooks.sh. Enforces the commit-message conventions in
+# CONTRIBUTING.md: no em/en-dash, no Co-Authored-By trailer, no AI-attribution footer.
+set -euo pipefail
+repo_root="$(git rev-parse --show-toplevel)"
+"$repo_root/scripts/check-banned-text.sh" "$1"
