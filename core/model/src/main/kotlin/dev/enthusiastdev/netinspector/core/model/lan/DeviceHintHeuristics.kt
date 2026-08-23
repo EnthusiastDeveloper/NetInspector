@@ -5,19 +5,23 @@ package dev.enthusiastdev.netinspector.core.model.lan
  * carries. Pure and heavily unit-tested, same shape as the channel recommendation scoring in
  * `:core:model:wifi` (design §7). Every candidate is built independently and the most certain
  * one wins outright ([Certainty]'s declaration order doubles as rank, lowest ordinal = most
- * certain, same as `HostMerge.preferredHint`) - `snmpSysDescr` (docs/device-identification-
- * ideas.md B1) is self-reported, [Certainty.CONFIRMED] like A1/A2's UPnP/mDNS fields; a port
- * signature (design's own examples - 62078 is Apple-only usbmuxd, 5555 is ADB) is
- * [Certainty.LIKELY], a coarser signal than that; the TTL fingerprint is the weakest,
- * [Certainty.POSSIBLE].
+ * certain, same as `HostMerge.preferredHint`) - `snmpSysDescr`/`tlsCertificateCommonName`
+ * (docs/device-identification-ideas.md B1/B3) are self-reported, [Certainty.CONFIRMED] like
+ * A1/A2's UPnP/mDNS fields; a port signature (design's own examples - 62078 is Apple-only
+ * usbmuxd, 5555 is ADB) is [Certainty.LIKELY], a coarser signal than either; the TTL fingerprint
+ * is the weakest, [Certainty.POSSIBLE]. A tie between two [Certainty.CONFIRMED] candidates goes
+ * to whichever is listed first below (SNMP's exact firmware string over a certificate's often
+ * generic company-name CN).
  */
 fun deviceHintFor(
     openPorts: List<OpenPort>,
     icmpReplyTtl: Int?,
     snmpSysDescr: String? = null,
+    tlsCertificateCommonName: String? = null,
 ): DeviceHint? =
     listOfNotNull(
         snmpDeviceHint(snmpSysDescr),
+        tlsCertificateDeviceHint(tlsCertificateCommonName),
         portSignatureHint(openPorts),
         icmpReplyTtl?.let(::ttlDeviceHint),
     ).minByOrNull { it.certainty }
@@ -109,6 +113,14 @@ fun upnpDeviceHint(
 fun snmpDeviceHint(sysDescr: String?): DeviceHint? {
     val label = sysDescr?.trim()?.ifBlank { null } ?: return null
     return DeviceHint(label = label, basis = "SNMP sysDescr → $label", certainty = Certainty.CONFIRMED)
+}
+
+/** docs/device-identification-ideas.md B3 - a self-signed admin-UI certificate's CN commonly
+ * carries the product name outright; [Certainty.CONFIRMED], the same tier as SNMP's
+ * self-reported `sysDescr` above. */
+fun tlsCertificateDeviceHint(commonName: String?): DeviceHint? {
+    val label = commonName?.trim()?.ifBlank { null } ?: return null
+    return DeviceHint(label = label, basis = "TLS certificate CN → $label", certainty = Certainty.CONFIRMED)
 }
 
 /** docs/device-identification-ideas.md A2 - two tiers from one mDNS record: an explicit model

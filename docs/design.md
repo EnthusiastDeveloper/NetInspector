@@ -587,6 +587,11 @@ false negatives on a congested network.
 - **SNMP `sysDescr`/`sysName`** (docs/device-identification-ideas.md B1): a single GET-request
   to UDP 161, community `public`. A hit is `CONFIRMED` tier - the device's own self-reported
   firmware/model string, same as A1/A2's UPnP/mDNS fields.
+- **TLS certificate CN** (docs/device-identification-ideas.md B3): a handshake-only
+  (never-validated) `SSLSocket` client against 443/8443. A self-signed admin-UI certificate's
+  CN frequently carries the product name outright; `CONFIRMED` tier like SNMP above, with SNMP
+  winning a tie (its firmware string is usually more specific than a certificate's often
+  generic company-name CN).
 - **ICMP reply TTL fingerprint**: an initial TTL of 64 implies Linux/Android/iOS/macOS,
   128 implies Windows, 255 implies network equipment. Combined with the hop count this is
   a cheap and reasonably reliable OS class hint - recorded as a `DeviceHint` with basis

@@ -124,6 +124,8 @@ current port-554-only camera guess.
 ---
 
 ## B3. TLS certificate inspection on admin-UI ports
+**Status:** Implemented
+
 `ExtendedPortProbe.kt` already opens a plain-HTTP banner grab on ports like 443/8443. A TLS
 handshake-only client on those same ports can read the certificate CN/SAN/issuer, which
 self-signed router/NAS/camera certs frequently set to the product name (`Synology Inc.`,
@@ -132,9 +134,15 @@ self-signed router/NAS/camera certs frequently set to the product name (`Synolog
 **Requirements:**
 - `SSLSocket` handshake-only client (shares the "connect, don't validate, just read the
   chain" pattern the standalone TLS inspector idea in `improvement-ideas.md` #14 would also
-  need - could share code with that if #14 ever lands)
-- Cert subject/issuer parsing
-- Feed matched fields into `DeviceHint`
+  need - could share code with that if #14 ever lands) - `TlsCertificateProbe.kt`, tried
+  against 443 then 8443
+- Cert subject/issuer parsing - just the CN component of the subject DN for now (SAN/issuer
+  are visible on the detail screen's existing port/banner rows if a fuller cert viewer ever
+  lands, e.g. via #14)
+- Feed matched fields into `DeviceHint` - `tlsCertificateDeviceHint` in
+  `DeviceHintHeuristics.kt`, `CONFIRMED` tier like B1's SNMP `sysDescr` (a tie between the two
+  favors SNMP's usually more specific firmware string over a certificate's often generic
+  company-name CN)
 
 ---
 

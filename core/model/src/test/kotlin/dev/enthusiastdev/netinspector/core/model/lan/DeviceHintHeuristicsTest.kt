@@ -155,9 +155,42 @@ class DeviceHintHeuristicsTest {
     }
 
     @Test
+    fun `tlsCertificateDeviceHint reports the certificate CN at CONFIRMED certainty`() {
+        val hint = tlsCertificateDeviceHint("Synology Inc.")
+        assertThat(hint?.label).isEqualTo("Synology Inc.")
+        assertThat(hint?.certainty).isEqualTo(Certainty.CONFIRMED)
+    }
+
+    @Test
+    fun `tlsCertificateDeviceHint returns null for a blank or absent CN`() {
+        assertThat(tlsCertificateDeviceHint(null)).isNull()
+        assertThat(tlsCertificateDeviceHint(" ")).isNull()
+    }
+
+    @Test
     fun `deviceHintFor prefers a self-reported SNMP sysDescr over a port signature`() {
         val hint = deviceHintFor(openPorts = listOf(port(9100)), icmpReplyTtl = null, snmpSysDescr = "HP LaserJet 4050")
         assertThat(hint?.label).isEqualTo("HP LaserJet 4050")
         assertThat(hint?.certainty).isEqualTo(Certainty.CONFIRMED)
+    }
+
+    @Test
+    fun `deviceHintFor prefers a self-reported TLS certificate CN over a port signature`() {
+        val hint =
+            deviceHintFor(openPorts = listOf(port(443)), icmpReplyTtl = null, tlsCertificateCommonName = "RT-AX88U")
+        assertThat(hint?.label).isEqualTo("RT-AX88U")
+        assertThat(hint?.certainty).isEqualTo(Certainty.CONFIRMED)
+    }
+
+    @Test
+    fun `deviceHintFor prefers SNMP over a TLS certificate when both are present`() {
+        val hint =
+            deviceHintFor(
+                openPorts = emptyList(),
+                icmpReplyTtl = null,
+                snmpSysDescr = "Synology DSM 7",
+                tlsCertificateCommonName = "Synology Inc.",
+            )
+        assertThat(hint?.label).isEqualTo("Synology DSM 7")
     }
 }

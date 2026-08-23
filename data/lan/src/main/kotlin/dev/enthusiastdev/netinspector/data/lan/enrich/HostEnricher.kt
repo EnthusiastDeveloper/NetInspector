@@ -30,6 +30,7 @@ class HostEnricher
         private val extendedPortProbe: ExtendedPortProbe,
         private val icmpTtlProbe: IcmpSweepProbe,
         private val snmpProbe: SnmpProbe,
+        private val tlsCertificateProbe: TlsCertificateProbe,
         private val clock: Clock,
     ) {
         suspend fun enrich(
@@ -59,15 +60,21 @@ class HostEnricher
             val portsJob = async(Dispatchers.IO) { probePorts(address) }
             val ttlJob = async(Dispatchers.IO) { resolveTtl(host) }
             val snmpJob = async(Dispatchers.IO) { snmpProbe.query(address, SNMP_TIMEOUT_MS) }
+            val tlsJob = async(Dispatchers.IO) { tlsCertificateProbe.subjectCommonName(address, TLS_TIMEOUT_MS) }
 
             val hostname = hostnameJob.await()
             val openPorts = portsJob.await()
             val icmpReplyTtl = ttlJob.await()
             val snmpResult = snmpJob.await()
+            val tlsCommonName = tlsJob.await()
             val hasNothing =
-                hostname == null && openPorts.isEmpty() && icmpReplyTtl == null && snmpResult == null
+                hostname == null &&
+                    openPorts.isEmpty() &&
+                    icmpReplyTtl == null &&
+                    snmpResult == null &&
+                    tlsCommonName == null
             if (hasNothing) return@coroutineScope
-            val deviceHint = deviceHintFor(openPorts, icmpReplyTtl, snmpResult?.sysDescr)
+            val deviceHint = deviceHintFor(openPorts, icmpReplyTtl, snmpResult?.sysDescr, tlsCommonName)
 
             onObservation(
                 HostObservation(
@@ -139,5 +146,6 @@ class HostEnricher
             const val PORT_TIMEOUT_MS = 500
             const val TTL_TIMEOUT_MS = 1_000
             const val SNMP_TIMEOUT_MS = 800
+            const val TLS_TIMEOUT_MS = 1_500
         }
     }
