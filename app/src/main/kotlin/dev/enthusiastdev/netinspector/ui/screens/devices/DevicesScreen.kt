@@ -210,7 +210,12 @@ private fun DevicesListPane(
             // docs/improvement-ideas.md #1 - meaningless (always "100, Excellent") until at least
             // one host has been through the extended port probe, same gate DevicesDetailCards
             // uses per-host, so this doesn't misrepresent a network nobody has scanned ports on yet.
-            if (state.hosts.any { it.openPorts.isNotEmpty() }) {
+            // Also skipped in Map mode: it adds nothing to that view but ate into the vertical
+            // room NetworkMapGraph needs most on a dense sweep (docs/adr/
+            // c-19-private-dns-breaks-reverse-lookup.md's bug report - the map's weighted
+            // remaining-space layout was already correct, it just had less space left to work
+            // with whenever this card was showing).
+            if (viewMode == DevicesViewMode.LIST && state.hosts.any { it.openPorts.isNotEmpty() }) {
                 DevicesNetworkHygieneCard(state.hosts, onHostClick = onHostClick)
             }
             DevicesViewModeToggle(viewMode, onViewModeChange)

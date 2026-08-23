@@ -51,10 +51,15 @@ private const val LABEL_MAX_WIDTH_DP = 64f
  * Sizing is entirely up to [modifier] - a dense map benefits from as much room as the caller can
  * give it, so this never imposes its own fixed height.
  *
- * Pinch-to-zoom/pan (via `detectTransformGestures`) is the main way to pull crowded labels apart
- * once a real sweep's host count packs several rings tightly - a fixed extra layout pass to avoid
- * every possible collision would fight the radial layout's whole point (position mirrors ring/
- * angle, not label width), so letting the user zoom into a crowded area is the more honest fix.
+ * Pinch-to-zoom/pan (via `detectTransformGestures`) is the way to pull a crowded ring apart for
+ * a closer look - a fixed extra layout pass to avoid every possible collision would fight the
+ * radial layout's whole point (position mirrors ring/angle, not label width). [nodeScaleFor]
+ * separately keeps the *default*, unzoomed view usable as host count grows, by shrinking node/
+ * label size to match how compressed the ring spacing gets - without it, a busy real-world
+ * network (30+ hosts) rendered fully illegible at the view's initial zoom, not just "a bit
+ * tight" (see docs/adr/c-19-private-dns-breaks-reverse-lookup.md's bug report, which is what
+ * surfaced this - every host losing its short hostname to a long fallback label at once is
+ * what made the crowding actually unreadable rather than just dense).
  *
  * Tap hit-testing recomputes the same [networkMapOffsets] geometry the draw pass used (the
  * `ChannelOccupancyGraph` pattern this module already follows) rather than attaching one
@@ -105,13 +110,17 @@ private fun NetworkMapCanvas(
     scale: Float,
     offset: Offset,
 ) {
+    // docs/adr - a fixed node/label size overlaps once enough hosts need a third-plus ring;
+    // this shrinks both to match how compressed the ring spacing actually is, see nodeScaleFor.
+    val nodeScale = nodeScaleFor(spokes.size)
     val paint =
         NetworkMapPaint(
             textMeasurer = rememberTextMeasurer(),
             labelStyle = MaterialTheme.typography.labelSmall.copy(color = MaterialTheme.colorScheme.onSurfaceVariant),
             colors = networkMapColors(),
-            hubRadiusPx = with(LocalDensity.current) { HUB_RADIUS_DP.dp.toPx() },
-            nodeRadiusPx = with(LocalDensity.current) { NODE_RADIUS_DP.dp.toPx() },
+            hubRadiusPx = with(LocalDensity.current) { (HUB_RADIUS_DP * nodeScale).dp.toPx() },
+            nodeRadiusPx = with(LocalDensity.current) { (NODE_RADIUS_DP * nodeScale).dp.toPx() },
+            labelMaxWidthPx = with(LocalDensity.current) { (LABEL_MAX_WIDTH_DP * nodeScale).dp.toPx() },
         )
     val hubRadiusPx = paint.hubRadiusPx
     val nodeRadiusPx = paint.nodeRadiusPx
@@ -177,6 +186,7 @@ private class NetworkMapPaint(
     val colors: NetworkMapColors,
     val hubRadiusPx: Float,
     val nodeRadiusPx: Float,
+    val labelMaxWidthPx: Float,
 )
 
 private fun DrawScope.drawNetworkMap(
@@ -190,7 +200,7 @@ private fun DrawScope.drawNetworkMap(
     }
     if (hub != null) {
         drawCircle(paint.colors.hub, radius = paint.hubRadiusPx, center = geometry.center)
-        drawNodeLabel(paint.textMeasurer, hub.label, geometry.center, paint.hubRadiusPx, paint.labelStyle)
+        drawNodeLabel(paint, hub.label, geometry.center, paint.hubRadiusPx)
     }
     spokes.forEachIndexed { index, node ->
         val spokeOffset = geometry.spokeOffsets[index]
@@ -203,7 +213,7 @@ private fun DrawScope.drawNetworkMap(
                 paint.colors.normal
             }
         drawCircle(color, radius = paint.nodeRadiusPx, center = spokeOffset)
-        drawNodeLabel(paint.textMeasurer, node.label, spokeOffset, paint.nodeRadiusPx, paint.labelStyle)
+        drawNodeLabel(paint, node.label, spokeOffset, paint.nodeRadiusPx)
     }
 }
 
@@ -227,20 +237,19 @@ private class NetworkMapGeometry(
 }
 
 private fun DrawScope.drawNodeLabel(
-    textMeasurer: TextMeasurer,
+    paint: NetworkMapPaint,
     label: String,
     nodeCenter: Offset,
     nodeRadiusPx: Float,
-    style: TextStyle,
 ) {
     val measured =
-        textMeasurer.measure(
+        paint.textMeasurer.measure(
             text = label,
-            style = style,
+            style = paint.labelStyle,
             overflow = TextOverflow.Ellipsis,
             softWrap = false,
             maxLines = 1,
-            constraints = Constraints(maxWidth = LABEL_MAX_WIDTH_DP.dp.toPx().roundToInt()),
+            constraints = Constraints(maxWidth = paint.labelMaxWidthPx.roundToInt()),
         )
     drawText(
         textLayoutResult = measured,

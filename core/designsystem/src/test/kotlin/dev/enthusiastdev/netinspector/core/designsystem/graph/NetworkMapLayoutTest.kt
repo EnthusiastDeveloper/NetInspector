@@ -67,4 +67,22 @@ class NetworkMapLayoutTest {
         val outerDistance = offsets[1].x - center.x
         assertThat(outerDistance).isGreaterThan(innerDistance)
     }
+
+    @Test
+    fun `nodeScaleFor stays at full size within the first two rings' capacity`() {
+        assertThat(nodeScaleFor(0)).isEqualTo(1f)
+        assertThat(nodeScaleFor(FULL_SIZE_SPOKE_CAPACITY)).isEqualTo(1f)
+    }
+
+    @Test
+    fun `nodeScaleFor shrinks once spoke count exceeds the first two rings' capacity`() {
+        val scale = nodeScaleFor(FULL_SIZE_SPOKE_CAPACITY * 2)
+        assertThat(scale).isLessThan(1f)
+        assertThat(scale).isWithin(0.001f).of(kotlin.math.sqrt(0.5f))
+    }
+
+    @Test
+    fun `nodeScaleFor never shrinks below the minimum even for a very large sweep`() {
+        assertThat(nodeScaleFor(10_000)).isEqualTo(MIN_NODE_SCALE)
+    }
 }
