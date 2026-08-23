@@ -20,6 +20,7 @@ live in [`installing.md`](installing.md); everything else here is for contributo
 | [`improvement-ideas.md`](improvement-ideas.md) | Brainstormed feature/UX ideas, ranked by ROI | When looking for what to build next |
 | [`references/dependency-versions.md`](references/dependency-versions.md) | Dependency version notes | When bumping a dependency |
 | [`installing.md`](installing.md) | End-user install instructions (sideload, Obtainium) | Linked from the root README |
+| [`troubleshooting.md`](troubleshooting.md) | Crash reports vs. debug-bundle export: what each captures, redaction, when to use which | Reporting or diagnosing a bug without ADB |
 | [`releasing.md`](releasing.md) | Release process, keystore handling, versioning | Cutting a release |
 
 ## Fixed decisions

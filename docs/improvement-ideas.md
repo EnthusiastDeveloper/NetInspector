@@ -254,6 +254,8 @@ an ISP support line or landlord.
 ---
 
 ## 21. Opt-in local crash reporting
+**Status:** Implemented (PR #11, open for review)
+
 Capture uncaught exceptions to a local file the user can export, rather than a telemetry
 SDK - consistent with the app's privacy stance. `ReleaseTree.kt` is an existing precedent
 for structured local logging.
@@ -266,6 +268,8 @@ for structured local logging.
 ---
 
 ## 22. In-app debug-bundle export
+**Status:** Implemented (PR #11, open for review)
+
 Bundle recent logs plus current scan/diagnostic state into a shareable file, so bug
 reports don't require ADB. Shares infrastructure with #21.
 

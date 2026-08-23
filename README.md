@@ -16,6 +16,9 @@ accounts, no telemetry, no analytics.
   exported to CSV/JSON.
 - **Adaptive UI** - built for phones, tablets and foldables from the start: window size
   classes, fold-aware layout, and UI state preserved across rotation.
+- **Troubleshooting** - opt-in local crash reports and on-demand debug-bundle export for
+  filing bug reports without ADB, both local-only until you choose to share them. See
+  [docs/troubleshooting.md](docs/troubleshooting.md).
 
 ## Screenshots
 
