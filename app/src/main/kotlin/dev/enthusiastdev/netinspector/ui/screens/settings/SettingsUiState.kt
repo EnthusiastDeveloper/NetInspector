@@ -19,4 +19,6 @@ data class SettingsUiState(
     val alertOnDisconnect: Boolean = false,
     val alertOnReconnect: Boolean = false,
     val monitoringCardDismissed: Boolean = false,
+    val crashReportingEnabled: Boolean = false,
+    val hasCrashReports: Boolean = false,
 )
