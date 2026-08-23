@@ -7,6 +7,8 @@ import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import dagger.hilt.android.HiltAndroidApp
+import dev.enthusiastdev.netinspector.debug.CrashHandler
+import dev.enthusiastdev.netinspector.debug.RingBufferTree
 import dev.enthusiastdev.netinspector.work.RetentionCleanupWorker
 import timber.log.Timber
 import java.util.concurrent.TimeUnit
@@ -18,12 +20,21 @@ class NetInspectorApplication :
     Configuration.Provider {
     @Inject lateinit var workerFactory: HiltWorkerFactory
 
+    @Inject lateinit var ringBufferTree: RingBufferTree
+
+    @Inject lateinit var crashHandler: CrashHandler
+
     override val workManagerConfiguration: Configuration
         get() = Configuration.Builder().setWorkerFactory(workerFactory).build()
 
     override fun onCreate() {
         super.onCreate()
         Timber.plant(if (BuildConfig.DEBUG) Timber.DebugTree() else ReleaseTree())
+        // improvement-ideas.md #21/#22 - both read from Hilt-injected fields, so must come
+        // after super.onCreate() has run field injection, same ordering constraint the
+        // WorkManager.initialize() call below already documents.
+        Timber.plant(ringBufferTree)
+        Thread.setDefaultUncaughtExceptionHandler(crashHandler)
         // The default `androidx.startup`-driven WorkManagerInitializer (disabled in the
         // manifest) runs as a ContentProvider *before* `Application.onCreate()` - before Hilt
         // has field-injected `workerFactory` below, so reading `workManagerConfiguration` at
