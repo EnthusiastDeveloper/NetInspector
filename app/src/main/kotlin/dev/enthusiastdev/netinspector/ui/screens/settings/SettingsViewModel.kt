@@ -10,12 +10,16 @@ import dev.enthusiastdev.netinspector.core.model.settings.RssiDisplayUnit
 import dev.enthusiastdev.netinspector.core.model.settings.ThemeMode
 import dev.enthusiastdev.netinspector.data.persistence.preferences.AppSettingsRepository
 import dev.enthusiastdev.netinspector.data.persistence.preferences.RetentionSettingsRepository
+import dev.enthusiastdev.netinspector.debug.CrashReportStore
+import dev.enthusiastdev.netinspector.debug.DebugBundleBuilder
+import dev.enthusiastdev.netinspector.debug.ShareFileLauncher
 import dev.enthusiastdev.netinspector.monitoring.ConnectionAlertSettings
 import dev.enthusiastdev.netinspector.ui.screens.connection.currentNotificationAccessState
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -27,6 +31,8 @@ class SettingsViewModel
     constructor(
         private val appSettingsRepository: AppSettingsRepository,
         private val retentionSettingsRepository: RetentionSettingsRepository,
+        private val crashReportStore: CrashReportStore,
+        private val debugBundleBuilder: DebugBundleBuilder,
         @ApplicationContext private val context: Context,
     ) : ViewModel() {
         // Mirrors ConnectionViewModel's own trigger: granting POST_NOTIFICATIONS via the system
@@ -36,6 +42,15 @@ class SettingsViewModel
 
         fun refreshNotificationAccess() {
             notificationAccessTrigger.update { it + 1 }
+        }
+
+        // improvement-ideas.md #21 - a crash written since this screen was last visited is
+        // filesystem state, not a Flow this ViewModel already observes, so it's re-checked on
+        // resume the same way notification access is above.
+        private val crashReportAvailabilityTrigger = MutableStateFlow(0)
+
+        fun refreshCrashReportAvailability() {
+            crashReportAvailabilityTrigger.update { it + 1 }
         }
 
         private val baseSettings =
@@ -80,6 +95,12 @@ class SettingsViewModel
                     state.copy(monitoringCardDismissed = cardDismissed)
                 }.combine(notificationAccessTrigger) { state, _ ->
                     state.copy(monitoringNotificationAccess = context.currentNotificationAccessState())
+                }.combine(appSettingsRepository.crashReportingEnabled) { state, crashReportingEnabled ->
+                    state.copy(crashReportingEnabled = crashReportingEnabled)
+                }.combine(
+                    crashReportAvailabilityTrigger.map { crashReportStore.hasReports() },
+                ) { state, hasCrashReports ->
+                    state.copy(hasCrashReports = hasCrashReports)
                 }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SettingsUiState())
 
         fun setThemeMode(mode: ThemeMode) {
@@ -132,5 +153,24 @@ class SettingsViewModel
          * .dismissMonitoringCard`) is otherwise one-way - this is the only way back. */
         fun resumeMonitoringCard() {
             viewModelScope.launch { appSettingsRepository.setMonitoringCardDismissed(false) }
+        }
+
+        fun setCrashReportingEnabled(enabled: Boolean) {
+            viewModelScope.launch { appSettingsRepository.setCrashReportingEnabled(enabled) }
+        }
+
+        fun exportCrashReport() {
+            viewModelScope.launch {
+                crashReportStore.latestReport()?.let {
+                    ShareFileLauncher.share(context, it, "text/plain", "Share crash report")
+                }
+            }
+        }
+
+        fun exportDebugBundle() {
+            viewModelScope.launch {
+                val zip = debugBundleBuilder.build()
+                ShareFileLauncher.share(context, zip, "application/zip", "Share debug bundle")
+            }
         }
     }

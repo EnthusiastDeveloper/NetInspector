@@ -190,6 +190,8 @@ private fun DashboardDestination(
         onOpenWifi = onOpenWifi,
         onOpenDevices = onOpenDevices,
         onOpenTools = onOpenTools,
+        onExportCrashReport = dashboardViewModel::exportCrashReport,
+        onDismissCrashReport = dashboardViewModel::dismissCrashReport,
     )
 }
 

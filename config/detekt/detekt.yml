@@ -5,7 +5,7 @@ complexity:
   LongParameterList:
     ignoreAnnotated: ['Composable'] # state + several callbacks is the normal Compose screen shape
   TooManyFunctions:
-    thresholdInClasses: 15 # SettingsViewModel is a flat aggregation of one setter per independent
+    thresholdInClasses: 20 # SettingsViewModel is a flat aggregation of one setter per independent
       # setting - it only grows as more settings are added, not a sign it needs splitting up
 
 style:

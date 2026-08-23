@@ -44,8 +44,11 @@ fun SettingsRoute(
     val uiState by viewModel.uiState.collectAsState()
     // Granting POST_NOTIFICATIONS via the system Settings app fires no callback this screen
     // would otherwise observe - re-check on resume, same as the Connection tab's own card.
+    // Crash-report availability is re-checked for the same reason: a crash can happen while
+    // this screen isn't visible.
     LifecycleResumeEffect(Unit) {
         viewModel.refreshNotificationAccess()
+        viewModel.refreshCrashReportAvailability()
         onPauseOrDispose {}
     }
     SettingsScreen(
@@ -61,6 +64,9 @@ fun SettingsRoute(
         onAlertOnDisconnectChange = viewModel::setAlertOnDisconnect,
         onAlertOnReconnectChange = viewModel::setAlertOnReconnect,
         onResumeMonitoringCard = viewModel::resumeMonitoringCard,
+        onCrashReportingToggle = viewModel::setCrashReportingEnabled,
+        onExportCrashReport = viewModel::exportCrashReport,
+        onExportDebugBundle = viewModel::exportDebugBundle,
         modifier = modifier,
     )
 }
@@ -79,6 +85,9 @@ fun SettingsScreen(
     onAlertOnDisconnectChange: (Boolean) -> Unit,
     onAlertOnReconnectChange: (Boolean) -> Unit,
     onResumeMonitoringCard: () -> Unit,
+    onCrashReportingToggle: (Boolean) -> Unit,
+    onExportCrashReport: () -> Unit,
+    onExportDebugBundle: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     LazyColumn(
@@ -114,6 +123,15 @@ fun SettingsScreen(
                     onResumeMonitoringCard = onResumeMonitoringCard,
                 )
             }
+        }
+        item {
+            DebugSection(
+                crashReportingEnabled = uiState.crashReportingEnabled,
+                hasCrashReports = uiState.hasCrashReports,
+                onCrashReportingToggle = onCrashReportingToggle,
+                onExportCrashReport = onExportCrashReport,
+                onExportDebugBundle = onExportDebugBundle,
+            )
         }
     }
 }
@@ -252,8 +270,11 @@ private fun ConnectionAlertsSection(
     }
 }
 
+/** `internal`, not `private`: also used by [SettingsDebugSection] (a separate file - keeping
+ * this section there instead of growing this file further past detekt's per-file function
+ * threshold). */
 @Composable
-private fun AlertToggleRow(
+internal fun AlertToggleRow(
     label: String,
     checked: Boolean,
     onCheckedChange: (Boolean) -> Unit,
@@ -262,7 +283,10 @@ private fun AlertToggleRow(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween,
     ) {
-        Text(label, style = MaterialTheme.typography.bodyMedium)
+        // labelLarge, not bodyMedium - matches the "Theme"/"Default preset for new scans"
+        // style other sections use for a control's own name, so it reads as a label for the
+        // switch next to it rather than a continuation of whatever description text precedes it.
+        Text(label, style = MaterialTheme.typography.labelLarge)
         Switch(checked = checked, onCheckedChange = onCheckedChange)
     }
 }

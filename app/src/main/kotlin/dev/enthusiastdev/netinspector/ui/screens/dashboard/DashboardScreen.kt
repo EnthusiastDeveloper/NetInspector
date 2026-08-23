@@ -8,7 +8,12 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -20,6 +25,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import dev.enthusiastdev.netinspector.R
 import dev.enthusiastdev.netinspector.core.common.wifi.rssiToQualityPercent
+import dev.enthusiastdev.netinspector.core.designsystem.component.InfoCard
 import dev.enthusiastdev.netinspector.core.designsystem.gauge.RssiGauge
 import dev.enthusiastdev.netinspector.core.model.connection.ConnectionSnapshot
 import dev.enthusiastdev.netinspector.core.model.lan.SweepProgress
@@ -34,11 +40,22 @@ fun DashboardScreen(
     onOpenWifi: () -> Unit,
     onOpenDevices: () -> Unit,
     onOpenTools: () -> Unit,
+    onExportCrashReport: () -> Unit,
+    onDismissCrashReport: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     when (uiState) {
         DashboardUiState.Loading -> CenteredMessage("Loading…", modifier)
-        is DashboardUiState.Content -> DashboardContent(uiState, onOpenWifi, onOpenDevices, onOpenTools, modifier)
+        is DashboardUiState.Content ->
+            DashboardContent(
+                uiState,
+                onOpenWifi,
+                onOpenDevices,
+                onOpenTools,
+                onExportCrashReport,
+                onDismissCrashReport,
+                modifier,
+            )
     }
 }
 
@@ -62,6 +79,8 @@ private fun DashboardContent(
     onOpenWifi: () -> Unit,
     onOpenDevices: () -> Unit,
     onOpenTools: () -> Unit,
+    onExportCrashReport: () -> Unit,
+    onDismissCrashReport: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     LazyColumn(
@@ -77,9 +96,39 @@ private fun DashboardContent(
                 modifier = Modifier.fillMaxWidth(),
             )
         }
+        if (state.pendingCrashReportFilename != null) {
+            item { CrashReportBanner(onExport = onExportCrashReport, onDismiss = onDismissCrashReport) }
+        }
         item { ConnectionQualityCard(state.connection, state.rssiDisplayUnit, onOpenWifi) }
         item { DeviceCountCard(state.hostCount, onOpenDevices) }
         item { DiagnosticsCard(state.sweepProgress, state.isMonitoringActive, onOpenTools) }
+    }
+}
+
+/** improvement-ideas.md #21 - "auto-detect the crash on the next app start and suggest to
+ * report it." Follows the same dismissible-InfoCard shape as the Connection tab's
+ * MonitoringCard: an X in the corner clears the prompt without exporting, an inline action
+ * does the real work. Dismissing never deletes the underlying report - it's still reachable
+ * later via Settings' "Export crash report." */
+@Composable
+private fun CrashReportBanner(
+    onExport: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    InfoCard(
+        title = "Crash report available",
+        trailingContent = {
+            IconButton(onClick = onDismiss) {
+                Icon(Icons.Filled.Close, contentDescription = "Dismiss crash report prompt")
+            }
+        },
+    ) {
+        Text(
+            "NetInspector crashed last time it was used. Export the report to help track down " +
+                "what happened - it stays on this device unless you choose to share it.",
+            style = MaterialTheme.typography.bodyMedium,
+        )
+        Button(onClick = onExport) { Text("Export crash report") }
     }
 }
 
