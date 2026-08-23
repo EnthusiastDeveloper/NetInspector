@@ -3,13 +3,17 @@ package dev.enthusiastdev.netinspector.ui.screens.devices
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -20,38 +24,96 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import dev.enthusiastdev.netinspector.core.designsystem.component.InfoCard
 import dev.enthusiastdev.netinspector.core.designsystem.component.ScoreBadge
-import dev.enthusiastdev.netinspector.core.model.lan.Host
 import dev.enthusiastdev.netinspector.core.model.lan.HygieneFinding
+import dev.enthusiastdev.netinspector.core.model.lan.HygieneScore
 import dev.enthusiastdev.netinspector.core.model.lan.allFlaggedPorts
-import dev.enthusiastdev.netinspector.core.model.lan.networkHygieneScore
 import dev.enthusiastdev.netinspector.core.model.lan.portRisk
 
-/** docs/improvement-ideas.md #1 - the network-wide read above the host list, aggregated over
- * exactly the hosts currently visible in [hosts] (already confidence-filtered by the caller -
- * design §Phase 8's "$hostCount devices" header count above this card reflects the same
- * filtered list, so this stays consistent with it rather than silently scoring a different
- * set). [onHostClick] (docs/improvement-ideas.md #3) lets each remediation row jump straight to
- * the host it's about, reusing the same host-address navigation [DevicesScreen] already uses
- * for the list/detail pane. */
+/**
+ * docs/improvement-ideas.md #1 - the network-wide read, sitting beside the list controls as a
+ * second column rather than as a full-width block above them.
+ *
+ * Only the score, its rating and a one-line summary are shown here; the remediation checklist
+ * moved behind a tap into [NetworkHygieneDetailsDialog]. Inline, that checklist could run to a
+ * dozen rows and push the device list itself off the bottom of the screen - which made the
+ * "what's on my network" screen mostly not about the devices.
+ *
+ * It is scored over *every* discovered host, not just the ones the confidence filter is
+ * currently showing. Scoring the filtered list meant turning all three filter chips off - a
+ * legitimate thing to do while narrowing a search - silently took the card away with them, since
+ * an empty host list has no open ports to gate it on. Network hygiene is a property of the
+ * network, not of the current view of it, so the filters no longer change it.
+ */
 @Composable
 internal fun DevicesNetworkHygieneCard(
-    hosts: List<Host>,
-    onHostClick: (String) -> Unit,
+    score: HygieneScore,
+    onShowDetails: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
-    val score = networkHygieneScore(hosts)
-    InfoCard(title = "Network hygiene", trailingContent = { HygieneScoreInfoButton() }) {
-        ScoreBadge(score = score.value, label = score.rating.label())
-        Text(
-            text = score.findingsSummary(),
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        RemediationList(score.findings, onHostClick = onHostClick)
+    Card(
+        onClick = onShowDetails,
+        modifier = modifier,
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+    ) {
+        Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            HygieneCardTitleRow()
+            ScoreBadge(score = score.value, label = score.rating.label())
+            Text(
+                text = score.findingsSummary(),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            if (score.findings.isNotEmpty()) {
+                Text(
+                    text = "Tap for what to fix",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.primary,
+                )
+            }
+        }
     }
+}
+
+@Composable
+private fun HygieneCardTitleRow() {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(text = "Network hygiene", style = MaterialTheme.typography.titleSmall)
+        HygieneScoreInfoButton()
+    }
+}
+
+/** The full checklist, on demand. [onHostClick] (docs/improvement-ideas.md #3) lets each
+ * remediation row jump straight to the host it's about, reusing the same host-address navigation
+ * [DevicesScreen] already uses for the list/detail pane. */
+@Composable
+internal fun NetworkHygieneDetailsDialog(
+    score: HygieneScore,
+    onHostClick: (String) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Network hygiene") },
+        text = {
+            Column(
+                modifier = Modifier.verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                ScoreBadge(score = score.value, label = score.rating.label())
+                Text(text = score.findingsSummary(), style = MaterialTheme.typography.bodySmall)
+                RemediationList(score.findings, onHostClick = onHostClick)
+            }
+        },
+        confirmButton = { TextButton(onClick = onDismiss) { Text("Close") } },
+    )
 }
 
 /** docs/improvement-ideas.md #2 - the score's methodology was otherwise opaque: a number and a
@@ -69,35 +131,38 @@ internal fun HygieneScoreInfoButton() {
         AlertDialog(
             onDismissRequest = { showExplanation = false },
             title = { Text("How the hygiene score works") },
-            text = {
-                Column(
-                    modifier = Modifier.verticalScroll(rememberScrollState()),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    Text(
-                        "Starts at 100 and loses points for open ports matching a fixed list of " +
-                            "well-known unencrypted or historically vulnerable protocols - nothing else " +
-                            "(firmware versions, password strength, anything not on this list) factors in.",
-                    )
-                    Text(
-                        "CRITICAL findings (-40 each) are protocols commonly reachable with no real " +
-                            "authentication barrier at all. HIGH (-20 each) expose credentials or traffic " +
-                            "in the clear, or have a known cryptographic break. MODERATE (-10 each) are " +
-                            "conditional on misconfiguration or on already-valid credentials. The network " +
-                            "score pools every host's open ports into one calculation rather than " +
-                            "averaging per-host scores.",
-                    )
-                    Text("Currently flagged:", style = MaterialTheme.typography.labelLarge)
-                    allFlaggedPorts().forEach { (port, risk) ->
-                        Text(
-                            "• $port (${risk.protocol}, ${risk.severity.name.lowercase()}) - ${risk.reason}",
-                            style = MaterialTheme.typography.bodySmall,
-                        )
-                    }
-                }
-            },
+            text = { HygieneMethodology() },
             confirmButton = { TextButton(onClick = { showExplanation = false }) { Text("Got it") } },
         )
+    }
+}
+
+@Composable
+private fun HygieneMethodology() {
+    Column(
+        modifier = Modifier.verticalScroll(rememberScrollState()),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Text(
+            "Starts at 100 and loses points for open ports matching a fixed list of " +
+                "well-known unencrypted or historically vulnerable protocols - nothing else " +
+                "(firmware versions, password strength, anything not on this list) factors in.",
+        )
+        Text(
+            "CRITICAL findings (-40 each) are protocols commonly reachable with no real " +
+                "authentication barrier at all. HIGH (-20 each) expose credentials or traffic " +
+                "in the clear, or have a known cryptographic break. MODERATE (-10 each) are " +
+                "conditional on misconfiguration or on already-valid credentials. The network " +
+                "score pools every host's open ports into one calculation rather than " +
+                "averaging per-host scores.",
+        )
+        Text("Currently flagged:", style = MaterialTheme.typography.labelLarge)
+        allFlaggedPorts().forEach { (port, risk) ->
+            Text(
+                "• $port (${risk.protocol}, ${risk.severity.name.lowercase()}) - ${risk.reason}",
+                style = MaterialTheme.typography.bodySmall,
+            )
+        }
     }
 }
 

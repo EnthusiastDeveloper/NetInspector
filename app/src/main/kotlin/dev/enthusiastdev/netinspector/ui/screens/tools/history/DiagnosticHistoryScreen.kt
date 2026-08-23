@@ -106,7 +106,6 @@ private fun DiagnosticHistoryListPane(
         contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        item { Text(text = "Diagnostic history", style = MaterialTheme.typography.titleLarge) }
         if (runs.isNotEmpty()) {
             item { HistoryExportRow(onExportCsv, onExportJson) }
         }

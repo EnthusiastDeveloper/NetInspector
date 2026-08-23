@@ -11,6 +11,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dev.enthusiastdev.netinspector.core.model.wifi.ScanOutcome
 import dev.enthusiastdev.netinspector.data.persistence.preferences.AppSettingsRepository
+import dev.enthusiastdev.netinspector.data.wifi.ConnectionRepository
 import dev.enthusiastdev.netinspector.data.wifi.WifiScanRepository
 import dev.enthusiastdev.netinspector.usecase.RecordWifiScanUseCase
 import kotlinx.coroutines.delay
@@ -31,6 +32,7 @@ class WifiViewModel
     @Inject
     constructor(
         private val wifiScanRepository: WifiScanRepository,
+        connectionRepository: ConnectionRepository,
         private val recordWifiScan: RecordWifiScanUseCase,
         private val appSettingsRepository: AppSettingsRepository,
         @ApplicationContext private val context: Context,
@@ -60,7 +62,10 @@ class WifiViewModel
                 wifiScanRepository.scanState,
                 ticker,
                 appSettingsRepository.rssiDisplayUnit,
-            ) { scanState, _, rssiDisplayUnit ->
+                // Read only to tell the channel recommendation which AP is *this* device's, so it
+                // can be excluded from the interference it is being compared against.
+                connectionRepository.connectionSnapshot,
+            ) { scanState, _, rssiDisplayUnit, connection ->
                 WifiUiState.Content(
                     accessPoints = scanState.accessPoints,
                     sampleCount = scanState.sampleCount,
@@ -68,6 +73,8 @@ class WifiViewModel
                     budget = wifiScanRepository.budget(),
                     lastUpdated = scanState.accessPoints.maxOfOrNull { it.lastSeen },
                     rssiDisplayUnit = rssiDisplayUnit,
+                    connectedBssid = connection?.bssid,
+                    connectedSpan = connection?.span,
                 )
             }.stateIn(
                 scope = viewModelScope,

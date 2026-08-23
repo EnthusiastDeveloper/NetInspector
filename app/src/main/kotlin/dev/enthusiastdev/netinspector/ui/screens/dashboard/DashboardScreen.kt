@@ -90,7 +90,7 @@ private fun DashboardContent(
     ) {
         item {
             Text(
-                stringResource(R.string.app_name),
+                stringResource(R.string.app_display_name),
                 style = MaterialTheme.typography.headlineMedium,
                 textAlign = TextAlign.Center,
                 modifier = Modifier.fillMaxWidth(),

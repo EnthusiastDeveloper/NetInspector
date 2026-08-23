@@ -10,6 +10,11 @@ sealed interface DevicesUiState {
     data class Content(
         /** Already filtered by [confidenceFilter] and sorted by [sortOrder]. */
         val hosts: List<Host>,
+        /** Every host this sweep found, before [confidenceFilter] is applied. The network
+         * hygiene score is computed from this rather than [hosts]: hygiene describes the
+         * network, not the current view of it, and scoring the filtered list meant switching
+         * every filter chip off took the score away with them. */
+        val allHosts: List<Host>,
         val progress: SweepProgress,
         val isConnected: Boolean,
         val needsAcknowledgement: Boolean,

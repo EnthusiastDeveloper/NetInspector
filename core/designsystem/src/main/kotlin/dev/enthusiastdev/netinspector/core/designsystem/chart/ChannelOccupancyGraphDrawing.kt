@@ -19,7 +19,7 @@ internal fun DrawScope.drawOccupancyGraph(
     val xTicksMhz = xAxisTicksMhz(mapper.axisLowMhz, mapper.axisHighMhz, size.width, minTickSpacingPx)
     drawRssiGridlines(gridValuesDbm, mapper, paint.gridColor)
     drawXAxisGridlines(xTicksMhz, mapper, paint.gridColor)
-    drawCurves(curves, highlightedKey, mapper)
+    drawCurves(curves, highlightedKey, mapper, paint.curveColors)
     drawRssiAxisLabels(gridValuesDbm, mapper, paint.textMeasurer, paint.labelStyles.default)
     drawXAxisLabels(xTicksMhz, mapper, paint.textMeasurer, paint.labelStyles.default)
     drawCurveLabels(curves, highlightedKey, paint.textMeasurer, paint.labelStyles, mapper)

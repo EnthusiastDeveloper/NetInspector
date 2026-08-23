@@ -146,4 +146,21 @@ class ChannelRecommendationTest {
         assertThat(recommendChannels(Band.GHZ_6, emptyList())).hasSize(59)
         assertThat(recommendChannels(Band.UNKNOWN, emptyList())).isEmpty()
     }
+
+    @Test
+    fun `channelCenterMhz maps channel numbers back to their band's center frequency`() {
+        assertThat(channelCenterMhz(Band.GHZ_2_4, 1)).isEqualTo(2412)
+        assertThat(channelCenterMhz(Band.GHZ_2_4, 11)).isEqualTo(2462)
+        assertThat(channelCenterMhz(Band.GHZ_5, 36)).isEqualTo(5180)
+        assertThat(channelCenterMhz(Band.GHZ_5, 100)).isEqualTo(5500)
+        assertThat(channelCenterMhz(Band.GHZ_6, 5)).isEqualTo(5975)
+        assertThat(channelCenterMhz(Band.UNKNOWN, 1)).isNull()
+    }
+
+    @Test
+    fun `every recommendation carries the center frequency of its own channel`() {
+        recommendChannels(Band.GHZ_5, emptyList()).forEach { recommendation ->
+            assertThat(recommendation.centerMhz).isEqualTo(channelCenterMhz(Band.GHZ_5, recommendation.channel))
+        }
+    }
 }

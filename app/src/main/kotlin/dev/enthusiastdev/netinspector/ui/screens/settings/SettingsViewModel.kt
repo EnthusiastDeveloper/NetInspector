@@ -14,7 +14,6 @@ import dev.enthusiastdev.netinspector.debug.CrashReportStore
 import dev.enthusiastdev.netinspector.debug.DebugBundleBuilder
 import dev.enthusiastdev.netinspector.debug.ShareFileLauncher
 import dev.enthusiastdev.netinspector.monitoring.ConnectionAlertSettings
-import dev.enthusiastdev.netinspector.ui.screens.connection.currentNotificationAccessState
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -35,18 +34,9 @@ class SettingsViewModel
         private val debugBundleBuilder: DebugBundleBuilder,
         @ApplicationContext private val context: Context,
     ) : ViewModel() {
-        // Mirrors ConnectionViewModel's own trigger: granting POST_NOTIFICATIONS via the system
-        // Settings app (after a permanent denial) fires no callback this ViewModel would
-        // otherwise observe, so ON_RESUME has to force a re-check explicitly.
-        private val notificationAccessTrigger = MutableStateFlow(0)
-
-        fun refreshNotificationAccess() {
-            notificationAccessTrigger.update { it + 1 }
-        }
-
         // improvement-ideas.md #21 - a crash written since this screen was last visited is
         // filesystem state, not a Flow this ViewModel already observes, so it's re-checked on
-        // resume the same way notification access is above.
+        // resume via this trigger.
         private val crashReportAvailabilityTrigger = MutableStateFlow(0)
 
         fun refreshCrashReportAvailability() {
@@ -91,10 +81,6 @@ class SettingsViewModel
                         alertOnDisconnect = alerts.alertOnDisconnect,
                         alertOnReconnect = alerts.alertOnReconnect,
                     )
-                }.combine(appSettingsRepository.monitoringCardDismissed) { state, cardDismissed ->
-                    state.copy(monitoringCardDismissed = cardDismissed)
-                }.combine(notificationAccessTrigger) { state, _ ->
-                    state.copy(monitoringNotificationAccess = context.currentNotificationAccessState())
                 }.combine(appSettingsRepository.crashReportingEnabled) { state, crashReportingEnabled ->
                     state.copy(crashReportingEnabled = crashReportingEnabled)
                 }.combine(
@@ -147,12 +133,6 @@ class SettingsViewModel
 
         fun setAlertOnReconnect(enabled: Boolean) {
             viewModelScope.launch { appSettingsRepository.setAlertOnReconnect(enabled) }
-        }
-
-        /** The Connection tab's monitoring card dismiss button (`ConnectionViewModel
-         * .dismissMonitoringCard`) is otherwise one-way - this is the only way back. */
-        fun resumeMonitoringCard() {
-            viewModelScope.launch { appSettingsRepository.setMonitoringCardDismissed(false) }
         }
 
         fun setCrashReportingEnabled(enabled: Boolean) {

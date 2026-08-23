@@ -9,8 +9,11 @@ import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
+import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffold
+import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffoldDefaults
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScope
+import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteType
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.collectAsState
@@ -21,6 +24,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.stringResource
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.LifecycleResumeEffect
@@ -30,7 +34,6 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
-import androidx.navigation.compose.navigation
 import androidx.navigation.compose.rememberNavController
 import dev.enthusiastdev.netinspector.core.designsystem.adaptive.DevicePosture
 import dev.enthusiastdev.netinspector.core.designsystem.adaptive.LocalDevicePosture
@@ -39,20 +42,11 @@ import dev.enthusiastdev.netinspector.core.designsystem.adaptive.translatedTo
 import dev.enthusiastdev.netinspector.ui.navigation.ConnectionRoute
 import dev.enthusiastdev.netinspector.ui.navigation.DashboardRoute
 import dev.enthusiastdev.netinspector.ui.navigation.DevicesRoute
-import dev.enthusiastdev.netinspector.ui.navigation.DiagnosticHistoryToolRoute
-import dev.enthusiastdev.netinspector.ui.navigation.DnsToolRoute
-import dev.enthusiastdev.netinspector.ui.navigation.HttpInspectorToolRoute
 import dev.enthusiastdev.netinspector.ui.navigation.PingToolRoute
 import dev.enthusiastdev.netinspector.ui.navigation.PortScannerToolRoute
-import dev.enthusiastdev.netinspector.ui.navigation.ScanHistoryToolRoute
-import dev.enthusiastdev.netinspector.ui.navigation.SettingsToolRoute
-import dev.enthusiastdev.netinspector.ui.navigation.SignalMeterToolRoute
-import dev.enthusiastdev.netinspector.ui.navigation.SubnetCalculatorToolRoute
-import dev.enthusiastdev.netinspector.ui.navigation.ToolsHomeRoute
+import dev.enthusiastdev.netinspector.ui.navigation.SettingsRoute
 import dev.enthusiastdev.netinspector.ui.navigation.ToolsRoute
 import dev.enthusiastdev.netinspector.ui.navigation.TracerouteToolRoute
-import dev.enthusiastdev.netinspector.ui.navigation.WakeOnLanToolRoute
-import dev.enthusiastdev.netinspector.ui.navigation.WhoisToolRoute
 import dev.enthusiastdev.netinspector.ui.navigation.WifiRoute
 import dev.enthusiastdev.netinspector.ui.navigation.topLevelDestinations
 import dev.enthusiastdev.netinspector.ui.screens.connection.ConnectionScreen
@@ -61,20 +55,7 @@ import dev.enthusiastdev.netinspector.ui.screens.dashboard.DashboardScreen
 import dev.enthusiastdev.netinspector.ui.screens.dashboard.DashboardViewModel
 import dev.enthusiastdev.netinspector.ui.screens.devices.DevicesScreen
 import dev.enthusiastdev.netinspector.ui.screens.devices.DevicesViewModel
-import dev.enthusiastdev.netinspector.ui.screens.settings.SettingsRoute
-import dev.enthusiastdev.netinspector.ui.screens.tools.Tool
-import dev.enthusiastdev.netinspector.ui.screens.tools.ToolsScreen
-import dev.enthusiastdev.netinspector.ui.screens.tools.dns.DnsRoute
-import dev.enthusiastdev.netinspector.ui.screens.tools.history.DiagnosticHistoryRoute
-import dev.enthusiastdev.netinspector.ui.screens.tools.history.ScanHistoryRoute
-import dev.enthusiastdev.netinspector.ui.screens.tools.httpinspector.HttpInspectorRoute
-import dev.enthusiastdev.netinspector.ui.screens.tools.ping.PingRoute
-import dev.enthusiastdev.netinspector.ui.screens.tools.portscanner.PortScannerRoute
-import dev.enthusiastdev.netinspector.ui.screens.tools.signalmeter.SignalMeterRoute
-import dev.enthusiastdev.netinspector.ui.screens.tools.subnetcalc.SubnetCalculatorRoute
-import dev.enthusiastdev.netinspector.ui.screens.tools.traceroute.TracerouteRoute
-import dev.enthusiastdev.netinspector.ui.screens.tools.whois.WhoisRoute
-import dev.enthusiastdev.netinspector.ui.screens.tools.wol.WakeOnLanRoute
+import dev.enthusiastdev.netinspector.ui.screens.settings.SettingsDestination
 import dev.enthusiastdev.netinspector.ui.screens.wifi.WifiScreen
 import dev.enthusiastdev.netinspector.ui.screens.wifi.WifiViewModel
 
@@ -99,10 +80,33 @@ fun NetInspectorApp() {
 
             NavigationSuiteScaffold(
                 navigationSuiteItems = { navigationItems(navController, currentDestination) },
+                layoutType = navigationSuiteLayoutType(),
             ) {
                 AppNavHost(navController)
             }
         }
+    }
+}
+
+/** Below this window height the bottom navigation bar - a fixed ~80dp of chrome regardless of
+ * orientation - eats a punishing share of the screen. */
+private const val COMPACT_WINDOW_HEIGHT_DP = 480
+
+/**
+ * A phone in landscape has plenty of width and very little height, so the bottom bar costs
+ * proportionally far more of the content area there than it does in portrait. Material's own
+ * size-class mapping only looks at *width*, which reads a landscape phone as "medium/expanded"
+ * and still hands it a bottom bar; a short window is switched to the left-hand rail instead,
+ * which spends the axis the device actually has to spare. Everything else keeps the stock
+ * width-driven mapping (bar on portrait phones, rail on tablets, drawer on wide windows).
+ */
+@Composable
+private fun navigationSuiteLayoutType(): NavigationSuiteType {
+    val windowHeightDp = LocalConfiguration.current.screenHeightDp
+    return if (windowHeightDp < COMPACT_WINDOW_HEIGHT_DP) {
+        NavigationSuiteType.NavigationRail
+    } else {
+        NavigationSuiteScaffoldDefaults.calculateFromAdaptiveInfo(currentWindowAdaptiveInfo())
     }
 }
 
@@ -157,23 +161,8 @@ private fun AppNavHost(navController: NavHostController) {
                 onPortScanHost = { target -> navController.navigateToToolDeepLink(PortScannerToolRoute(target)) },
             )
         }
-        navigation<ToolsRoute>(startDestination = ToolsHomeRoute) {
-            composable<ToolsHomeRoute> {
-                ToolsScreen(onNavigate = { tool -> navController.navigateToTool(tool) })
-            }
-            composable<PingToolRoute> { PingRoute() }
-            composable<TracerouteToolRoute> { TracerouteRoute() }
-            composable<DnsToolRoute> { DnsRoute() }
-            composable<PortScannerToolRoute> { PortScannerRoute() }
-            composable<SignalMeterToolRoute> { SignalMeterRoute() }
-            composable<SubnetCalculatorToolRoute> { SubnetCalculatorRoute() }
-            composable<WhoisToolRoute> { WhoisRoute() }
-            composable<HttpInspectorToolRoute> { HttpInspectorRoute() }
-            composable<WakeOnLanToolRoute> { WakeOnLanRoute() }
-            composable<ScanHistoryToolRoute> { ScanHistoryRoute() }
-            composable<DiagnosticHistoryToolRoute> { DiagnosticHistoryRoute() }
-            composable<SettingsToolRoute> { SettingsRoute() }
-        }
+        toolsGraph(navController)
+        composable<SettingsRoute> { SettingsDestination() }
     }
 }
 
@@ -214,7 +203,6 @@ private fun ConnectionDestination() {
         onStartMonitoring = connectionViewModel::startMonitoring,
         onStopMonitoring = connectionViewModel::stopMonitoring,
         onNotificationAccessChanged = connectionViewModel::refreshNotificationAccess,
-        onDismissMonitoring = connectionViewModel::dismissMonitoringCard,
     )
 }
 
@@ -260,39 +248,4 @@ private fun DevicesDestination(
         onToggleConfidenceFilter = devicesViewModel::toggleConfidenceFilter,
         onSetNickname = devicesViewModel::setNickname,
     )
-}
-
-/**
- * Deep-linking into another tab's nested graph needs the same popUpTo(start,
- * saveState)/launchSingleTop back-stack handling the bottom-nav tab switch above uses - a plain
- * `navigate()` here leaves [DevicesRoute] *and* the Tools graph both live on the back stack
- * simultaneously, which then confuses the next bottom-nav tab switch's own popUpTo/restoreState
- * into landing back on the deep-linked tool instead of the newly-tapped tab (reproduced on-device
- * during Phase 6, the first deep link into a nested tab graph - originally Ping-only, generalized
- * once Traceroute and Port scanner grew the same `target`-prefilled shape). `restoreState` is
- * left off deliberately: this must always land on the freshly-targeted host, never a previously
- * saved run of that tool.
- */
-private fun NavHostController.navigateToToolDeepLink(route: Any) {
-    navigate(route) {
-        popUpTo(graph.findStartDestination().id) { saveState = true }
-        launchSingleTop = true
-    }
-}
-
-private fun NavHostController.navigateToTool(tool: Tool) {
-    when (tool) {
-        Tool.PING -> navigate(PingToolRoute())
-        Tool.TRACEROUTE -> navigate(TracerouteToolRoute())
-        Tool.DNS -> navigate(DnsToolRoute)
-        Tool.PORT_SCANNER -> navigate(PortScannerToolRoute())
-        Tool.WAKE_ON_LAN -> navigate(WakeOnLanToolRoute)
-        Tool.WHOIS -> navigate(WhoisToolRoute)
-        Tool.HTTP_INSPECTOR -> navigate(HttpInspectorToolRoute)
-        Tool.SUBNET_CALCULATOR -> navigate(SubnetCalculatorToolRoute)
-        Tool.SIGNAL_METER -> navigate(SignalMeterToolRoute)
-        Tool.SCAN_HISTORY -> navigate(ScanHistoryToolRoute)
-        Tool.DIAGNOSTIC_HISTORY -> navigate(DiagnosticHistoryToolRoute)
-        Tool.SETTINGS -> navigate(SettingsToolRoute)
-    }
 }

@@ -43,6 +43,9 @@ internal class GraphPaint(
     val gridColor: Color,
     val textMeasurer: TextMeasurer,
     val labelStyles: LabelStyles,
+    /** Resolved per curve key, so the draw pass never has to know how a color was chosen -
+     * see `rememberCurveColors`. */
+    val curveColors: Map<String, Color>,
 )
 
 internal fun DrawScope.drawRssiGridlines(

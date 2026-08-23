@@ -69,6 +69,7 @@ class DevicesViewModel
                 .combine(confidenceFilter) { (raw, sort), filter ->
                     DevicesUiState.Content(
                         hosts = raw.hosts.filteredByConfidence(filter).sortedForDisplay(sort),
+                        allHosts = raw.hosts.sortedForDisplay(sort),
                         progress = raw.progress,
                         isConnected = raw.isConnected,
                         needsAcknowledgement = !raw.acknowledged,

@@ -85,4 +85,64 @@ class NetworkMapLayoutTest {
     fun `nodeScaleFor never shrinks below the minimum even for a very large sweep`() {
         assertThat(nodeScaleFor(10_000)).isEqualTo(MIN_NODE_SCALE)
     }
+
+    @Test
+    fun `ring spacing fits the viewport when there is room to spare`() {
+        val spacing =
+            networkMapRingSpacingPx(hubRadiusPx = 20f, availableRadiusPx = 120f, ringCount = 2, minRingSpacingPx = 10f)
+        assertThat(spacing).isWithin(0.01f).of(50f)
+    }
+
+    @Test
+    fun `ring spacing never drops below the readable minimum`() {
+        // Five rings of hosts in a viewport that could only give them 16px each - the dense-map
+        // case where fitting everything on screen made the nodes unreadable.
+        val spacing =
+            networkMapRingSpacingPx(hubRadiusPx = 20f, availableRadiusPx = 100f, ringCount = 5, minRingSpacingPx = 55f)
+        assertThat(spacing).isWithin(0.01f).of(55f)
+    }
+
+    @Test
+    fun `ring spacing is zero when there are no rings to space`() {
+        assertThat(networkMapRingSpacingPx(hubRadiusPx = 20f, availableRadiusPx = 100f, ringCount = 0))
+            .isWithin(0.01f)
+            .of(0f)
+    }
+
+    @Test
+    fun `a crowded map is laid out larger than the viewport that has to show it`() {
+        val ringCount = networkMapRingCount(count = 40)
+        val spacing =
+            networkMapRingSpacingPx(
+                hubRadiusPx = 20f,
+                availableRadiusPx = 200f,
+                ringCount = ringCount,
+                minRingSpacingPx = 55f,
+            )
+        val contentRadius = networkMapContentRadiusPx(20f, 11f, spacing, ringCount)
+        assertThat(contentRadius).isGreaterThan(200f)
+    }
+
+    @Test
+    fun `networkMapRingCount matches the rings the slots actually occupy`() {
+        assertThat(networkMapRingCount(0)).isEqualTo(0)
+        assertThat(networkMapRingCount(count = 6, ringCapacity = 6)).isEqualTo(1)
+        assertThat(networkMapRingCount(count = 7, ringCapacity = 6)).isEqualTo(2)
+    }
+
+    @Test
+    fun `the minimum spacing pushes outer rings further out than a pure fit would`() {
+        val center = Offset(0f, 0f)
+        val slots = listOf(RadialSlot(ring = 1, angleRadians = 0f))
+        val fitted = networkMapOffsets(center, hubRadiusPx = 20f, availableRadiusPx = 80f, slots = slots)
+        val spaced =
+            networkMapOffsets(
+                center,
+                hubRadiusPx = 20f,
+                availableRadiusPx = 80f,
+                slots = slots,
+                minRingSpacingPx = 60f,
+            )
+        assertThat(spaced.single().x).isGreaterThan(fitted.single().x)
+    }
 }
