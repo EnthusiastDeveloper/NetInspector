@@ -23,6 +23,10 @@ private const val DIMMED_ALPHA_FACTOR = 0.35f
 private const val DEFAULT_STROKE_WIDTH_DP = 1.5f
 private const val HIGHLIGHT_STROKE_WIDTH_DP = 3f
 
+/** Only reachable if a curve list and its resolved color map ever disagree, which they can't as
+ * long as both are derived from the same list - a neutral grey beats a crash if that changes. */
+private val FALLBACK_CURVE_COLOR = Color(0xFF8A8A8A)
+
 private data class CurveStyle(
     val fillAlpha: Float,
     val strokeAlpha: Float,
@@ -33,18 +37,19 @@ internal fun DrawScope.drawCurves(
     curves: List<OccupancyCurve>,
     highlightedKey: String?,
     mapper: AxisMapper,
+    curveColors: Map<String, Color>,
 ) {
-    curves.forEach { curve -> drawCurve(curve, highlightedKey, mapper) }
+    curves.forEach { curve -> drawCurve(curve, highlightedKey, mapper, curveColors[curve.key] ?: FALLBACK_CURVE_COLOR) }
 }
 
 private fun DrawScope.drawCurve(
     curve: OccupancyCurve,
     highlightedKey: String?,
     mapper: AxisMapper,
+    color: Color,
 ) {
     val isDimmed = highlightedKey != null && curve.key != highlightedKey
     val isHighlighted = curve.key == highlightedKey
-    val color = curveColor(curve.colorSeed)
     val style =
         CurveStyle(
             fillAlpha = if (isDimmed) FILL_ALPHA * DIMMED_ALPHA_FACTOR else FILL_ALPHA,
@@ -90,13 +95,6 @@ private fun DrawScope.drawParabola(
 
     drawPath(path, color = color.copy(alpha = style.fillAlpha))
     drawPath(path, color = color.copy(alpha = style.strokeAlpha), style = Stroke(width = style.strokeWidth))
-}
-
-/** A stable, reasonably-distinct hue per curve - not tied to any particular AP identity type
- * so this module stays free of domain imports; callers pick the seed (e.g. `bssid.hashCode()`). */
-private fun curveColor(seed: Int): Color {
-    val hue = ((seed % 360) + 360) % 360
-    return Color.hsv(hue.toFloat(), 0.65f, 0.85f)
 }
 
 /** Strongest signal first: a curve's own outline is always drawn (above), but its label is

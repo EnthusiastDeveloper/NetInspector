@@ -16,15 +16,25 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
 private const val START_ANGLE = 150f
 private const val SWEEP_ANGLE = 240f
+private val DEFAULT_DIAMETER = 160.dp
+
+/** The arc reads as a gauge rather than a ring only if the stroke stays proportional to the
+ * diameter - a fixed 16dp stroke on a 120dp gauge looks like a donut. */
+private const val STROKE_FRACTION = 0.1f
 
 /**
  * Semicircular signal-strength gauge. `qualityPercent` (0..100, see `rssiToQualityPercent` in
  * `:core:common`) drives both the arc fill and its color; `rssiDbm` is the label - the gauge
  * never invents a value when the connection is unknown, that's the caller's job to gate.
+ *
+ * [diameter] exists so the gauge can sit in half a row's width (the Connection tab pairs it with
+ * the network name side by side) without the caller resorting to `scale`, which would shrink the
+ * value text below a legible size along with the arc.
  */
 @Composable
 fun RssiGauge(
@@ -32,6 +42,7 @@ fun RssiGauge(
     qualityPercent: Int,
     modifier: Modifier = Modifier,
     showAsPercent: Boolean = false,
+    diameter: Dp = DEFAULT_DIAMETER,
 ) {
     val trackColor = MaterialTheme.colorScheme.surfaceVariant
     val fillColor =
@@ -49,13 +60,13 @@ fun RssiGauge(
     // twice.
     Box(
         modifier =
-            modifier.size(160.dp).clearAndSetSemantics {
+            modifier.size(diameter).clearAndSetSemantics {
                 contentDescription = rssiGaugeDescription(rssiDbm, qualityPercent, showAsPercent)
             },
         contentAlignment = Alignment.Center,
     ) {
-        Canvas(modifier = Modifier.size(160.dp)) {
-            val stroke = Stroke(width = 16.dp.toPx(), cap = StrokeCap.Round)
+        Canvas(modifier = Modifier.size(diameter)) {
+            val stroke = Stroke(width = size.minDimension * STROKE_FRACTION, cap = StrokeCap.Round)
             val inset = stroke.width / 2
             val arcSize = Size(size.width - inset * 2, size.height - inset * 2)
             val topLeft = Offset(inset, inset)

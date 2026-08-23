@@ -18,6 +18,28 @@ data class ChannelRecommendation(
     val isNonPsc: Boolean,
 )
 
+/**
+ * design §6.2's freqToChannel, inverted: the center frequency of a channel *number* on [band].
+ *
+ * Public because the UI needs it for the same reason it exists here - an AP's settings page talks
+ * in channel numbers while the occupancy graph's axis is in MHz, so a channel recommendation has
+ * to be able to name both if the user is to see where on the graph it is pointing.
+ *
+ * Note this is the center of the standard 20 MHz channel, which is not the same as a wide AP's
+ * `ChannelSpan.centerMhz`: an 80 MHz AP with primary channel 44 is centered at 5210 MHz, while
+ * channel 44 itself is centered at 5220 MHz.
+ */
+fun channelCenterMhz(
+    band: Band,
+    channel: Int,
+): Int? =
+    when (band) {
+        Band.GHZ_2_4 -> 2407 + 5 * channel
+        Band.GHZ_5 -> 5000 + 5 * channel
+        Band.GHZ_6 -> 5950 + 5 * channel
+        Band.UNKNOWN -> null
+    }
+
 /** design §7.2 - RSSI must leave the log domain before it is summed; averaging dBm values
  * directly is the common bug this exists to prevent. */
 fun linearPower(dbm: Int): Double = 10.0.pow(dbm / 10.0)
@@ -157,10 +179,4 @@ private fun candidateChannels(band: Band): List<Int> =
 private fun candidateCenterMhz(
     band: Band,
     channel: Int,
-): Int? =
-    when (band) {
-        Band.GHZ_2_4 -> 2407 + 5 * channel
-        Band.GHZ_5 -> 5000 + 5 * channel
-        Band.GHZ_6 -> 5950 + 5 * channel
-        Band.UNKNOWN -> null
-    }
+): Int? = channelCenterMhz(band, channel)

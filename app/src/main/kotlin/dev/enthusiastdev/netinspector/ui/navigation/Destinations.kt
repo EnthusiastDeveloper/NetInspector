@@ -5,6 +5,7 @@ import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.Devices
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.NetworkWifi
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Wifi
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.navigation.NavDestination
@@ -35,6 +36,11 @@ import kotlinx.serialization.Serializable
 
 @Serializable data object ToolsHomeRoute
 
+// Settings is a top-level destination rather than a tile in the Tools grid: it configures the
+// app, it isn't a diagnostic the user *runs*, and burying it among the tools made it the one
+// entry there that never produced a result.
+@Serializable data object SettingsRoute
+
 data class TopLevelDestination(
     val route: Any,
     val labelRes: Int,
@@ -60,6 +66,9 @@ val topLevelDestinations: List<TopLevelDestination> =
         },
         TopLevelDestination(ToolsRoute, R.string.destination_tools, Icons.Filled.Build) {
             it.isInHierarchy<ToolsRoute>()
+        },
+        TopLevelDestination(SettingsRoute, R.string.destination_settings, Icons.Filled.Settings) {
+            it.isInHierarchy<SettingsRoute>()
         },
     )
 

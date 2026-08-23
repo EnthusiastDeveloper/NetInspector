@@ -62,17 +62,49 @@ internal fun computeRadialSlots(
     return slots
 }
 
-/** Converts [slots] to pixel offsets around [center], spacing rings evenly across
- * [availableRadiusPx] (the room left for spokes once [hubRadiusPx] is reserved at the center). */
+/**
+ * How far apart consecutive rings sit: evenly across [availableRadiusPx] (the room left for
+ * spokes once [hubRadiusPx] is reserved at the center), but never tighter than
+ * [minRingSpacingPx].
+ *
+ * That floor is what stops a busy network from collapsing into an unreadable knot. Fitting every
+ * ring inside the viewport works up to a couple of dozen hosts and then stops: at 30+ the rings
+ * are packed closer than a node is wide, nodes touch, and the labels underneath them overlap into
+ * mush. Past that point the honest answer is that the map is bigger than the screen - so it is
+ * drawn at a legible size and the viewport shows part of it, leaving the caller's pinch-to-zoom
+ * to pull back to a full (if small) overview on demand.
+ */
+internal fun networkMapRingSpacingPx(
+    hubRadiusPx: Float,
+    availableRadiusPx: Float,
+    ringCount: Int,
+    minRingSpacingPx: Float = 0f,
+): Float {
+    if (ringCount <= 0) return 0f
+    val fitted = (availableRadiusPx - hubRadiusPx).coerceAtLeast(0f) / ringCount
+    return maxOf(fitted, minRingSpacingPx)
+}
+
+/** The radius the whole drawing occupies, so a caller can tell whether it currently overflows
+ * its viewport and how far it may be panned. */
+internal fun networkMapContentRadiusPx(
+    hubRadiusPx: Float,
+    nodeRadiusPx: Float,
+    ringSpacingPx: Float,
+    ringCount: Int,
+): Float = hubRadiusPx + ringSpacingPx * ringCount + nodeRadiusPx
+
+/** Converts [slots] to pixel offsets around [center], using [networkMapRingSpacingPx]. */
 internal fun networkMapOffsets(
     center: Offset,
     hubRadiusPx: Float,
     availableRadiusPx: Float,
     slots: List<RadialSlot>,
+    minRingSpacingPx: Float = 0f,
 ): List<Offset> {
     if (slots.isEmpty()) return emptyList()
     val ringCount = slots.maxOf { it.ring } + 1
-    val ringSpacingPx = (availableRadiusPx - hubRadiusPx).coerceAtLeast(0f) / ringCount
+    val ringSpacingPx = networkMapRingSpacingPx(hubRadiusPx, availableRadiusPx, ringCount, minRingSpacingPx)
     return slots.map { slot ->
         val radiusPx = hubRadiusPx + ringSpacingPx * (slot.ring + 1)
         Offset(
@@ -81,3 +113,10 @@ internal fun networkMapOffsets(
         )
     }
 }
+
+/** The number of rings [count] spokes will occupy - the caller needs this to size the drawing
+ * before it has laid anything out. */
+internal fun networkMapRingCount(
+    count: Int,
+    ringCapacity: Int = DEFAULT_RING_CAPACITY,
+): Int = computeRadialSlots(count, ringCapacity).maxOfOrNull { it.ring }?.plus(1) ?: 0

@@ -12,6 +12,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 
 /**
@@ -44,26 +46,29 @@ fun ScoreBadge(
     }
 }
 
-/**
- * The same colored circle [ScoreBadge] draws, without the label, sized to sit inline in a row of
- * other controls (e.g. next to a view-mode toggle) rather than as its own card. Meant for a
- * caller collapsing a full [ScoreBadge] down to save vertical space once it scrolls out of its
- * usual spot, not as a replacement for [ScoreBadge] itself.
- */
+/** The same number as [ScoreBadge] in a single small pill, for places where the 48dp badge and
+ * its label don't fit - a collapsed toolbar, a dense row. Shares [scoreColor] so a score reads
+ * the same wherever it appears. */
 @Composable
-fun CompactScoreBadge(
+fun ScoreChip(
     score: Int,
     modifier: Modifier = Modifier,
+    contentDescription: String? = null,
 ) {
     val color = scoreColor(score)
     Box(
-        modifier = modifier.size(32.dp).background(color.copy(alpha = 0.15f), CircleShape),
+        modifier =
+            modifier
+                .size(32.dp)
+                .background(color.copy(alpha = 0.15f), CircleShape)
+                .semantics { contentDescription?.let { description -> this.contentDescription = description } },
         contentAlignment = Alignment.Center,
     ) {
-        Text(text = score.toString(), style = MaterialTheme.typography.labelMedium, color = color)
+        Text(text = score.toString(), style = MaterialTheme.typography.labelLarge, color = color)
     }
 }
 
+/** Bands at 70/50, the same poor/fair/good split the RssiGauge uses. */
 @Composable
 private fun scoreColor(score: Int): Color =
     when {

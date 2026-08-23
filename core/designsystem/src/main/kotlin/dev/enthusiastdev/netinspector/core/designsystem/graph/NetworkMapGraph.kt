@@ -16,6 +16,7 @@ import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
@@ -28,15 +29,32 @@ import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Constraints
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import kotlin.math.roundToInt
 
-private const val HUB_RADIUS_DP = 28f
-private const val NODE_RADIUS_DP = 16f
-private const val LABEL_OFFSET_DP = 4f
-private const val MIN_SCALE = 1f
+private const val HUB_RADIUS_DP = 22f
+private const val NODE_RADIUS_DP = 11f
+private const val LABEL_OFFSET_DP = 5f
+
+/** Rings never sit closer together than this multiple of a node's radius, so a node and the
+ * label under it always have room even when the host count would otherwise pack them. See
+ * [networkMapRingSpacingPx]. */
+private const val MIN_RING_SPACING_FACTOR = 5f
+
+/** Zooming out below 1x is what makes an oversized map usable: the default view is spaced for
+ * legibility rather than for fitting, so "show me everything at once" has to be a gesture the
+ * user can reach. */
+private const val MIN_SCALE = 0.3f
 private const val MAX_SCALE = 4f
+
+// Filled discs at full opacity turn a dense map into a wall of solid color where overlapping
+// nodes are indistinguishable. A translucent fill with a firmer outline keeps each node's own
+// edge visible where two of them touch, and lets the spoke lines read through.
+private const val NODE_FILL_ALPHA = 0.45f
+private const val NODE_STROKE_ALPHA = 0.9f
+private const val NODE_STROKE_WIDTH_DP = 1.5f
 
 // A resolved hostname/device-hint label can run far longer than the node spacing at this map's
 // scale allows (e.g. a device-hint fallback like "Linux/Android/iOS/macOS family") - clipped
@@ -51,15 +69,13 @@ private const val LABEL_MAX_WIDTH_DP = 64f
  * Sizing is entirely up to [modifier] - a dense map benefits from as much room as the caller can
  * give it, so this never imposes its own fixed height.
  *
- * Pinch-to-zoom/pan (via `detectTransformGestures`) is the way to pull a crowded ring apart for
- * a closer look - a fixed extra layout pass to avoid every possible collision would fight the
- * radial layout's whole point (position mirrors ring/angle, not label width). [nodeScaleFor]
- * separately keeps the *default*, unzoomed view usable as host count grows, by shrinking node/
- * label size to match how compressed the ring spacing gets - without it, a busy real-world
- * network (30+ hosts) rendered fully illegible at the view's initial zoom, not just "a bit
- * tight" (see docs/adr/c-19-private-dns-breaks-reverse-lookup.md's bug report, which is what
- * surfaced this - every host losing its short hostname to a long fallback label at once is
- * what made the crowding actually unreadable rather than just dense).
+ * The layout is spaced for readability first and fitting second (see [networkMapRingSpacingPx]):
+ * beyond roughly two dozen hosts the drawing is deliberately larger than the viewport, and
+ * pinch-to-zoom - now including zooming *out* past the default - plus panning are how the user
+ * chooses between reading labels and seeing everything at once. Squeezing 40 hosts into one
+ * screenful produces a picture in which nothing can be read, which is worse than one that needs a
+ * gesture. [nodeScaleFor] separately keeps the *default*, unzoomed view usable as host count
+ * grows, by shrinking node/label size to match how compressed the ring spacing gets.
  *
  * Tap hit-testing recomputes the same [networkMapOffsets] geometry the draw pass used (the
  * `ChannelOccupancyGraph` pattern this module already follows) rather than attaching one
@@ -75,20 +91,30 @@ fun NetworkMapGraph(
     onNodeClick: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    var scale by remember { mutableStateOf(MIN_SCALE) }
+    var scale by remember { mutableStateOf(1f) }
     var offset by remember { mutableStateOf(Offset.Zero) }
     var containerSize by remember { mutableStateOf(IntSize.Zero) }
+    val density = LocalDensity.current
+    val contentRadiusPx =
+        remember(spokes.size, containerSize, density) {
+            with(density) { contentRadiusPx(spokes.size, containerSize) }
+        }
 
     Box(
         modifier =
             modifier
                 .clipToBounds()
                 .onSizeChanged { containerSize = it }
-                .pointerInput(Unit) {
+                .pointerInput(contentRadiusPx) {
                     detectTransformGestures { _, pan, zoom, _ ->
                         val newScale = (scale * zoom).coerceIn(MIN_SCALE, MAX_SCALE)
-                        val maxOffsetX = (containerSize.width * (newScale - 1) / 2f).coerceAtLeast(0f)
-                        val maxOffsetY = (containerSize.height * (newScale - 1) / 2f).coerceAtLeast(0f)
+                        // Panning is bounded by how far the drawing actually extends past the
+                        // viewport, so an oversized map can be dragged around while one that
+                        // already fits stays put.
+                        val maxOffsetX =
+                            (contentRadiusPx * newScale - containerSize.width / 2f).coerceAtLeast(0f)
+                        val maxOffsetY =
+                            (contentRadiusPx * newScale - containerSize.height / 2f).coerceAtLeast(0f)
                         offset =
                             Offset(
                                 x = (offset.x + pan.x).coerceIn(-maxOffsetX, maxOffsetX),
@@ -98,8 +124,27 @@ fun NetworkMapGraph(
                     }
                 },
     ) {
-        NetworkMapCanvas(hub, spokes, onNodeClick, scale, offset)
+        NetworkMapCanvas(hub = hub, spokes = spokes, onNodeClick = onNodeClick, scale = scale, offset = offset)
     }
+}
+
+/** The drawing's own radius in pixels, independent of the viewport it has to fit into. */
+private fun Density.contentRadiusPx(
+    spokeCount: Int,
+    containerSize: IntSize,
+): Float {
+    val hubRadiusPx = HUB_RADIUS_DP.dp.toPx()
+    val nodeRadiusPx = NODE_RADIUS_DP.dp.toPx()
+    val ringCount = networkMapRingCount(spokeCount)
+    val availableRadiusPx = minOf(containerSize.width, containerSize.height) / 2f - nodeRadiusPx
+    val ringSpacingPx =
+        networkMapRingSpacingPx(
+            hubRadiusPx = hubRadiusPx,
+            availableRadiusPx = availableRadiusPx,
+            ringCount = ringCount,
+            minRingSpacingPx = nodeRadiusPx * MIN_RING_SPACING_FACTOR,
+        )
+    return networkMapContentRadiusPx(hubRadiusPx, nodeRadiusPx, ringSpacingPx, ringCount)
 }
 
 @Composable
@@ -135,6 +180,8 @@ private fun NetworkMapCanvas(
                     translationX = offset.x
                     translationY = offset.y
                 }.pointerInput(hub, spokes) {
+                    // No onDoubleTap here either: it would delay every node tap by the
+                    // double-tap timeout, and pinching out already returns to a full overview.
                     detectTapGestures { tapOffset ->
                         val geometry =
                             NetworkMapGeometry(
@@ -199,7 +246,7 @@ private fun DrawScope.drawNetworkMap(
         drawLine(paint.colors.spokeLine, geometry.center, spokeOffset, strokeWidth = 1.dp.toPx())
     }
     if (hub != null) {
-        drawCircle(paint.colors.hub, radius = paint.hubRadiusPx, center = geometry.center)
+        drawNode(paint.colors.hub, paint.hubRadiusPx, geometry.center)
         drawNodeLabel(paint, hub.label, geometry.center, paint.hubRadiusPx)
     }
     spokes.forEachIndexed { index, node ->
@@ -212,9 +259,24 @@ private fun DrawScope.drawNetworkMap(
             } else {
                 paint.colors.normal
             }
-        drawCircle(color, radius = paint.nodeRadiusPx, center = spokeOffset)
+        drawNode(color, paint.nodeRadiusPx, spokeOffset)
         drawNodeLabel(paint, node.label, spokeOffset, paint.nodeRadiusPx)
     }
+}
+
+/** A translucent disc with a firmer ring, so two overlapping nodes still read as two. */
+private fun DrawScope.drawNode(
+    color: Color,
+    radiusPx: Float,
+    center: Offset,
+) {
+    drawCircle(color.copy(alpha = NODE_FILL_ALPHA), radius = radiusPx, center = center)
+    drawCircle(
+        color.copy(alpha = NODE_STROKE_ALPHA),
+        radius = radiusPx,
+        center = center,
+        style = Stroke(width = NODE_STROKE_WIDTH_DP.dp.toPx()),
+    )
 }
 
 /** Shared node-placement geometry for one draw/tap pass - computed once so both agree on exactly
@@ -232,7 +294,14 @@ private class NetworkMapGeometry(
     init {
         val availableRadiusPx = minOf(widthPx, heightPx) / 2f - nodeRadiusPx
         val slots = computeRadialSlots(spokes.size)
-        spokeOffsets = networkMapOffsets(center, hubRadiusPx, availableRadiusPx, slots)
+        spokeOffsets =
+            networkMapOffsets(
+                center = center,
+                hubRadiusPx = hubRadiusPx,
+                availableRadiusPx = availableRadiusPx,
+                slots = slots,
+                minRingSpacingPx = nodeRadiusPx * MIN_RING_SPACING_FACTOR,
+            )
     }
 }
 

@@ -20,7 +20,6 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -71,9 +70,8 @@ class ConnectionViewModel
             combine(
                 monitoringController.isRunning,
                 notificationAccessTrigger,
-                appSettingsRepository.monitoringCardDismissed,
-            ) { isRunning, _, dismissed ->
-                MonitoringUiState(isRunning, context.currentNotificationAccessState(), dismissed)
+            ) { isRunning, _ ->
+                MonitoringUiState(isRunning, context.currentNotificationAccessState())
             }.stateIn(
                 scope = viewModelScope,
                 started = SharingStarted.WhileSubscribed(5_000),
@@ -91,12 +89,6 @@ class ConnectionViewModel
 
         fun stopMonitoring() {
             monitoringController.stop()
-        }
-
-        // Monitoring keeps running if it was already active - dismissing only hides the card;
-        // the persistent notification's own Stop action remains the way to actually stop it.
-        fun dismissMonitoringCard() {
-            viewModelScope.launch { appSettingsRepository.setMonitoringCardDismissed(true) }
         }
 
         private fun currentLocationAccessState(): LocationAccessState {

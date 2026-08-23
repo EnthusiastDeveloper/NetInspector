@@ -118,7 +118,6 @@ private fun ScanHistoryListPane(
         contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        item { Text(text = "Wi-Fi history", style = MaterialTheme.typography.titleLarge) }
         if (knownAps.isNotEmpty()) {
             item { HistoryExportRow(onExportCsv, onExportJson) }
         }

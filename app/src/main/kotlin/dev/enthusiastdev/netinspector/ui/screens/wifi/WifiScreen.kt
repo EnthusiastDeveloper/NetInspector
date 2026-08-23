@@ -260,7 +260,12 @@ private fun WifiGraphScreen(
                         onWifiAccessChanged,
                         modifier = Modifier.padding(16.dp),
                     )
-                    WifiGraphView(state.accessPoints, state.sampleCount)
+                    WifiGraphView(
+                        accessPoints = state.accessPoints,
+                        sampleCount = state.sampleCount,
+                        connectedBssid = state.connectedBssid,
+                        connectedSpan = state.connectedSpan,
+                    )
                 }
             }
         }
@@ -309,6 +314,8 @@ private fun WifiGraphTabletopContent(
                         accessPoints = state.accessPoints,
                         sampleCount = state.sampleCount,
                         modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                        connectedBssid = state.connectedBssid,
+                        connectedSpan = state.connectedSpan,
                     )
                 }
             },

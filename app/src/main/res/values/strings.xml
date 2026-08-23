@@ -1,10 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <!-- Launcher label - stays one word, matching the package/repository identity. -->
     <string name="app_name">NetInspector</string>
+    <!-- How the app names itself inside the UI (Home header, About section): two words, the
+         way it is meant to be read. -->
+    <string name="app_display_name">Net Inspector</string>
 
     <string name="destination_dashboard">Home</string>
     <string name="destination_connection">Connection</string>
     <string name="destination_wifi">Wi-Fi</string>
     <string name="destination_devices">Devices</string>
     <string name="destination_tools">Tools</string>
+    <string name="destination_settings">Settings</string>
 </resources>

@@ -1,11 +1,10 @@
 package dev.enthusiastdev.netinspector.ui.screens.devices
 
 import androidx.activity.compose.BackHandler
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -34,11 +33,11 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import dev.enthusiastdev.netinspector.R
-import dev.enthusiastdev.netinspector.core.designsystem.component.CompactScoreBadge
 import dev.enthusiastdev.netinspector.core.designsystem.graph.NetworkMapGraph
 import dev.enthusiastdev.netinspector.core.model.lan.Host
 import dev.enthusiastdev.netinspector.core.model.lan.HostConfidence
@@ -191,7 +190,12 @@ private fun DevicesContent(
     }
 }
 
-/** The header/toggle/filter block is fixed-height at the top; the body below it fills whatever
+/** Past this much scroll the controls block folds into its compact row. Small enough that the
+ * fold happens as soon as the user is clearly reading the list, big enough that a stray pixel of
+ * overscroll doesn't set it off. */
+private val COLLAPSE_THRESHOLD = 16.dp
+
+/** The header/controls block is fixed-height at the top; the body below it fills whatever
  * space remains. Map mode needs that - a `LazyColumn` sized to its content (the original shape
  * of this pane) left the map stuck at whatever fixed height it asked for, wasting the rest of
  * the pane instead of giving a dense host set the room [NetworkMapGraph] can actually use. */
@@ -207,82 +211,77 @@ private fun DevicesListPane(
     onToggleConfidenceFilter: (HostConfidence) -> Unit,
 ) {
     val listState = rememberLazyListState()
-
-    Column(modifier = Modifier.fillMaxSize()) {
-        DevicesListHeader(
-            state = state,
-            viewMode = viewMode,
-            onViewModeChange = onViewModeChange,
-            listState = listState,
-            onScan = onScan,
-            onCancel = onCancel,
-            onHostClick = onHostClick,
-            onSortOrderChange = onSortOrderChange,
-            onToggleConfidenceFilter = onToggleConfidenceFilter,
-        )
-        when {
-            state.hosts.isEmpty() && !state.progress.isRunning ->
-                Text(
-                    "No devices found yet. Tap Scan to discover hosts on this network.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    modifier = Modifier.padding(horizontal = 16.dp),
-                )
-            viewMode == DevicesViewMode.MAP ->
-                DevicesNetworkMap(
-                    hosts = state.hosts,
-                    onHostClick = onHostClick,
-                    modifier = Modifier.weight(1f).fillMaxWidth(),
-                )
-            else ->
-                LazyColumn(
-                    state = listState,
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    items(state.hosts, key = { it.address.addressString }) { host ->
-                        HostCard(host, onClick = { onHostClick(host.address.addressString) })
-                    }
-                }
-        }
-    }
-}
-
-/** The hygiene card is the tallest thing in this header, so it's the one worth reclaiming space
- * from once the user has scrolled the list below it away from the top - collapsing it down to a
- * score-only [CompactScoreBadge] on the view-mode toggle's row keeps the number visible without
- * spending a full card's height on it, then expanding it back once the list is scrolled back to
- * the top. Map mode never shows either form: the score adds nothing to that view but ate into
- * the vertical room `NetworkMapGraph` needs most on a dense sweep (docs/adr/
- * c-19-private-dns-breaks-reverse-lookup.md's bug report - the map's weighted remaining-space
- * layout was already correct, it just had less space left to work with whenever this card was
- * showing). */
-@Composable
-private fun DevicesListHeader(
-    state: DevicesUiState.Content,
-    viewMode: DevicesViewMode,
-    onViewModeChange: (DevicesViewMode) -> Unit,
-    listState: LazyListState,
-    onScan: () -> Unit,
-    onCancel: () -> Unit,
-    onHostClick: (String) -> Unit,
-    onSortOrderChange: (DevicesSortOrder) -> Unit,
-    onToggleConfidenceFilter: (HostConfidence) -> Unit,
-) {
-    val isListScrolledFromTop by
-        remember {
-            derivedStateOf { listState.firstVisibleItemIndex > 0 || listState.firstVisibleItemScrollOffset > 0 }
+    val coroutineScope = rememberCoroutineScope()
+    var showHygieneDetails by remember { mutableStateOf(false) }
+    val thresholdPx = with(LocalDensity.current) { COLLAPSE_THRESHOLD.roundToPx() }
+    // Map mode has no list to scroll, so its controls never collapse - there is no gesture that
+    // would bring them back.
+    val isCollapsed by
+        remember(viewMode, thresholdPx) {
+            derivedStateOf {
+                viewMode == DevicesViewMode.LIST &&
+                    (listState.firstVisibleItemIndex > 0 || listState.firstVisibleItemScrollOffset > thresholdPx)
+            }
         }
     // docs/improvement-ideas.md #1 - meaningless (always "100, Excellent") until at least one
     // host has been through the extended port probe, same gate DevicesDetailCards uses per-host,
-    // so this doesn't misrepresent a network nobody has scanned ports on yet.
-    val hasHygieneData = state.hosts.any { it.openPorts.isNotEmpty() }
-    val hygieneScore = remember(state.hosts) { networkHygieneScore(state.hosts) }
-    val showFullHygieneCard = viewMode == DevicesViewMode.LIST && hasHygieneData && !isListScrolledFromTop
-    val showCompactHygieneBadge = viewMode == DevicesViewMode.LIST && hasHygieneData && isListScrolledFromTop
+    // so this doesn't misrepresent a network nobody has scanned ports on yet. Computed over the
+    // unfiltered host list - see DevicesNetworkHygieneCard.
+    val hygiene =
+        remember(state.allHosts) {
+            state.allHosts.takeIf { hosts -> hosts.any { it.openPorts.isNotEmpty() } }?.let(::networkHygieneScore)
+        }
 
+    Column(modifier = Modifier.fillMaxSize()) {
+        DevicesPaneHeader(
+            state = state,
+            isCollapsed = isCollapsed,
+            controlsState =
+                DevicesControlsState(
+                    viewMode = viewMode,
+                    sortOrder = state.sortOrder,
+                    confidenceFilter = state.confidenceFilter,
+                    hygiene = hygiene,
+                ),
+            controlsActions =
+                DevicesControlsActions(
+                    onViewModeChange = onViewModeChange,
+                    onSortOrderChange = onSortOrderChange,
+                    onToggleConfidence = onToggleConfidenceFilter,
+                    onShowHygieneDetails = { showHygieneDetails = true },
+                    onExpandRequested = { coroutineScope.launch { listState.animateScrollToItem(0) } },
+                ),
+            onScan = onScan,
+            onCancel = onCancel,
+        )
+        DevicesBody(state, viewMode, listState, onHostClick)
+    }
+
+    hygiene?.takeIf { showHygieneDetails }?.let { score ->
+        NetworkHygieneDetailsDialog(
+            score = score,
+            onHostClick = { address ->
+                showHygieneDetails = false
+                onHostClick(address)
+            },
+            onDismiss = { showHygieneDetails = false },
+        )
+    }
+}
+
+/** Title, scan controls and the collapsible controls block - the fixed part of the pane, above
+ * whichever body [DevicesBody] renders. */
+@Composable
+private fun DevicesPaneHeader(
+    state: DevicesUiState.Content,
+    isCollapsed: Boolean,
+    controlsState: DevicesControlsState,
+    controlsActions: DevicesControlsActions,
+    onScan: () -> Unit,
+    onCancel: () -> Unit,
+) {
     Column(
-        modifier = Modifier.fillMaxWidth().padding(16.dp),
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         Text(
@@ -298,31 +297,57 @@ private fun DevicesListHeader(
             onScan = onScan,
             onCancel = onCancel,
         )
-        AnimatedVisibility(visible = showFullHygieneCard) {
-            DevicesNetworkHygieneCard(state.hosts, onHostClick = onHostClick)
-        }
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            DevicesViewModeToggle(viewMode, onViewModeChange)
-            AnimatedVisibility(visible = showCompactHygieneBadge) {
-                CompactScoreBadge(score = hygieneScore.value)
-            }
-        }
-        DevicesSortFilterBar(
-            sortOrder = state.sortOrder,
-            confidenceFilter = state.confidenceFilter,
-            onSortOrderChange = onSortOrderChange,
-            onToggleConfidence = onToggleConfidenceFilter,
-        )
+        DevicesControls(isCollapsed = isCollapsed, state = controlsState, actions = controlsActions)
     }
 }
 
+@Composable
+private fun ColumnScope.DevicesBody(
+    state: DevicesUiState.Content,
+    viewMode: DevicesViewMode,
+    listState: LazyListState,
+    onHostClick: (String) -> Unit,
+) {
+    when {
+        state.hosts.isEmpty() && !state.progress.isRunning ->
+            Text(
+                emptyListMessage(state),
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.padding(horizontal = 16.dp),
+            )
+        viewMode == DevicesViewMode.MAP ->
+            DevicesNetworkMap(
+                hosts = state.hosts,
+                onHostClick = onHostClick,
+                modifier = Modifier.weight(1f).fillMaxWidth(),
+            )
+        else ->
+            LazyColumn(
+                state = listState,
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                items(state.hosts, key = { it.address.addressString }) { host ->
+                    HostCard(host, onClick = { onHostClick(host.address.addressString) })
+                }
+            }
+    }
+}
+
+/** An empty list after a sweep that *did* find hosts means the confidence filter hid them all -
+ * saying "no devices found" there would be plainly wrong, and leaves the user with no hint that
+ * the filter chips are the way out. */
+private fun emptyListMessage(state: DevicesUiState.Content): String =
+    if (state.allHosts.isEmpty()) {
+        "No devices found yet. Tap Scan to discover hosts on this network."
+    } else {
+        "${state.allHosts.size} devices found, but none match the current filters."
+    }
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun DevicesViewModeToggle(
+internal fun DevicesViewModeToggle(
     viewMode: DevicesViewMode,
     onViewModeChange: (DevicesViewMode) -> Unit,
 ) {
@@ -357,7 +382,9 @@ private fun DevicesNetworkMap(
             modifier = Modifier.weight(1f).fillMaxWidth(),
         )
         Text(
-            "Logical view based on discovered hosts - not physical wiring topology. Pinch to zoom.",
+            "Logical view based on discovered hosts - not physical wiring topology. Devices are " +
+                "spaced to stay readable, so a large network runs past the edges: pinch to zoom out " +
+                "and fit it, drag to pan.",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),

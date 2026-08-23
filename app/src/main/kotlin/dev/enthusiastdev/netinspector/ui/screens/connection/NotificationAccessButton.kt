@@ -30,9 +30,9 @@ internal fun Context.currentNotificationAccessState(): NotificationAccessState {
     return if (hasPermission) NotificationAccessState.GRANTED else NotificationAccessState.PERMISSION_NEEDED
 }
 
-/** The `POST_NOTIFICATIONS` rationale/request flow (design §4.1a's pattern), factored out so
- * both [MonitoringCard] and the Settings screen's re-enable action can trigger the same
- * permission request rather than only ever routing the user back to the dashboard card. */
+/** The `POST_NOTIFICATIONS` rationale/request flow (design §4.1a's pattern), factored out of
+ * [MonitoringDetailsSheet] so the request lives next to the explanation of what the notification
+ * is for, rather than dropping the user into a bare system prompt. */
 @Composable
 internal fun NotificationAccessButton(
     onGranted: () -> Unit,

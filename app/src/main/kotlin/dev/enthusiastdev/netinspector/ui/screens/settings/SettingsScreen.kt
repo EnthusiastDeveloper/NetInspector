@@ -19,35 +19,35 @@ import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.LifecycleResumeEffect
+import dev.enthusiastdev.netinspector.R
 import dev.enthusiastdev.netinspector.core.designsystem.component.InfoCard
 import dev.enthusiastdev.netinspector.core.model.diagnostics.PortScanPresetKind
 import dev.enthusiastdev.netinspector.core.model.diagnostics.PortSelection
 import dev.enthusiastdev.netinspector.core.model.settings.RssiDisplayUnit
 import dev.enthusiastdev.netinspector.core.model.settings.ThemeMode
-import dev.enthusiastdev.netinspector.ui.screens.connection.NotificationAccessButton
-import dev.enthusiastdev.netinspector.ui.screens.connection.NotificationAccessState
 
+/** The Settings tab's entry point: binds [SettingsViewModel] to [SettingsScreen]. Named
+ * `*Destination` to match the other top-level destinations in `NetInspectorApp`, and to leave the
+ * `SettingsRoute` name to the nav route object itself. */
 @Composable
-fun SettingsRoute(
+fun SettingsDestination(
     modifier: Modifier = Modifier,
     viewModel: SettingsViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    // Granting POST_NOTIFICATIONS via the system Settings app fires no callback this screen
-    // would otherwise observe - re-check on resume, same as the Connection tab's own card.
-    // Crash-report availability is re-checked for the same reason: a crash can happen while
-    // this screen isn't visible.
+    // A crash written since this screen was last visited is filesystem state, not a Flow this
+    // ViewModel already observes - re-check on resume.
     LifecycleResumeEffect(Unit) {
-        viewModel.refreshNotificationAccess()
         viewModel.refreshCrashReportAvailability()
         onPauseOrDispose {}
     }
@@ -58,12 +58,10 @@ fun SettingsRoute(
         onScanRetentionChange = viewModel::setScanHistoryRetentionDays,
         onDiagnosticRetentionChange = viewModel::setDiagnosticHistoryRetentionDays,
         onDefaultPortSelectionChange = viewModel::setDefaultPortSelection,
-        onNotificationAccessChanged = viewModel::refreshNotificationAccess,
         onRssiAlertThresholdChange = viewModel::setRssiAlertThresholdDbm,
         onAlertOnRssiDropChange = viewModel::setAlertOnRssiDrop,
         onAlertOnDisconnectChange = viewModel::setAlertOnDisconnect,
         onAlertOnReconnectChange = viewModel::setAlertOnReconnect,
-        onResumeMonitoringCard = viewModel::resumeMonitoringCard,
         onCrashReportingToggle = viewModel::setCrashReportingEnabled,
         onExportCrashReport = viewModel::exportCrashReport,
         onExportDebugBundle = viewModel::exportDebugBundle,
@@ -79,12 +77,10 @@ fun SettingsScreen(
     onScanRetentionChange: (Int) -> Unit,
     onDiagnosticRetentionChange: (Int) -> Unit,
     onDefaultPortSelectionChange: (PortSelection) -> Unit,
-    onNotificationAccessChanged: () -> Unit,
     onRssiAlertThresholdChange: (Int) -> Unit,
     onAlertOnRssiDropChange: (Boolean) -> Unit,
     onAlertOnDisconnectChange: (Boolean) -> Unit,
     onAlertOnReconnectChange: (Boolean) -> Unit,
-    onResumeMonitoringCard: () -> Unit,
     onCrashReportingToggle: (Boolean) -> Unit,
     onExportCrashReport: () -> Unit,
     onExportDebugBundle: () -> Unit,
@@ -95,7 +91,14 @@ fun SettingsScreen(
         contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        item { Text(text = "Settings", style = MaterialTheme.typography.titleLarge) }
+        item {
+            Text(
+                text = stringResource(R.string.destination_settings),
+                style = MaterialTheme.typography.headlineSmall,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
         item { AppearanceSection(uiState, onThemeModeChange, onRssiDisplayUnitChange) }
         item {
             RetentionSection(uiState, onScanRetentionChange, onDiagnosticRetentionChange)
@@ -110,20 +113,6 @@ fun SettingsScreen(
                 onReconnectChange = onAlertOnReconnectChange,
             )
         }
-        // This is the only place either blocker on continuous monitoring can be cleared: a
-        // missing permission, or the Connection tab's card having been dismissed (a one-way
-        // action from that screen - ConnectionViewModel.dismissMonitoringCard has no undo).
-        val notificationAccessGranted = uiState.monitoringNotificationAccess == NotificationAccessState.GRANTED
-        if (!notificationAccessGranted || uiState.monitoringCardDismissed) {
-            item {
-                MonitoringSection(
-                    notificationAccessGranted = notificationAccessGranted,
-                    cardDismissed = uiState.monitoringCardDismissed,
-                    onNotificationAccessChanged = onNotificationAccessChanged,
-                    onResumeMonitoringCard = onResumeMonitoringCard,
-                )
-            }
-        }
         item {
             DebugSection(
                 crashReportingEnabled = uiState.crashReportingEnabled,
@@ -133,6 +122,7 @@ fun SettingsScreen(
                 onExportDebugBundle = onExportDebugBundle,
             )
         }
+        item { AboutSection() }
     }
 }
 
@@ -349,34 +339,6 @@ private fun PortScannerSection(
                     modifier = Modifier.weight(1f),
                 )
             }
-        }
-    }
-}
-
-@Composable
-private fun MonitoringSection(
-    notificationAccessGranted: Boolean,
-    cardDismissed: Boolean,
-    onNotificationAccessChanged: () -> Unit,
-    onResumeMonitoringCard: () -> Unit,
-) {
-    InfoCard(title = "Continuous monitoring") {
-        if (!notificationAccessGranted) {
-            Text(
-                "Notification access is required before continuous monitoring can run.",
-                style = MaterialTheme.typography.bodyMedium,
-            )
-            NotificationAccessButton(
-                onGranted = {},
-                onNotificationAccessChanged = onNotificationAccessChanged,
-            )
-        }
-        if (cardDismissed) {
-            Text(
-                "You've hidden the monitoring card from the Connection tab.",
-                style = MaterialTheme.typography.bodyMedium,
-            )
-            TextButton(onClick = onResumeMonitoringCard) { Text("Show monitoring card again") }
         }
     }
 }

@@ -2,6 +2,7 @@ package dev.enthusiastdev.netinspector.ui.screens.wifi
 
 import dev.enthusiastdev.netinspector.core.model.settings.RssiDisplayUnit
 import dev.enthusiastdev.netinspector.core.model.wifi.AccessPoint
+import dev.enthusiastdev.netinspector.core.model.wifi.ChannelSpan
 import dev.enthusiastdev.netinspector.core.model.wifi.ScanBudget
 import java.time.Instant
 
@@ -22,5 +23,11 @@ sealed interface WifiUiState {
         val budget: ScanBudget,
         val lastUpdated: Instant?,
         val rssiDisplayUnit: RssiDisplayUnit = RssiDisplayUnit.DBM,
+        /** The BSSID and channel span this device is currently associated on, when it is - the
+         * channel recommendation compares against them, and excludes this AP from its scoring
+         * (see `channelAdvice`). Null when not connected to Wi-Fi, or while location access is
+         * withheld and the OS redacts the connected network's BSSID (C-04). */
+        val connectedBssid: String? = null,
+        val connectedSpan: ChannelSpan? = null,
     ) : WifiUiState
 }
