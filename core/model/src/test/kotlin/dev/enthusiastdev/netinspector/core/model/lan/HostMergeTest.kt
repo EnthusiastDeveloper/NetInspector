@@ -252,6 +252,93 @@ class HostMergeTest {
     }
 
     @Test
+    fun `mergeObservation keeps a CONFIRMED device hint when a later observation only has a POSSIBLE one`() {
+        val address = addr("192.168.1.5")
+        val confirmed =
+            mergeObservation(
+                emptyMap(),
+                HostObservation(
+                    address,
+                    listOf(evidence(EvidenceSource.SSDP)),
+                    deviceHint = DeviceHint("Synology DS220+", "UPnP description", Certainty.CONFIRMED),
+                ),
+            )
+
+        val afterTtlGuess =
+            mergeObservation(
+                confirmed,
+                HostObservation(
+                    address,
+                    listOf(evidence(EvidenceSource.REVERSE_DNS)),
+                    deviceHint = DeviceHint("Linux/Android/iOS/macOS family", "IP TTL 58", Certainty.POSSIBLE),
+                ),
+            )
+
+        // docs/device-identification-ideas.md A1 - arrival order must not let a coarse TTL
+        // guess clobber a device's own self-reported manufacturer/model.
+        assertThat(afterTtlGuess.getValue(address).deviceHint?.label).isEqualTo("Synology DS220+")
+    }
+
+    @Test
+    fun `mergeObservation upgrades a POSSIBLE device hint once a more certain one arrives`() {
+        val address = addr("192.168.1.5")
+        val ttlGuess =
+            mergeObservation(
+                emptyMap(),
+                HostObservation(
+                    address,
+                    listOf(evidence(EvidenceSource.ICMP)),
+                    deviceHint = DeviceHint("Windows family", "IP TTL 118", Certainty.POSSIBLE),
+                ),
+            )
+
+        val afterPortSignature =
+            mergeObservation(
+                ttlGuess,
+                HostObservation(
+                    address,
+                    listOf(evidence(EvidenceSource.TCP_CONNECT)),
+                    deviceHint = DeviceHint("Network printer", "Open port 9100", Certainty.LIKELY),
+                ),
+            )
+
+        assertThat(afterPortSignature.getValue(address).deviceHint?.label).isEqualTo("Network printer")
+    }
+
+    @Test
+    fun `mergeObservation folds in a NetBIOS-derived MAC and vendor`() {
+        val address = addr("192.168.1.5")
+        val merged =
+            mergeObservation(
+                emptyMap(),
+                HostObservation(
+                    address,
+                    listOf(evidence(EvidenceSource.NETBIOS)),
+                    macAddress = "00:0A:EB:11:22:33",
+                    vendor = "Tp-Link Technologies Co.,Ltd.",
+                ),
+            )
+
+        val host = merged.getValue(address)
+        assertThat(host.macAddress).isEqualTo("00:0A:EB:11:22:33")
+        assertThat(host.vendor).isEqualTo("Tp-Link Technologies Co.,Ltd.")
+    }
+
+    @Test
+    fun `mergeObservation keeps an existing MAC when a later observation has none`() {
+        val address = addr("192.168.1.5")
+        val withMac =
+            mergeObservation(
+                emptyMap(),
+                HostObservation(address, listOf(evidence(EvidenceSource.NETBIOS)), macAddress = "00:0A:EB:11:22:33"),
+            )
+
+        val again = mergeObservation(withMac, HostObservation(address, listOf(evidence(EvidenceSource.ICMP))))
+
+        assertThat(again.getValue(address).macAddress).isEqualTo("00:0A:EB:11:22:33")
+    }
+
+    @Test
     fun `finalizeSweep re-confirms a previously STALE host observed again`() {
         val address = addr("192.168.1.5")
         val confirmed = mergeObservation(emptyMap(), HostObservation(address, listOf(evidence(EvidenceSource.ICMP))))

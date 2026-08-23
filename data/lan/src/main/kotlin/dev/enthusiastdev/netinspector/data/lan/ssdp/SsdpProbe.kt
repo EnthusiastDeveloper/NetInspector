@@ -5,6 +5,7 @@ import dev.enthusiastdev.netinspector.core.model.lan.DiscoveredService
 import dev.enthusiastdev.netinspector.core.model.lan.Evidence
 import dev.enthusiastdev.netinspector.core.model.lan.EvidenceSource
 import dev.enthusiastdev.netinspector.core.model.lan.HostObservation
+import dev.enthusiastdev.netinspector.core.model.lan.upnpDeviceHint
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.xmlpull.v1.XmlPullParser
@@ -100,6 +101,7 @@ class SsdpProbe
                             modelName = locationInfo?.modelName,
                         ),
                     ),
+                deviceHint = upnpDeviceHint(locationInfo?.manufacturer, locationInfo?.modelName),
             )
         }
 

@@ -89,4 +89,55 @@ class DeviceHintHeuristicsTest {
         val hint = deviceHintFor(openPorts = listOf(port(23)), icmpReplyTtl = null)
         assertThat(hint?.label).isEqualTo("Telnet-enabled device (legacy/insecure)")
     }
+
+    @Test
+    fun `upnpDeviceHint combines manufacturer and model at CONFIRMED certainty`() {
+        val hint = upnpDeviceHint("Synology Inc.", "DS220+")
+        assertThat(hint?.label).isEqualTo("Synology Inc. DS220+")
+        assertThat(hint?.certainty).isEqualTo(Certainty.CONFIRMED)
+    }
+
+    @Test
+    fun `upnpDeviceHint falls back to whichever field is present`() {
+        assertThat(upnpDeviceHint("Sonos", null)?.label).isEqualTo("Sonos")
+        assertThat(upnpDeviceHint(null, "One SL")?.label).isEqualTo("One SL")
+    }
+
+    @Test
+    fun `upnpDeviceHint returns null when both fields are absent`() {
+        assertThat(upnpDeviceHint(null, null)).isNull()
+    }
+
+    @Test
+    fun `mdnsServiceHint prefers an explicit TXT model over the generic service-type label`() {
+        val hint = mdnsServiceHint("_googlecast._tcp", mapOf("md" to "Chromecast"))
+        assertThat(hint?.label).isEqualTo("Chromecast")
+        assertThat(hint?.certainty).isEqualTo(Certainty.CONFIRMED)
+    }
+
+    @Test
+    fun `mdnsServiceHint reads the Apple device-info model TXT key`() {
+        val hint = mdnsServiceHint("_device-info._tcp", mapOf("model" to "J274AP"))
+        assertThat(hint?.label).isEqualTo("Apple device (J274AP)")
+        assertThat(hint?.certainty).isEqualTo(Certainty.CONFIRMED)
+    }
+
+    @Test
+    fun `mdnsServiceHint falls back to a generic LIKELY label when no TXT model is present`() {
+        val hint = mdnsServiceHint("_googlecast._tcp", emptyMap())
+        assertThat(hint?.label).isEqualTo("Chromecast / Google Cast device")
+        assertThat(hint?.certainty).isEqualTo(Certainty.LIKELY)
+    }
+
+    @Test
+    fun `mdnsServiceHint tolerates a trailing dot on the service type`() {
+        val hint = mdnsServiceHint("_hap._tcp.", emptyMap())
+        assertThat(hint?.label).isEqualTo("HomeKit accessory")
+    }
+
+    @Test
+    fun `mdnsServiceHint returns null for an unrecognized service type`() {
+        assertThat(mdnsServiceHint("_unknown._tcp", emptyMap())).isNull()
+        assertThat(mdnsServiceHint(null, emptyMap())).isNull()
+    }
 }

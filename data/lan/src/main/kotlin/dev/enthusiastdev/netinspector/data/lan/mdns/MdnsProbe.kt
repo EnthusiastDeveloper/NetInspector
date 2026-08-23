@@ -8,6 +8,7 @@ import dev.enthusiastdev.netinspector.core.model.lan.DiscoveredService
 import dev.enthusiastdev.netinspector.core.model.lan.Evidence
 import dev.enthusiastdev.netinspector.core.model.lan.EvidenceSource
 import dev.enthusiastdev.netinspector.core.model.lan.HostObservation
+import dev.enthusiastdev.netinspector.core.model.lan.mdnsServiceHint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -175,6 +176,7 @@ class MdnsProbe
 
         private fun NsdServiceInfo.toObservation(): HostObservation? {
             val address = host as? Inet4Address ?: return null
+            val txtRecords = decodeTxtRecords()
             return HostObservation(
                 address = address,
                 evidence = listOf(Evidence(EvidenceSource.MDNS, clock.instant(), detail = serviceType)),
@@ -186,9 +188,10 @@ class MdnsProbe
                             serviceType = serviceType,
                             name = serviceName,
                             detail = null,
-                            txtRecords = decodeTxtRecords(),
+                            txtRecords = txtRecords,
                         ),
                     ),
+                deviceHint = mdnsServiceHint(serviceType, txtRecords),
             )
         }
 

@@ -508,13 +508,23 @@ Rejected alternatives, for the record:
 
 The design consequence: **host identification is built on service discovery and
 behavioural fingerprinting, not on MAC vendors.** The `Host.macAddress` field exists and
-stays null, so a future rooted or privileged build can populate it without a model
-change. The UI does not show an empty "MAC" row; it shows the identification signals it
+stays null for most hosts, so a future rooted or privileged build can populate it without a
+model change. The UI does not show an empty "MAC" row; it shows the identification signals it
 actually has.
 
-One place OUI lookup *does* work: **BSSIDs from Wi-Fi scan results are real MAC
+**One narrow, deliberate exception** (docs/device-identification-ideas.md A3): a host that
+answers a NetBIOS NBSTAT query includes its adapter's real MAC in the response's STATISTICS
+field (RFC 1002 §4.2.18) - an application-layer payload the app is already receiving
+legitimately, not the ARP table. `NetBiosProbe` extracts it and runs it through the OUI table
+below. Coverage is limited to hosts that speak NetBIOS (mostly Windows/Samba, some NAS/print
+servers), so this doesn't change the blanket statement above for the general case.
+
+One place OUI lookup *does* work reliably: **BSSIDs from Wi-Fi scan results are real MAC
 addresses**, so access point vendor identification is fully supported. The bundled OUI
-database earns its keep there.
+database (`VendorLookup`, in `:core:common` so both `:data:wifi` and `:data:lan` can reach it
+without violating the "data modules never depend on each other" rule in §2.1) earns its keep
+there, and now also serves the NetBIOS-derived MACs above - with the caveat that its
+AP-oriented vendor scope means client-device NIC vendors often won't resolve.
 
 ### 8.2 Three-stage pipeline
 

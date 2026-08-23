@@ -2,10 +2,13 @@ package dev.enthusiastdev.netinspector.core.model.lan
 
 import java.net.Inet4Address
 
-/** design §3, §8.1 - one row per IPv4 address on the LAN. [macAddress] stays null in
- * practice: Android blocks reading the ARP table on an unrooted device (C-01), so it exists
- * only so a future rooted/privileged build can populate it without a model change. The UI
- * must not render an empty "MAC" row - it shows the identification signals it actually has. */
+/** design §3, §8.1 - one row per IPv4 address on the LAN. [macAddress] is null for most hosts:
+ * Android blocks reading the ARP table on an unrooted device (C-01). The one exception is a
+ * host that answers a NetBIOS NBSTAT query - its response's STATISTICS field carries the
+ * adapter's real MAC (RFC 1002 §4.2.18), independent of the blocked ARP table (docs/
+ * device-identification-ideas.md A3) - so this is populated for NetBIOS-observed hosts only.
+ * The UI must not render an empty "MAC" row for everyone else - it shows the identification
+ * signals it actually has. */
 data class Host(
     val address: Inet4Address,
     val confidence: HostConfidence,

@@ -1,5 +1,6 @@
 package dev.enthusiastdev.netinspector.data.lan.netbios
 
+import dev.enthusiastdev.netinspector.core.common.vendor.VendorLookup
 import dev.enthusiastdev.netinspector.core.model.lan.Evidence
 import dev.enthusiastdev.netinspector.core.model.lan.EvidenceSource
 import dev.enthusiastdev.netinspector.core.model.lan.HostObservation
@@ -15,7 +16,11 @@ import javax.inject.Inject
 /**
  * design §8.2 Stage A - a NetBIOS Name Service node-status (NBSTAT) query (RFC 1002 §4.2.18)
  * sent to the subnet's broadcast address on UDP 137. Extracts the first non-group
- * ("unique") name entry with the workstation-service suffix as the host's NetBIOS name.
+ * ("unique") name entry with the workstation-service suffix as the host's NetBIOS name, plus
+ * (docs/device-identification-ideas.md A3) the responding adapter's real MAC address from the
+ * STATISTICS field that follows the name array - the one case where an unrooted app can learn
+ * another host's MAC without the ARP table blocked by C-01, since it arrives in this
+ * application-layer payload rather than the kernel's neighbor table.
  */
 class NetBiosProbe
     @Inject
@@ -52,13 +57,15 @@ class NetBiosProbe
                 try {
                     socket.receive(packet)
                     val address = packet.address as? Inet4Address
-                    val name = if (address != null) parseNbstatResponse(packet.data, packet.length) else null
-                    if (address != null && name != null) {
+                    val result = if (address != null) parseNbstatResponse(packet.data, packet.length) else null
+                    if (address != null && result != null) {
                         results[address] =
                             HostObservation(
                                 address = address,
                                 evidence = listOf(Evidence(EvidenceSource.NETBIOS, clock.instant())),
-                                hostnames = mapOf(EvidenceSource.NETBIOS to name),
+                                hostnames = result.name?.let { mapOf(EvidenceSource.NETBIOS to it) }.orEmpty(),
+                                macAddress = result.macAddress,
+                                vendor = result.macAddress?.let(VendorLookup::vendorFor),
                             )
                     }
                 } catch (ignored: SocketTimeoutException) {
@@ -101,11 +108,21 @@ class NetBiosProbe
             return encoded
         }
 
-        /** RDATA layout: NUM_NAMES (1 byte) then NUM_NAMES × [name(15) + type(1) + flags(2)]. */
-        private fun parseNbstatResponse(
+        internal data class NbstatResult(
+            val name: String?,
+            val macAddress: String?,
+        )
+
+        /** RDATA layout: NUM_NAMES (1 byte), then NUM_NAMES × [name(15) + type(1) + flags(2)],
+         * then a STATISTICS field whose first 6 bytes are the UNIT_ID (RFC 1002 §4.2.18) - the
+         * adapter's real MAC address. `internal` rather than `private` so [NetBiosProbeTest] can
+         * exercise this RFC-1002 byte-offset math directly against a synthetic packet, since
+         * there's no NetBIOS/SMB responder on hand in every environment this runs in to verify
+         * it against a real one (docs/device-identification-ideas.md A3). */
+        internal fun parseNbstatResponse(
             buffer: ByteArray,
             length: Int,
-        ): String? {
+        ): NbstatResult? {
             if (length < HEADER_SIZE) return null
             val answerCount = ((buffer[6].toInt() and 0xFF) shl 8) or (buffer[7].toInt() and 0xFF)
             if (answerCount < 1) return null
@@ -117,12 +134,29 @@ class NetBiosProbe
             val numNames = buffer[firstEntryOffset].toInt() and 0xFF
             val entriesStart = firstEntryOffset + 1
 
-            return (0 until numNames)
-                .asSequence()
-                .mapNotNull { index ->
-                    val entryOffset = entriesStart + index * NAME_ENTRY_SIZE
-                    if (entryOffset + NAME_ENTRY_SIZE > length) null else workstationNameAt(buffer, entryOffset)
-                }.firstOrNull()
+            val name =
+                (0 until numNames)
+                    .asSequence()
+                    .mapNotNull { index ->
+                        val entryOffset = entriesStart + index * NAME_ENTRY_SIZE
+                        if (entryOffset + NAME_ENTRY_SIZE > length) null else workstationNameAt(buffer, entryOffset)
+                    }.firstOrNull()
+            val statisticsOffset = entriesStart + numNames * NAME_ENTRY_SIZE
+            val macAddress = macAddressAt(buffer, statisticsOffset, length)
+            return if (name == null && macAddress == null) null else NbstatResult(name, macAddress)
+        }
+
+        /** `null` if the packet is too short to carry a STATISTICS field, or if the field is
+         * present but zero-filled - some stacks omit the MAC rather than sending a real one. */
+        private fun macAddressAt(
+            buffer: ByteArray,
+            offset: Int,
+            length: Int,
+        ): String? {
+            if (offset + MAC_ADDRESS_SIZE > length) return null
+            val mac = buffer.copyOfRange(offset, offset + MAC_ADDRESS_SIZE)
+            if (mac.all { it == 0.toByte() }) return null
+            return mac.joinToString(":") { "%02X".format(it.toInt() and 0xFF) }
         }
 
         /** `null` unless this NBSTAT name entry is a non-group name with the workstation-service
@@ -148,6 +182,7 @@ class NetBiosProbe
             const val NETBIOS_NAME_SIZE = 15
             const val NAME_ENTRY_SIZE = 18 // 15-byte name + 1-byte type + 2-byte flags
             const val ENCODED_NAME_LENGTH = 32 // 16-byte name, first-level-encoded to 32 bytes
+            const val MAC_ADDRESS_SIZE = 6
 
             // header + length byte + encoded name + terminator + QTYPE(2) + QCLASS(2)
             const val QUERY_SIZE = HEADER_SIZE + 1 + ENCODED_NAME_LENGTH + 1 + 2 + 2

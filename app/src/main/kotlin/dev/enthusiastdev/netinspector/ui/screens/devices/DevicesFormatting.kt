@@ -66,6 +66,7 @@ internal fun EvidenceSource.label(): String =
 
 internal fun Certainty.label(): String =
     when (this) {
+        Certainty.CONFIRMED -> "Confirmed"
         Certainty.LIKELY -> "Likely"
         Certainty.POSSIBLE -> "Possible"
     }

@@ -328,7 +328,13 @@ Recorded here only to head off it being re-raised as a gap. This is a permanent,
 deliberate architectural constraint (`docs/adr/c-01-arp-table-unreadable.md`),
 not unfinished work: Android 10+ blocks reading the ARP table for any unrooted,
 non-system app, with no supported workaround. `Host.macAddress` and `Host.vendor`
-exist in the model and stay `null` by design so a future rooted/privileged build
-could populate them without a model change - but that is out of scope for the
+exist in the model and stay `null` for most hosts by design so a future rooted/privileged
+build could populate them without a model change - but that is out of scope for the
 current unrooted target, per the "Root support: None" fixed decision in
 `docs/README.md`.
+
+The one exception - a real MAC recovered from a NetBIOS NBSTAT response's STATISTICS field
+(docs/device-identification-ideas.md A3) - doesn't reopen this: it's an application-layer
+payload the app already receives, not an ARP-table or root workaround, and it only covers
+hosts that speak NetBIOS. Broader MAC coverage (e.g. a router's UPnP `Hosts:1` service,
+docs/device-identification-ideas.md C1) is still a genuinely open idea, not a settled gap.

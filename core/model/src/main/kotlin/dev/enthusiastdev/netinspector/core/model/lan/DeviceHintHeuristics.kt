@@ -78,3 +78,85 @@ private val PORT_SIGNATURES =
 private const val TTL_UNIX_FAMILY = 64
 private const val TTL_WINDOWS_FAMILY = 128
 private const val TTL_NETWORK_EQUIPMENT = 255
+
+/** docs/device-identification-ideas.md A1 - SSDP/UPnP's LOCATION-XML `manufacturer`/
+ * `modelName` are the device's own declared identity, not an inference, so this is
+ * [Certainty.CONFIRMED] - stronger evidence than a port signature or TTL guess. */
+fun upnpDeviceHint(
+    manufacturer: String?,
+    modelName: String?,
+): DeviceHint? {
+    val label = listOfNotNull(manufacturer, modelName).joinToString(" ").ifBlank { return null }
+    return DeviceHint(
+        label = label,
+        basis = "UPnP device description → $label",
+        certainty = Certainty.CONFIRMED,
+    )
+}
+
+/** docs/device-identification-ideas.md A2 - two tiers from one mDNS record: an explicit model
+ * string in a well-known TXT key ([Certainty.CONFIRMED], self-reported exactly like A1's UPnP
+ * fields) if present, else a generic label purely from the service type ([Certainty.LIKELY],
+ * the same tier as [portSignatureHint] - advertising `_airplay._tcp` is as strong a signal as
+ * a specific open port, but not as strong as a device naming its own model). */
+fun mdnsServiceHint(
+    serviceType: String?,
+    txtRecords: Map<String, String>,
+): DeviceHint? {
+    val type = serviceType?.trimEnd('.') ?: return null
+    return mdnsTxtModelHint(type, txtRecords) ?: mdnsServiceTypeHint(type)
+}
+
+private fun mdnsTxtModelHint(
+    serviceType: String,
+    txt: Map<String, String>,
+): DeviceHint? {
+    val model =
+        when (serviceType) {
+            APPLE_DEVICE_INFO_SERVICE -> txt[APPLE_MODEL_TXT_KEY]?.let { "Apple device ($it)" }
+            GOOGLE_CAST_SERVICE -> txt[GOOGLE_CAST_MODEL_TXT_KEY]
+            IPP_SERVICE, PRINTER_SERVICE -> txt[PRINTER_MODEL_TXT_KEY]
+            else -> null
+        } ?: return null
+    return DeviceHint(
+        label = model,
+        basis = "mDNS $serviceType TXT record → $model",
+        certainty = Certainty.CONFIRMED,
+    )
+}
+
+private fun mdnsServiceTypeHint(serviceType: String): DeviceHint? =
+    MDNS_SERVICE_TYPE_LABELS[serviceType]?.let { label ->
+        DeviceHint(
+            label = label,
+            basis = "mDNS service $serviceType → $label",
+            certainty = Certainty.LIKELY,
+        )
+    }
+
+private const val APPLE_DEVICE_INFO_SERVICE = "_device-info._tcp"
+private const val GOOGLE_CAST_SERVICE = "_googlecast._tcp"
+private const val IPP_SERVICE = "_ipp._tcp"
+private const val PRINTER_SERVICE = "_printer._tcp"
+private const val APPLE_MODEL_TXT_KEY = "model"
+private const val GOOGLE_CAST_MODEL_TXT_KEY = "md"
+private const val PRINTER_MODEL_TXT_KEY = "ty"
+
+private val MDNS_SERVICE_TYPE_LABELS =
+    mapOf(
+        "_airplay._tcp" to "Apple device (AirPlay)",
+        "_raop._tcp" to "Apple device (AirPlay audio)",
+        GOOGLE_CAST_SERVICE to "Chromecast / Google Cast device",
+        "_hap._tcp" to "HomeKit accessory",
+        "_homekit._tcp" to "HomeKit accessory",
+        "_spotify-connect._tcp" to "Spotify Connect speaker",
+        "_sonos._tcp" to "Sonos speaker",
+        "_hue._tcp" to "Philips Hue bridge",
+        "_androidtvremote2._tcp" to "Android TV",
+        "_workstation._tcp" to "Mac (macOS)",
+        "_smb._tcp" to "Windows/Samba file sharing",
+        "_esphome._tcp" to "ESPHome device",
+        "_matter._tcp" to "Matter device",
+        IPP_SERVICE to "Network printer",
+        PRINTER_SERVICE to "Network printer",
+    )
