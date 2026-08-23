@@ -32,6 +32,10 @@ interface AppSettingsRepository {
     val alertOnDisconnect: Flow<Boolean>
     val alertOnReconnect: Flow<Boolean>
 
+    // improvement-ideas.md #21 - off by default; the crash handler reads this via
+    // CrashReportingContext rather than this Flow directly, since crash time can't suspend.
+    val crashReportingEnabled: Flow<Boolean>
+
     suspend fun setThemeMode(mode: ThemeMode)
 
     suspend fun setRssiDisplayUnit(unit: RssiDisplayUnit)
@@ -47,6 +51,8 @@ interface AppSettingsRepository {
     suspend fun setAlertOnDisconnect(enabled: Boolean)
 
     suspend fun setAlertOnReconnect(enabled: Boolean)
+
+    suspend fun setCrashReportingEnabled(enabled: Boolean)
 
     companion object {
         /** A widely used "weak signal" cutoff - offered as the threshold field's starting
@@ -83,6 +89,8 @@ class DefaultAppSettingsRepository
         override val alertOnDisconnect: Flow<Boolean> = dataStore.data.map { it.alertOnDisconnect }
 
         override val alertOnReconnect: Flow<Boolean> = dataStore.data.map { it.alertOnReconnect }
+
+        override val crashReportingEnabled: Flow<Boolean> = dataStore.data.map { it.crashReportingEnabled }
 
         override suspend fun setThemeMode(mode: ThemeMode) {
             dataStore.updateData { it.copy { themeMode = mode.name } }
@@ -122,6 +130,10 @@ class DefaultAppSettingsRepository
 
         override suspend fun setAlertOnReconnect(enabled: Boolean) {
             dataStore.updateData { it.copy { alertOnReconnect = enabled } }
+        }
+
+        override suspend fun setCrashReportingEnabled(enabled: Boolean) {
+            dataStore.updateData { it.copy { crashReportingEnabled = enabled } }
         }
     }
 

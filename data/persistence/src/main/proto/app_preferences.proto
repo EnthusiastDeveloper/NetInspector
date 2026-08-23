@@ -43,4 +43,8 @@ message AppPreferences {
   bool alert_on_rssi_drop = 11;
   bool alert_on_disconnect = 12;
   bool alert_on_reconnect = 13;
+
+  // improvement-ideas.md #21 - opt-in local crash reporting, off by default. Proto3 bool
+  // already defaults to false, which is the correct "unset" value here.
+  bool crash_reporting_enabled = 14;
 }
