@@ -283,7 +283,10 @@ internal fun AlertToggleRow(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween,
     ) {
-        Text(label, style = MaterialTheme.typography.bodyMedium)
+        // labelLarge, not bodyMedium - matches the "Theme"/"Default preset for new scans"
+        // style other sections use for a control's own name, so it reads as a label for the
+        // switch next to it rather than a continuation of whatever description text precedes it.
+        Text(label, style = MaterialTheme.typography.labelLarge)
         Switch(checked = checked, onCheckedChange = onCheckedChange)
     }
 }

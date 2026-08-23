@@ -16,5 +16,8 @@ sealed interface DashboardUiState {
         val hostCount: Int,
         val sweepProgress: SweepProgress,
         val isMonitoringActive: Boolean,
+        // improvement-ideas.md #21 - non-null when a crash report exists that the user hasn't
+        // yet exported or dismissed (see DashboardViewModel). Null hides the prompt entirely.
+        val pendingCrashReportFilename: String? = null,
     ) : DashboardUiState
 }

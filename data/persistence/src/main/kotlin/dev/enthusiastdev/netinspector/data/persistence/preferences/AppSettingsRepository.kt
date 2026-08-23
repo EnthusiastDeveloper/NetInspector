@@ -36,6 +36,11 @@ interface AppSettingsRepository {
     // CrashReportingContext rather than this Flow directly, since crash time can't suspend.
     val crashReportingEnabled: Flow<Boolean>
 
+    // improvement-ideas.md #21 - empty string means "nothing acknowledged yet." Compared
+    // against the latest crash report's filename to decide whether the dashboard's
+    // "crash report available" prompt should show.
+    val lastAcknowledgedCrashReport: Flow<String>
+
     suspend fun setThemeMode(mode: ThemeMode)
 
     suspend fun setRssiDisplayUnit(unit: RssiDisplayUnit)
@@ -53,6 +58,8 @@ interface AppSettingsRepository {
     suspend fun setAlertOnReconnect(enabled: Boolean)
 
     suspend fun setCrashReportingEnabled(enabled: Boolean)
+
+    suspend fun setLastAcknowledgedCrashReport(filename: String)
 
     companion object {
         /** A widely used "weak signal" cutoff - offered as the threshold field's starting
@@ -91,6 +98,9 @@ class DefaultAppSettingsRepository
         override val alertOnReconnect: Flow<Boolean> = dataStore.data.map { it.alertOnReconnect }
 
         override val crashReportingEnabled: Flow<Boolean> = dataStore.data.map { it.crashReportingEnabled }
+
+        override val lastAcknowledgedCrashReport: Flow<String> =
+            dataStore.data.map { it.lastAcknowledgedCrashReport }
 
         override suspend fun setThemeMode(mode: ThemeMode) {
             dataStore.updateData { it.copy { themeMode = mode.name } }
@@ -134,6 +144,10 @@ class DefaultAppSettingsRepository
 
         override suspend fun setCrashReportingEnabled(enabled: Boolean) {
             dataStore.updateData { it.copy { crashReportingEnabled = enabled } }
+        }
+
+        override suspend fun setLastAcknowledgedCrashReport(filename: String) {
+            dataStore.updateData { it.copy { lastAcknowledgedCrashReport = filename } }
         }
     }
 

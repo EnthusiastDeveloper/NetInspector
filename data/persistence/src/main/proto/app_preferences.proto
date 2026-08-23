@@ -47,4 +47,10 @@ message AppPreferences {
   // improvement-ideas.md #21 - opt-in local crash reporting, off by default. Proto3 bool
   // already defaults to false, which is the correct "unset" value here.
   bool crash_reporting_enabled = 14;
+
+  // improvement-ideas.md #21 - filename of the most recently acknowledged crash report (the
+  // user either exported it or dismissed the dashboard's prompt for it), so that prompt only
+  // ever surfaces once per report rather than nagging on every app start. Proto3's empty-string
+  // default already means "nothing acknowledged yet."
+  string last_acknowledged_crash_report = 15;
 }
