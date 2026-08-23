@@ -24,6 +24,7 @@ private fun host(
     lastSeen: Instant = Instant.EPOCH,
     isGateway: Boolean = false,
     isSelf: Boolean = false,
+    nickname: String? = null,
 ) = Host(
     address = addr(address),
     confidence = confidence,
@@ -38,6 +39,7 @@ private fun host(
     rttMedianMs = rttMedianMs,
     isGateway = isGateway,
     isSelf = isSelf,
+    nickname = nickname,
 )
 
 private fun hint(label: String) = DeviceHint(label, basis = "test", certainty = Certainty.LIKELY)
@@ -125,5 +127,21 @@ class DevicesFormattingTest {
             )
         val filtered = hosts.filteredByConfidence(setOf(HostConfidence.CONFIRMED))
         assertThat(filtered.map { it.address.hostAddress }).containsExactly("192.168.1.1")
+    }
+
+    @Test
+    fun `displayName prefers a nickname over hostname, device hint, self, and gateway`() {
+        assertThat(host("192.168.1.1", hostname = "printer", nickname = "Study printer").displayName())
+            .isEqualTo("Study printer")
+        assertThat(host("192.168.1.1", isSelf = true, nickname = "My phone").displayName())
+            .isEqualTo("My phone")
+        assertThat(host("192.168.1.1", isGateway = true, nickname = "Router").displayName())
+            .isEqualTo("Router")
+    }
+
+    @Test
+    fun `hasInferredDisplayName is false once a nickname is set`() {
+        val host = host("192.168.1.1", deviceHint = hint("Network equipment"), nickname = "Study printer")
+        assertThat(host.hasInferredDisplayName).isFalse()
     }
 }

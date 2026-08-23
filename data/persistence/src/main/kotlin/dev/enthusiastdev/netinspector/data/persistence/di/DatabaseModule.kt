@@ -9,10 +9,14 @@ import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import dev.enthusiastdev.netinspector.data.persistence.MIGRATION_1_2
+import dev.enthusiastdev.netinspector.data.persistence.MIGRATION_2_3
 import dev.enthusiastdev.netinspector.data.persistence.NetInspectorDatabase
 import dev.enthusiastdev.netinspector.data.persistence.diagnostics.DefaultDiagnosticRunRepository
 import dev.enthusiastdev.netinspector.data.persistence.diagnostics.DiagnosticRunDao
 import dev.enthusiastdev.netinspector.data.persistence.diagnostics.DiagnosticRunRepository
+import dev.enthusiastdev.netinspector.data.persistence.host.DefaultSavedHostRepository
+import dev.enthusiastdev.netinspector.data.persistence.host.SavedHostDao
+import dev.enthusiastdev.netinspector.data.persistence.host.SavedHostRepository
 import dev.enthusiastdev.netinspector.data.persistence.scan.DefaultScanHistoryRepository
 import dev.enthusiastdev.netinspector.data.persistence.scan.KnownApDao
 import dev.enthusiastdev.netinspector.data.persistence.scan.ScanHistoryRepository
@@ -38,6 +42,10 @@ abstract class DatabaseModule {
     @Singleton
     abstract fun bindDiagnosticRunRepository(impl: DefaultDiagnosticRunRepository): DiagnosticRunRepository
 
+    @Binds
+    @Singleton
+    abstract fun bindSavedHostRepository(impl: DefaultSavedHostRepository): SavedHostRepository
+
     companion object {
         @Provides
         @Singleton
@@ -46,7 +54,7 @@ abstract class DatabaseModule {
         ): NetInspectorDatabase =
             Room
                 .databaseBuilder(context, NetInspectorDatabase::class.java, "netinspector.db")
-                .addMigrations(MIGRATION_1_2)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
                 .build()
 
         @Provides
@@ -69,5 +77,9 @@ abstract class DatabaseModule {
         @Provides
         @Singleton
         fun provideDiagnosticRunDao(database: NetInspectorDatabase): DiagnosticRunDao = database.diagnosticRunDao()
+
+        @Provides
+        @Singleton
+        fun provideSavedHostDao(database: NetInspectorDatabase): SavedHostDao = database.savedHostDao()
     }
 }

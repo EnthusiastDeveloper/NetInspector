@@ -7,6 +7,7 @@ import android.content.IntentFilter
 import android.net.wifi.ScanResult
 import android.net.wifi.WifiManager
 import dagger.hilt.android.qualifiers.ApplicationContext
+import dev.enthusiastdev.netinspector.core.common.vendor.VendorLookup
 import dev.enthusiastdev.netinspector.core.model.wifi.ScanBudget
 import dev.enthusiastdev.netinspector.core.model.wifi.ScanOutcome
 import dev.enthusiastdev.netinspector.core.model.wifi.ScanSnapshot
@@ -34,7 +35,6 @@ class ScanGovernor
         @ApplicationContext private val context: Context,
         private val wifiManager: WifiManager,
         private val clock: Clock,
-        private val vendorLookup: VendorLookup,
     ) {
         private val mutex = Mutex()
         private val activeScanTimestamps = ArrayDeque<Instant>()
@@ -105,7 +105,7 @@ class ScanGovernor
             val now = clock.instant()
             val connectedBssid = wifiManager.connectionInfo?.bssid?.normalizedBssid()
             val accessPoints =
-                latestScanResults().map { it.toAccessPoint(connectedBssid, now, vendorLookup::vendorFor) }
+                latestScanResults().map { it.toAccessPoint(connectedBssid, now, VendorLookup::vendorFor) }
             return ScanSnapshot(accessPoints = accessPoints, timestamp = now)
         }
 

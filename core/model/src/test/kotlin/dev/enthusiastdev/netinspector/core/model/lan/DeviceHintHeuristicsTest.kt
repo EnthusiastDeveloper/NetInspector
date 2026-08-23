@@ -89,4 +89,108 @@ class DeviceHintHeuristicsTest {
         val hint = deviceHintFor(openPorts = listOf(port(23)), icmpReplyTtl = null)
         assertThat(hint?.label).isEqualTo("Telnet-enabled device (legacy/insecure)")
     }
+
+    @Test
+    fun `upnpDeviceHint combines manufacturer and model at CONFIRMED certainty`() {
+        val hint = upnpDeviceHint("Synology Inc.", "DS220+")
+        assertThat(hint?.label).isEqualTo("Synology Inc. DS220+")
+        assertThat(hint?.certainty).isEqualTo(Certainty.CONFIRMED)
+    }
+
+    @Test
+    fun `upnpDeviceHint falls back to whichever field is present`() {
+        assertThat(upnpDeviceHint("Sonos", null)?.label).isEqualTo("Sonos")
+        assertThat(upnpDeviceHint(null, "One SL")?.label).isEqualTo("One SL")
+    }
+
+    @Test
+    fun `upnpDeviceHint returns null when both fields are absent`() {
+        assertThat(upnpDeviceHint(null, null)).isNull()
+    }
+
+    @Test
+    fun `mdnsServiceHint prefers an explicit TXT model over the generic service-type label`() {
+        val hint = mdnsServiceHint("_googlecast._tcp", mapOf("md" to "Chromecast"))
+        assertThat(hint?.label).isEqualTo("Chromecast")
+        assertThat(hint?.certainty).isEqualTo(Certainty.CONFIRMED)
+    }
+
+    @Test
+    fun `mdnsServiceHint reads the Apple device-info model TXT key`() {
+        val hint = mdnsServiceHint("_device-info._tcp", mapOf("model" to "J274AP"))
+        assertThat(hint?.label).isEqualTo("Apple device (J274AP)")
+        assertThat(hint?.certainty).isEqualTo(Certainty.CONFIRMED)
+    }
+
+    @Test
+    fun `mdnsServiceHint falls back to a generic LIKELY label when no TXT model is present`() {
+        val hint = mdnsServiceHint("_googlecast._tcp", emptyMap())
+        assertThat(hint?.label).isEqualTo("Chromecast / Google Cast device")
+        assertThat(hint?.certainty).isEqualTo(Certainty.LIKELY)
+    }
+
+    @Test
+    fun `mdnsServiceHint tolerates a trailing dot on the service type`() {
+        val hint = mdnsServiceHint("_hap._tcp.", emptyMap())
+        assertThat(hint?.label).isEqualTo("HomeKit accessory")
+    }
+
+    @Test
+    fun `mdnsServiceHint returns null for an unrecognized service type`() {
+        assertThat(mdnsServiceHint("_unknown._tcp", emptyMap())).isNull()
+        assertThat(mdnsServiceHint(null, emptyMap())).isNull()
+    }
+
+    @Test
+    fun `snmpDeviceHint reports the sysDescr string at CONFIRMED certainty`() {
+        val hint = snmpDeviceHint("Cisco IOS Software, C2960 Software")
+        assertThat(hint?.label).isEqualTo("Cisco IOS Software, C2960 Software")
+        assertThat(hint?.certainty).isEqualTo(Certainty.CONFIRMED)
+    }
+
+    @Test
+    fun `snmpDeviceHint returns null for a blank or absent sysDescr`() {
+        assertThat(snmpDeviceHint(null)).isNull()
+        assertThat(snmpDeviceHint("  ")).isNull()
+    }
+
+    @Test
+    fun `tlsCertificateDeviceHint reports the certificate CN at CONFIRMED certainty`() {
+        val hint = tlsCertificateDeviceHint("Synology Inc.")
+        assertThat(hint?.label).isEqualTo("Synology Inc.")
+        assertThat(hint?.certainty).isEqualTo(Certainty.CONFIRMED)
+    }
+
+    @Test
+    fun `tlsCertificateDeviceHint returns null for a blank or absent CN`() {
+        assertThat(tlsCertificateDeviceHint(null)).isNull()
+        assertThat(tlsCertificateDeviceHint(" ")).isNull()
+    }
+
+    @Test
+    fun `deviceHintFor prefers a self-reported SNMP sysDescr over a port signature`() {
+        val hint = deviceHintFor(openPorts = listOf(port(9100)), icmpReplyTtl = null, snmpSysDescr = "HP LaserJet 4050")
+        assertThat(hint?.label).isEqualTo("HP LaserJet 4050")
+        assertThat(hint?.certainty).isEqualTo(Certainty.CONFIRMED)
+    }
+
+    @Test
+    fun `deviceHintFor prefers a self-reported TLS certificate CN over a port signature`() {
+        val hint =
+            deviceHintFor(openPorts = listOf(port(443)), icmpReplyTtl = null, tlsCertificateCommonName = "RT-AX88U")
+        assertThat(hint?.label).isEqualTo("RT-AX88U")
+        assertThat(hint?.certainty).isEqualTo(Certainty.CONFIRMED)
+    }
+
+    @Test
+    fun `deviceHintFor prefers SNMP over a TLS certificate when both are present`() {
+        val hint =
+            deviceHintFor(
+                openPorts = emptyList(),
+                icmpReplyTtl = null,
+                snmpSysDescr = "Synology DSM 7",
+                tlsCertificateCommonName = "Synology Inc.",
+            )
+        assertThat(hint?.label).isEqualTo("Synology DSM 7")
+    }
 }

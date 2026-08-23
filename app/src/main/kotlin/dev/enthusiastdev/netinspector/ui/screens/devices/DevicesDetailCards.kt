@@ -44,16 +44,24 @@ internal fun DevicesDetailIdentificationCard(host: Host) {
         val rttMedianMs = host.rttMedianMs
         if (rttMedianMs != null) InfoRow("Median RTT", "${rttMedianMs.toInt()} ms")
         host.icmpReplyTtl?.let { InfoRow("ICMP reply TTL", it.toString()) }
-        MacAddressRow()
+        MacAddressRow(host)
+        host.vendor?.let { InfoRow("Vendor", it) }
     }
 }
 
-/** design C-01/plan Phase 6 - "no empty row, and a short explanation available on tap rather
- * than a mysterious absence." [Host.macAddress] is always `null` on an unrooted device (the
- * ARP table is unreadable from Android 10 on), so this renders as a fixed, tappable row rather
- * than reading `host.macAddress` at all. */
+/** design C-01/plan Phase 6, extended by docs/device-identification-ideas.md A3 - "no empty
+ * row, and a short explanation available on tap rather than a mysterious absence."
+ * [Host.macAddress] is still `null` for most hosts (the ARP table is unreadable from Android 10
+ * on), but is now populated for a host that answered a NetBIOS NBSTAT query - see [Host]'s own
+ * doc comment. When present it's just shown directly; the tappable "why not available"
+ * explanation only applies to the common case where it's still missing. */
 @Composable
-private fun MacAddressRow() {
+private fun MacAddressRow(host: Host) {
+    val macAddress = host.macAddress
+    if (macAddress != null) {
+        InfoRow("MAC address", macAddress)
+        return
+    }
     var showExplanation by remember { mutableStateOf(false) }
     Row(
         modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).clickable { showExplanation = true },
@@ -74,9 +82,11 @@ private fun MacAddressRow() {
             text = {
                 Text(
                     "Android 10 and later block apps from reading the device's ARP table, so " +
-                        "there is no way to learn another host's MAC address without root. This " +
-                        "device is identified instead by what it announces (mDNS, SSDP, NetBIOS), " +
-                        "its open ports, and its reverse-DNS name.",
+                        "there is usually no way to learn another host's MAC address without root. " +
+                        "The one exception is a device that answers a NetBIOS query (mostly " +
+                        "Windows PCs and some NAS/print servers) - its MAC arrives in that reply " +
+                        "instead. Otherwise this device is identified by what it announces (mDNS, " +
+                        "SSDP, NetBIOS), its open ports, and its reverse-DNS name.",
                 )
             },
             confirmButton = { TextButton(onClick = { showExplanation = false }) { Text("Got it") } },

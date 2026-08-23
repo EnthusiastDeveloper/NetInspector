@@ -508,13 +508,23 @@ Rejected alternatives, for the record:
 
 The design consequence: **host identification is built on service discovery and
 behavioural fingerprinting, not on MAC vendors.** The `Host.macAddress` field exists and
-stays null, so a future rooted or privileged build can populate it without a model
-change. The UI does not show an empty "MAC" row; it shows the identification signals it
+stays null for most hosts, so a future rooted or privileged build can populate it without a
+model change. The UI does not show an empty "MAC" row; it shows the identification signals it
 actually has.
 
-One place OUI lookup *does* work: **BSSIDs from Wi-Fi scan results are real MAC
+**One narrow, deliberate exception** (docs/device-identification-ideas.md A3): a host that
+answers a NetBIOS NBSTAT query includes its adapter's real MAC in the response's STATISTICS
+field (RFC 1002 §4.2.18) - an application-layer payload the app is already receiving
+legitimately, not the ARP table. `NetBiosProbe` extracts it and runs it through the OUI table
+below. Coverage is limited to hosts that speak NetBIOS (mostly Windows/Samba, some NAS/print
+servers), so this doesn't change the blanket statement above for the general case.
+
+One place OUI lookup *does* work reliably: **BSSIDs from Wi-Fi scan results are real MAC
 addresses**, so access point vendor identification is fully supported. The bundled OUI
-database earns its keep there.
+database (`VendorLookup`, in `:core:common` so both `:data:wifi` and `:data:lan` can reach it
+without violating the "data modules never depend on each other" rule in §2.1) earns its keep
+there, and now also serves the NetBIOS-derived MACs above - with the caveat that its
+AP-oriented vendor scope means client-device NIC vendors often won't resolve.
 
 ### 8.2 Three-stage pipeline
 
@@ -528,6 +538,7 @@ confirmed hosts only.
 |---|---|---|
 | mDNS | `NsdManager` browse, plus a meta-query for `_services._dns-sd._udp` to enumerate service types before browsing each | Hostnames, service types, device models (Apple, printers, Chromecast, NAS) |
 | SSDP | UDP M-SEARCH ×3 to `239.255.255.250:1900`, `ST: ssdp:all`, MX 2 | `SERVER`, `LOCATION`; fetching the LOCATION XML yields `friendlyName`, `manufacturer`, `modelName` |
+| UPnP IGD Hosts | SOAP `GetHostNumberOfEntries`/`GetGenericHostEntry` against a router advertising `urn:schemas-upnp-org:service:Hosts:1` in its SSDP device description (docs/device-identification-ideas.md C1) | Real MAC and hostname for every LAN host the router knows about, coverage permitting |
 | NetBIOS | UDP node-status query to the broadcast address on port 137 | Windows/Samba names and workgroup |
 | Known hosts | Gateway from `LinkProperties`, self from `linkAddresses` | Two guaranteed-correct entries |
 
@@ -573,6 +584,14 @@ false negatives on a congested network.
 - Reverse DNS via `DnsResolver`, async, never blocking the list.
 - Extended port probe over a ~30-port service set.
 - Banner grab: HTTP `Server` header and `<title>`, SSH version string.
+- **SNMP `sysDescr`/`sysName`** (docs/device-identification-ideas.md B1): a single GET-request
+  to UDP 161, community `public`. A hit is `CONFIRMED` tier - the device's own self-reported
+  firmware/model string, same as A1/A2's UPnP/mDNS fields.
+- **TLS certificate CN** (docs/device-identification-ideas.md B3): a handshake-only
+  (never-validated) `SSLSocket` client against 443/8443. A self-signed admin-UI certificate's
+  CN frequently carries the product name outright; `CONFIRMED` tier like SNMP above, with SNMP
+  winning a tie (its firmware string is usually more specific than a certificate's often
+  generic company-name CN).
 - **ICMP reply TTL fingerprint**: an initial TTL of 64 implies Linux/Android/iOS/macOS,
   128 implies Windows, 255 implies network equipment. Combined with the hop count this is
   a cheap and reasonably reliable OS class hint - recorded as a `DeviceHint` with basis
@@ -587,7 +606,8 @@ Every probe appends an `Evidence` entry rather than overwriting fields. Merge ru
   received. `ANNOUNCED` if only mDNS/SSDP/NetBIOS advertised it. `STALE` if present in the
   previous sweep and absent now - kept visible for one sweep, greyed, then dropped.
 - Hostname precedence for the primary display name: mDNS → SSDP `friendlyName` → NetBIOS
-  → reverse DNS. All variants remain visible on the detail screen with their source.
+  → UPnP IGD Hosts (C1) → SNMP `sysName` (B1) → reverse DNS. All variants remain visible on
+  the detail screen with their source.
 - Conflicting evidence is never silently resolved. If mDNS and NetBIOS disagree, both are
   shown.
 
@@ -725,7 +745,7 @@ trips IDS on managed networks and can destabilise cheap consumer routers.
 
 ## 10. Persistence
 
-Room, schema version 1, with `exportSchema = true` and schema files committed for future
+Room, schema version 3, with `exportSchema = true` and schema files committed for future
 migrations.
 
 | Entity | Purpose | Retention |
@@ -733,7 +753,8 @@ migrations.
 | `scan_session` | One row per scan snapshot: timestamp, connected BSSID, location-free | 30 days, configurable |
 | `scan_observation` | AP observation joined to a session: BSSID, RSSI, channel, width | Cascade with session |
 | `known_ap` | Stable per-BSSID record: SSID, vendor, first/last seen, best RSSI | Indefinite |
-| `saved_host` | User-pinned LAN host: label, IP, MAC (manual, for WOL), notes | Indefinite |
+| `saved_wol_target` | Manually-entered Wake-on-LAN target: label, MAC, broadcast address | Indefinite |
+| `saved_host` | Manual per-host nickname (docs/device-identification-ideas.md D), keyed by MAC when known or a stable address+hostname combo otherwise | Indefinite |
 | `diagnostic_run` | Ping/traceroute/scan runs with parameters and serialised results | 90 days |
 | `oui` | Prepopulated MAC prefix → vendor, variable prefix length | Static, bundled |
 

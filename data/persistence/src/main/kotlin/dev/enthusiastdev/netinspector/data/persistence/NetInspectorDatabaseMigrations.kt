@@ -43,3 +43,16 @@ val MIGRATION_1_2 =
             )
         }
     }
+
+/** design §10/docs/device-identification-ideas.md D - version 3 adds one table for manual
+ * per-host nicknames, purely additive like 1→2. SQL copied verbatim from the KSP-generated
+ * `schemas/.../3.json` `createSql` entry, same convention as [MIGRATION_1_2]. */
+val MIGRATION_2_3 =
+    object : Migration(2, 3) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL(
+                "CREATE TABLE IF NOT EXISTS `saved_host` (`key` TEXT NOT NULL, `nickname` TEXT NOT NULL, " +
+                    "PRIMARY KEY(`key`))",
+            )
+        }
+    }

@@ -59,6 +59,9 @@ internal fun EvidenceSource.label(): String =
         EvidenceSource.MDNS -> "mDNS"
         EvidenceSource.SSDP -> "SSDP/UPnP"
         EvidenceSource.NETBIOS -> "NetBIOS"
+        EvidenceSource.SNMP -> "SNMP"
+        EvidenceSource.TLS -> "TLS certificate"
+        EvidenceSource.UPNP_HOSTS -> "Router-reported (UPnP Hosts)"
         EvidenceSource.REVERSE_DNS -> "Reverse DNS"
         EvidenceSource.GATEWAY -> "Gateway (known)"
         EvidenceSource.SELF -> "This device (known)"
@@ -66,6 +69,7 @@ internal fun EvidenceSource.label(): String =
 
 internal fun Certainty.label(): String =
     when (this) {
+        Certainty.CONFIRMED -> "Confirmed"
         Certainty.LIKELY -> "Likely"
         Certainty.POSSIBLE -> "Possible"
     }

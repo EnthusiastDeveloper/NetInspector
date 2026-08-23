@@ -1,17 +1,30 @@
 package dev.enthusiastdev.netinspector.core.model.lan
 
 /**
- * design §8.2 Stage C, §3 - turns what enrichment found (open ports, ICMP reply TTL) into the
- * single [DeviceHint] a [Host] carries. Pure and heavily unit-tested, same shape as the channel
- * recommendation scoring in `:core:model:wifi` (design §7). Port signatures are checked first
- * and win outright: a specific service on a specific port (design's own examples - 62078 is
- * Apple-only usbmuxd, 5555 is ADB) is a much stronger signal than a coarse OS-family guess from
- * TTL, so it is recorded as [Certainty.LIKELY] against the TTL fingerprint's [Certainty.POSSIBLE].
+ * design §8.2 Stage C, §3 - turns what enrichment found into the single [DeviceHint] a [Host]
+ * carries. Pure and heavily unit-tested, same shape as the channel recommendation scoring in
+ * `:core:model:wifi` (design §7). Every candidate is built independently and the most certain
+ * one wins outright ([Certainty]'s declaration order doubles as rank, lowest ordinal = most
+ * certain, same as `HostMerge.preferredHint`) - `snmpSysDescr`/`tlsCertificateCommonName`
+ * (docs/device-identification-ideas.md B1/B3) are self-reported, [Certainty.CONFIRMED] like
+ * A1/A2's UPnP/mDNS fields; a port signature (design's own examples - 62078 is Apple-only
+ * usbmuxd, 5555 is ADB) is [Certainty.LIKELY], a coarser signal than either; the TTL fingerprint
+ * is the weakest, [Certainty.POSSIBLE]. A tie between two [Certainty.CONFIRMED] candidates goes
+ * to whichever is listed first below (SNMP's exact firmware string over a certificate's often
+ * generic company-name CN).
  */
 fun deviceHintFor(
     openPorts: List<OpenPort>,
     icmpReplyTtl: Int?,
-): DeviceHint? = portSignatureHint(openPorts) ?: icmpReplyTtl?.let(::ttlDeviceHint)
+    snmpSysDescr: String? = null,
+    tlsCertificateCommonName: String? = null,
+): DeviceHint? =
+    listOfNotNull(
+        snmpDeviceHint(snmpSysDescr),
+        tlsCertificateDeviceHint(tlsCertificateCommonName),
+        portSignatureHint(openPorts),
+        icmpReplyTtl?.let(::ttlDeviceHint),
+    ).minByOrNull { it.certainty }
 
 /** design §8.2 - "an initial TTL of 64 implies Linux/Android/iOS/macOS, 128 implies Windows,
  * 255 implies network equipment." A LAN peer's reply arrives a few hops short of its OS's
@@ -78,3 +91,101 @@ private val PORT_SIGNATURES =
 private const val TTL_UNIX_FAMILY = 64
 private const val TTL_WINDOWS_FAMILY = 128
 private const val TTL_NETWORK_EQUIPMENT = 255
+
+/** docs/device-identification-ideas.md A1 - SSDP/UPnP's LOCATION-XML `manufacturer`/
+ * `modelName` are the device's own declared identity, not an inference, so this is
+ * [Certainty.CONFIRMED] - stronger evidence than a port signature or TTL guess. */
+fun upnpDeviceHint(
+    manufacturer: String?,
+    modelName: String?,
+): DeviceHint? {
+    val label = listOfNotNull(manufacturer, modelName).joinToString(" ").ifBlank { return null }
+    return DeviceHint(
+        label = label,
+        basis = "UPnP device description → $label",
+        certainty = Certainty.CONFIRMED,
+    )
+}
+
+/** docs/device-identification-ideas.md B1 - SNMP `sysDescr` (OID 1.3.6.1.2.1.1.1.0) is a
+ * device's own self-reported firmware/model string, [Certainty.CONFIRMED] exactly like A1/A2's
+ * manufacturer/model fields. */
+fun snmpDeviceHint(sysDescr: String?): DeviceHint? {
+    val label = sysDescr?.trim()?.ifBlank { null } ?: return null
+    return DeviceHint(label = label, basis = "SNMP sysDescr → $label", certainty = Certainty.CONFIRMED)
+}
+
+/** docs/device-identification-ideas.md B3 - a self-signed admin-UI certificate's CN commonly
+ * carries the product name outright; [Certainty.CONFIRMED], the same tier as SNMP's
+ * self-reported `sysDescr` above. */
+fun tlsCertificateDeviceHint(commonName: String?): DeviceHint? {
+    val label = commonName?.trim()?.ifBlank { null } ?: return null
+    return DeviceHint(label = label, basis = "TLS certificate CN → $label", certainty = Certainty.CONFIRMED)
+}
+
+/** docs/device-identification-ideas.md A2 - two tiers from one mDNS record: an explicit model
+ * string in a well-known TXT key ([Certainty.CONFIRMED], self-reported exactly like A1's UPnP
+ * fields) if present, else a generic label purely from the service type ([Certainty.LIKELY],
+ * the same tier as [portSignatureHint] - advertising `_airplay._tcp` is as strong a signal as
+ * a specific open port, but not as strong as a device naming its own model). */
+fun mdnsServiceHint(
+    serviceType: String?,
+    txtRecords: Map<String, String>,
+): DeviceHint? {
+    val type = serviceType?.trimEnd('.') ?: return null
+    return mdnsTxtModelHint(type, txtRecords) ?: mdnsServiceTypeHint(type)
+}
+
+private fun mdnsTxtModelHint(
+    serviceType: String,
+    txt: Map<String, String>,
+): DeviceHint? {
+    val model =
+        when (serviceType) {
+            APPLE_DEVICE_INFO_SERVICE -> txt[APPLE_MODEL_TXT_KEY]?.let { "Apple device ($it)" }
+            GOOGLE_CAST_SERVICE -> txt[GOOGLE_CAST_MODEL_TXT_KEY]
+            IPP_SERVICE, PRINTER_SERVICE -> txt[PRINTER_MODEL_TXT_KEY]
+            else -> null
+        } ?: return null
+    return DeviceHint(
+        label = model,
+        basis = "mDNS $serviceType TXT record → $model",
+        certainty = Certainty.CONFIRMED,
+    )
+}
+
+private fun mdnsServiceTypeHint(serviceType: String): DeviceHint? =
+    MDNS_SERVICE_TYPE_LABELS[serviceType]?.let { label ->
+        DeviceHint(
+            label = label,
+            basis = "mDNS service $serviceType → $label",
+            certainty = Certainty.LIKELY,
+        )
+    }
+
+private const val APPLE_DEVICE_INFO_SERVICE = "_device-info._tcp"
+private const val GOOGLE_CAST_SERVICE = "_googlecast._tcp"
+private const val IPP_SERVICE = "_ipp._tcp"
+private const val PRINTER_SERVICE = "_printer._tcp"
+private const val APPLE_MODEL_TXT_KEY = "model"
+private const val GOOGLE_CAST_MODEL_TXT_KEY = "md"
+private const val PRINTER_MODEL_TXT_KEY = "ty"
+
+private val MDNS_SERVICE_TYPE_LABELS =
+    mapOf(
+        "_airplay._tcp" to "Apple device (AirPlay)",
+        "_raop._tcp" to "Apple device (AirPlay audio)",
+        GOOGLE_CAST_SERVICE to "Chromecast / Google Cast device",
+        "_hap._tcp" to "HomeKit accessory",
+        "_homekit._tcp" to "HomeKit accessory",
+        "_spotify-connect._tcp" to "Spotify Connect speaker",
+        "_sonos._tcp" to "Sonos speaker",
+        "_hue._tcp" to "Philips Hue bridge",
+        "_androidtvremote2._tcp" to "Android TV",
+        "_workstation._tcp" to "Mac (macOS)",
+        "_smb._tcp" to "Windows/Samba file sharing",
+        "_esphome._tcp" to "ESPHome device",
+        "_matter._tcp" to "Matter device",
+        IPP_SERVICE to "Network printer",
+        PRINTER_SERVICE to "Network printer",
+    )

@@ -28,9 +28,9 @@ fun mergeObservation(
             confidence = confidenceOf(evidence),
             evidence = evidence,
             hostnames = existing?.hostnames.orEmpty() + observation.hostnames,
-            macAddress = existing?.macAddress,
-            vendor = existing?.vendor,
-            deviceHint = observation.deviceHint ?: existing?.deviceHint,
+            macAddress = observation.macAddress ?: existing?.macAddress,
+            vendor = observation.vendor ?: existing?.vendor,
+            deviceHint = preferredHint(existing?.deviceHint, observation.deviceHint),
             openPorts = mergeOpenPorts(existing?.openPorts.orEmpty(), observation.openPorts),
             services = mergeServices(existing?.services.orEmpty(), observation.services),
             icmpReplyTtl = observation.icmpReplyTtl ?: existing?.icmpReplyTtl,
@@ -58,6 +58,23 @@ fun finalizeSweep(
                 else -> address to host.copy(confidence = HostConfidence.STALE)
             }
         }.toMap()
+
+/** docs/device-identification-ideas.md A1 - probes fire across stages in no guaranteed order
+ * (Stage A's SSDP/mDNS hints can arrive before or after Stage C's port/TTL hint), so "last
+ * observation wins" would let a coarse TTL guess overwrite a device's own self-reported
+ * manufacturer/model just because it happened to resolve second. The more certain hint always
+ * wins instead; a tie (e.g. two LIKELY port signatures) goes to the incoming one, matching the
+ * "fresher wins" rule the rest of this file uses for hostnames. */
+private fun preferredHint(
+    existing: DeviceHint?,
+    incoming: DeviceHint?,
+): DeviceHint? =
+    when {
+        incoming == null -> existing
+        existing == null -> incoming
+        incoming.certainty <= existing.certainty -> incoming
+        else -> existing
+    }
 
 private fun mergeServices(
     existing: List<DiscoveredService>,

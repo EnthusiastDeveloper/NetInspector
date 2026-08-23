@@ -18,6 +18,7 @@ live in [`installing.md`](installing.md); everything else here is for contributo
 | [`implementation-plan.md`](implementation-plan.md) | Phased build order with tasks, acceptance criteria, spikes and estimates | During implementation; work top to bottom |
 | [`open-items.md`](open-items.md) | What's left after the phased plan shipped: still-open plan items, and gaps found afterward | Before picking up new work on a "finished" app |
 | [`improvement-ideas.md`](improvement-ideas.md) | Brainstormed feature/UX ideas, ranked by ROI | When looking for what to build next |
+| [`device-identification-ideas.md`](device-identification-ideas.md) | Brainstormed techniques to make LAN device labels more specific than the TTL/port-signature fallbacks, ranked by ROI | When improving how confidently the app names a device |
 | [`references/dependency-versions.md`](references/dependency-versions.md) | Dependency version notes | When bumping a dependency |
 | [`installing.md`](installing.md) | End-user install instructions (sideload, Obtainium) | Linked from the root README |
 | [`troubleshooting.md`](troubleshooting.md) | Crash reports vs. debug-bundle export: what each captures, redaction, when to use which | Reporting or diagnosing a bug without ADB |

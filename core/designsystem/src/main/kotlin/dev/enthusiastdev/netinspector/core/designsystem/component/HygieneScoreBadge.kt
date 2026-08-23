@@ -28,12 +28,7 @@ fun ScoreBadge(
     label: String,
     modifier: Modifier = Modifier,
 ) {
-    val color =
-        when {
-            score >= GOOD_THRESHOLD -> MaterialTheme.colorScheme.primary
-            score >= FAIR_THRESHOLD -> Color(0xFFB8860B) // amber - distinct from the theme's error/primary hues
-            else -> MaterialTheme.colorScheme.error
-        }
+    val color = scoreColor(score)
     Row(
         modifier = modifier,
         verticalAlignment = Alignment.CenterVertically,
@@ -48,6 +43,34 @@ fun ScoreBadge(
         Text(text = label, style = MaterialTheme.typography.bodyMedium)
     }
 }
+
+/**
+ * The same colored circle [ScoreBadge] draws, without the label, sized to sit inline in a row of
+ * other controls (e.g. next to a view-mode toggle) rather than as its own card. Meant for a
+ * caller collapsing a full [ScoreBadge] down to save vertical space once it scrolls out of its
+ * usual spot, not as a replacement for [ScoreBadge] itself.
+ */
+@Composable
+fun CompactScoreBadge(
+    score: Int,
+    modifier: Modifier = Modifier,
+) {
+    val color = scoreColor(score)
+    Box(
+        modifier = modifier.size(32.dp).background(color.copy(alpha = 0.15f), CircleShape),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(text = score.toString(), style = MaterialTheme.typography.labelMedium, color = color)
+    }
+}
+
+@Composable
+private fun scoreColor(score: Int): Color =
+    when {
+        score >= GOOD_THRESHOLD -> MaterialTheme.colorScheme.primary
+        score >= FAIR_THRESHOLD -> Color(0xFFB8860B) // amber - distinct from the theme's error/primary hues
+        else -> MaterialTheme.colorScheme.error
+    }
 
 private const val GOOD_THRESHOLD = 70
 private const val FAIR_THRESHOLD = 50
