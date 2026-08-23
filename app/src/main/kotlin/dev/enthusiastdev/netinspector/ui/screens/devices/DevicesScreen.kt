@@ -1,14 +1,18 @@
 package dev.enthusiastdev.netinspector.ui.screens.devices
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SegmentedButton
@@ -21,6 +25,7 @@ import androidx.compose.material3.adaptive.layout.ListDetailPaneScaffoldRole
 import androidx.compose.material3.adaptive.navigation.NavigableListDetailPaneScaffold
 import androidx.compose.material3.adaptive.navigation.rememberListDetailPaneScaffoldNavigator
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -33,9 +38,11 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import dev.enthusiastdev.netinspector.R
+import dev.enthusiastdev.netinspector.core.designsystem.component.CompactScoreBadge
 import dev.enthusiastdev.netinspector.core.designsystem.graph.NetworkMapGraph
 import dev.enthusiastdev.netinspector.core.model.lan.Host
 import dev.enthusiastdev.netinspector.core.model.lan.HostConfidence
+import dev.enthusiastdev.netinspector.core.model.lan.networkHygieneScore
 import kotlinx.coroutines.launch
 
 @Composable
@@ -189,43 +196,20 @@ private fun DevicesListPane(
     onSortOrderChange: (DevicesSortOrder) -> Unit,
     onToggleConfidenceFilter: (HostConfidence) -> Unit,
 ) {
+    val listState = rememberLazyListState()
+
     Column(modifier = Modifier.fillMaxSize()) {
-        Column(
-            modifier = Modifier.fillMaxWidth().padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            Text(
-                stringResource(R.string.destination_devices),
-                style = MaterialTheme.typography.headlineSmall,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.fillMaxWidth(),
-            )
-            DevicesHeader(
-                hostCount = state.hosts.size,
-                progress = state.progress,
-                isConnected = state.isConnected,
-                onScan = onScan,
-                onCancel = onCancel,
-            )
-            // docs/improvement-ideas.md #1 - meaningless (always "100, Excellent") until at least
-            // one host has been through the extended port probe, same gate DevicesDetailCards
-            // uses per-host, so this doesn't misrepresent a network nobody has scanned ports on yet.
-            // Also skipped in Map mode: it adds nothing to that view but ate into the vertical
-            // room NetworkMapGraph needs most on a dense sweep (docs/adr/
-            // c-19-private-dns-breaks-reverse-lookup.md's bug report - the map's weighted
-            // remaining-space layout was already correct, it just had less space left to work
-            // with whenever this card was showing).
-            if (viewMode == DevicesViewMode.LIST && state.hosts.any { it.openPorts.isNotEmpty() }) {
-                DevicesNetworkHygieneCard(state.hosts, onHostClick = onHostClick)
-            }
-            DevicesViewModeToggle(viewMode, onViewModeChange)
-            DevicesSortFilterBar(
-                sortOrder = state.sortOrder,
-                confidenceFilter = state.confidenceFilter,
-                onSortOrderChange = onSortOrderChange,
-                onToggleConfidence = onToggleConfidenceFilter,
-            )
-        }
+        DevicesListHeader(
+            state = state,
+            viewMode = viewMode,
+            onViewModeChange = onViewModeChange,
+            listState = listState,
+            onScan = onScan,
+            onCancel = onCancel,
+            onHostClick = onHostClick,
+            onSortOrderChange = onSortOrderChange,
+            onToggleConfidenceFilter = onToggleConfidenceFilter,
+        )
         when {
             state.hosts.isEmpty() && !state.progress.isRunning ->
                 Text(
@@ -241,6 +225,7 @@ private fun DevicesListPane(
                 )
             else ->
                 LazyColumn(
+                    state = listState,
                     modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -250,6 +235,78 @@ private fun DevicesListPane(
                     }
                 }
         }
+    }
+}
+
+/** The hygiene card is the tallest thing in this header, so it's the one worth reclaiming space
+ * from once the user has scrolled the list below it away from the top - collapsing it down to a
+ * score-only [CompactScoreBadge] on the view-mode toggle's row keeps the number visible without
+ * spending a full card's height on it, then expanding it back once the list is scrolled back to
+ * the top. Map mode never shows either form: the score adds nothing to that view but ate into
+ * the vertical room `NetworkMapGraph` needs most on a dense sweep (docs/adr/
+ * c-19-private-dns-breaks-reverse-lookup.md's bug report - the map's weighted remaining-space
+ * layout was already correct, it just had less space left to work with whenever this card was
+ * showing). */
+@Composable
+private fun DevicesListHeader(
+    state: DevicesUiState.Content,
+    viewMode: DevicesViewMode,
+    onViewModeChange: (DevicesViewMode) -> Unit,
+    listState: LazyListState,
+    onScan: () -> Unit,
+    onCancel: () -> Unit,
+    onHostClick: (String) -> Unit,
+    onSortOrderChange: (DevicesSortOrder) -> Unit,
+    onToggleConfidenceFilter: (HostConfidence) -> Unit,
+) {
+    val isListScrolledFromTop by
+        remember {
+            derivedStateOf { listState.firstVisibleItemIndex > 0 || listState.firstVisibleItemScrollOffset > 0 }
+        }
+    // docs/improvement-ideas.md #1 - meaningless (always "100, Excellent") until at least one
+    // host has been through the extended port probe, same gate DevicesDetailCards uses per-host,
+    // so this doesn't misrepresent a network nobody has scanned ports on yet.
+    val hasHygieneData = state.hosts.any { it.openPorts.isNotEmpty() }
+    val hygieneScore = remember(state.hosts) { networkHygieneScore(state.hosts) }
+    val showFullHygieneCard = viewMode == DevicesViewMode.LIST && hasHygieneData && !isListScrolledFromTop
+    val showCompactHygieneBadge = viewMode == DevicesViewMode.LIST && hasHygieneData && isListScrolledFromTop
+
+    Column(
+        modifier = Modifier.fillMaxWidth().padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Text(
+            stringResource(R.string.destination_devices),
+            style = MaterialTheme.typography.headlineSmall,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.fillMaxWidth(),
+        )
+        DevicesHeader(
+            hostCount = state.hosts.size,
+            progress = state.progress,
+            isConnected = state.isConnected,
+            onScan = onScan,
+            onCancel = onCancel,
+        )
+        AnimatedVisibility(visible = showFullHygieneCard) {
+            DevicesNetworkHygieneCard(state.hosts, onHostClick = onHostClick)
+        }
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            DevicesViewModeToggle(viewMode, onViewModeChange)
+            AnimatedVisibility(visible = showCompactHygieneBadge) {
+                CompactScoreBadge(score = hygieneScore.value)
+            }
+        }
+        DevicesSortFilterBar(
+            sortOrder = state.sortOrder,
+            confidenceFilter = state.confidenceFilter,
+            onSortOrderChange = onSortOrderChange,
+            onToggleConfidence = onToggleConfidenceFilter,
+        )
     }
 }
 
