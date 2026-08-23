@@ -6,8 +6,7 @@
 #   3. a summary of which source paths changed without a matching docs/ change, as a nudge
 #      for the documentation step - not a hard failure, since not every change needs docs.
 set -euo pipefail
-repo_root="$(git -C "$(dirname "${BASH_SOURCE[0]}")" rev-parse --show-toplevel)"
-cd "$repo_root"
+cd "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 git fetch origin main --quiet
 
