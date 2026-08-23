@@ -538,6 +538,7 @@ confirmed hosts only.
 |---|---|---|
 | mDNS | `NsdManager` browse, plus a meta-query for `_services._dns-sd._udp` to enumerate service types before browsing each | Hostnames, service types, device models (Apple, printers, Chromecast, NAS) |
 | SSDP | UDP M-SEARCH ×3 to `239.255.255.250:1900`, `ST: ssdp:all`, MX 2 | `SERVER`, `LOCATION`; fetching the LOCATION XML yields `friendlyName`, `manufacturer`, `modelName` |
+| UPnP IGD Hosts | SOAP `GetHostNumberOfEntries`/`GetGenericHostEntry` against a router advertising `urn:schemas-upnp-org:service:Hosts:1` in its SSDP device description (docs/device-identification-ideas.md C1) | Real MAC and hostname for every LAN host the router knows about, coverage permitting |
 | NetBIOS | UDP node-status query to the broadcast address on port 137 | Windows/Samba names and workgroup |
 | Known hosts | Gateway from `LinkProperties`, self from `linkAddresses` | Two guaranteed-correct entries |
 
@@ -597,7 +598,8 @@ Every probe appends an `Evidence` entry rather than overwriting fields. Merge ru
   received. `ANNOUNCED` if only mDNS/SSDP/NetBIOS advertised it. `STALE` if present in the
   previous sweep and absent now - kept visible for one sweep, greyed, then dropped.
 - Hostname precedence for the primary display name: mDNS → SSDP `friendlyName` → NetBIOS
-  → reverse DNS. All variants remain visible on the detail screen with their source.
+  → UPnP IGD Hosts (C1) → reverse DNS. All variants remain visible on the detail screen with
+  their source.
 - Conflicting evidence is never silently resolved. If mDNS and NetBIOS disagree, both are
   shown.
 

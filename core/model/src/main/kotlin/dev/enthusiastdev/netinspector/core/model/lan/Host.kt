@@ -31,9 +31,19 @@ data class Host(
 )
 
 /** design §11.3 - hostname precedence for the primary display name; every variant stays
- * visible (with its source) on the detail screen regardless of which one this picks. */
+ * visible (with its source) on the detail screen regardless of which one this picks.
+ * `UPNP_HOSTS` (docs/device-identification-ideas.md C1) and `SNMP` (B1) sit alongside
+ * `NETBIOS` - all three are a router/device self-reporting a name, stronger than a generic
+ * reverse-DNS PTR record but not as curated as mDNS/SSDP's own friendly-name fields. */
 private val HOSTNAME_PRECEDENCE =
-    listOf(EvidenceSource.MDNS, EvidenceSource.SSDP, EvidenceSource.NETBIOS, EvidenceSource.REVERSE_DNS)
+    listOf(
+        EvidenceSource.MDNS,
+        EvidenceSource.SSDP,
+        EvidenceSource.NETBIOS,
+        EvidenceSource.UPNP_HOSTS,
+        EvidenceSource.SNMP,
+        EvidenceSource.REVERSE_DNS,
+    )
 
 val Host.primaryHostname: String?
     get() = HOSTNAME_PRECEDENCE.firstNotNullOfOrNull { hostnames[it] }

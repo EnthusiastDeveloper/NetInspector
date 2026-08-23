@@ -142,18 +142,30 @@ turns banners already being fetched into device labels.
 ---
 
 ## C1. UPnP IGD "Hosts" service for router-reported MAC+hostname
+**Status:** Implemented
+
 Some consumer routers (mainly those exposing full UPnP IGD v2) implement
 `urn:schemas-upnp-org:service:Hosts:1`, which lets any LAN client SOAP-query the router's own
 connected-device table - MAC *and* hostname, for every device on the LAN, all at once. This
-would be the single biggest lever on the MAC-address problem (C-01) beyond A3's narrow NetBIOS
-exception, but coverage depends entirely on the router's firmware exposing this service -
-needs an on-network spike to see how common it actually is before committing engineering time.
+is the single biggest lever on the MAC-address problem (C-01) beyond A3's narrow NetBIOS
+exception, but coverage depends entirely on the router's firmware exposing this service - real
+consumer routers vary widely, so treat the resulting hosts as a bonus on top of the rest of
+Stage A, not a guaranteed win on any given network.
 
 **Requirements:**
-- Detect the `Hosts:1` service in the UPnP device description `SsdpProbe.kt` already fetches
-- SOAP client for `GetHostNumberOfEntries`/`GetGenericHostEntry`
-- Feasibility spike: survey how many real consumer routers actually expose this (anecdotally
-  inconsistent across vendors/firmware versions)
+- Detect the `Hosts:1` service in the UPnP device description `SsdpProbe.kt` already fetches -
+  done in `SsdpProbe.parseUpnpDeviceDescription`, resolving a relative `controlURL` against the
+  device description's own `LOCATION` URL
+- SOAP client for `GetHostNumberOfEntries`/`GetGenericHostEntry` - `UpnpHostsProbe.kt`, a
+  hand-rolled SOAP envelope builder and a small regex-based response-field reader (not a full
+  pull-parser: `android.util.Xml` is an unmocked Android stub in a plain JVM unit test, and
+  every field read back here is a single leaf element with no nested markup)
+- Runs after `SsdpProbe`'s UDP receive loop closes, not inside it, so the SOAP round-trip's
+  own latency never risks missing another responder's M-SEARCH reply
+- Each router-reported entry becomes its own `HostObservation` (`EvidenceSource.UPNP_HOSTS`,
+  `ANNOUNCED` tier like NetBIOS - a third party reporting a host isn't that host's own direct
+  response), keyed by IP, with a real MAC/vendor and hostname folded in the same way A3's
+  NetBIOS observations are
 
 ---
 
