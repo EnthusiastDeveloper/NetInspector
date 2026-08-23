@@ -79,7 +79,7 @@ class HostEnricher
             onObservation(
                 HostObservation(
                     address = address,
-                    evidence = reverseDnsEvidence(hostname) + snmpEvidence(snmpResult),
+                    evidence = reverseDnsEvidence(hostname) + snmpEvidence(snmpResult) + tlsEvidence(tlsCommonName),
                     hostnames = hostnames(hostname, snmpResult),
                     openPorts = openPorts,
                     deviceHint = deviceHint,
@@ -98,6 +98,11 @@ class HostEnricher
         private fun snmpEvidence(result: SnmpProbe.Result?): List<Evidence> {
             if (result == null) return emptyList()
             return listOf(Evidence(EvidenceSource.SNMP, clock.instant(), detail = result.sysDescr))
+        }
+
+        private fun tlsEvidence(commonName: String?): List<Evidence> {
+            if (commonName == null) return emptyList()
+            return listOf(Evidence(EvidenceSource.TLS, clock.instant(), detail = commonName))
         }
 
         /** A single retry - under Stage C's [HOST_CONCURRENCY]-way concurrent burst (each host

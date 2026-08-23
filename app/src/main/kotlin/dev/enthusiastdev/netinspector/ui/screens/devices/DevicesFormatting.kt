@@ -60,6 +60,7 @@ internal fun EvidenceSource.label(): String =
         EvidenceSource.SSDP -> "SSDP/UPnP"
         EvidenceSource.NETBIOS -> "NetBIOS"
         EvidenceSource.SNMP -> "SNMP"
+        EvidenceSource.TLS -> "TLS certificate"
         EvidenceSource.UPNP_HOSTS -> "Router-reported (UPnP Hosts)"
         EvidenceSource.REVERSE_DNS -> "Reverse DNS"
         EvidenceSource.GATEWAY -> "Gateway (known)"
