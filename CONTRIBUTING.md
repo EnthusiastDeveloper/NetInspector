@@ -1,6 +1,24 @@
 # Contributing
 
+## Setup
+
+Once per clone, install the git hooks that enforce the checks below automatically:
+
+```bash
+./scripts/install-git-hooks.sh
+```
+
+This installs a `commit-msg` hook (writing conventions, see below) and a `pre-push` hook
+(the full build gate). Both also run as plain scripts if you'd rather invoke them by hand
+or don't want them wired into git.
+
 ## Workflow
+
+For a full feature - not a one-line fix - see
+[`docs/feature-development.md`](docs/feature-development.md) for the complete process
+(requirements through PR, including UI validation across window size classes, fold
+posture, and a real device). It's also available as the `/feature-dev` skill in Claude
+Code. The short version for everything else:
 
 1. Branch off `main`:
    ```bash
@@ -8,14 +26,26 @@
    ```
 2. Make your change. Before pushing, run the same checks CI runs:
    ```bash
-   ./gradlew ktlintCheck detekt test assembleDebug
+   ./scripts/verify.sh
    ```
 3. Keep your branch current by rebasing onto `main` rather than merging it in:
    ```bash
    git fetch origin
    git rebase origin/main
    ```
-4. Open a pull request against `main`.
+4. Open a pull request against `main`. `./scripts/pr-preflight.sh` checks the branch is
+   rebased and that no commit message violates the writing conventions below.
+
+## Writing conventions
+
+Applies to commit messages, PR titles/descriptions, code comments, string literals, and
+documentation - everywhere, not just where the `commit-msg` hook checks:
+
+- No em-dash or en-dash. Use a comma, colon, period, or a plain hyphen instead.
+- No `Co-Authored-By` trailer.
+- No AI-attribution footer ("Generated with Claude Code" or similar).
+- Commit messages are concise and explain *why*, not *what* - the diff already shows what
+  changed.
 
 ## What's required before merging
 

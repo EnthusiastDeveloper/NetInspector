@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+# Installed by scripts/install-git-hooks.sh. Runs the same gate CI runs (see
+# .github/workflows/ci.yml and scripts/verify.sh) before code leaves this machine, so a
+# failure is caught locally instead of after a round trip through CI.
+set -euo pipefail
+repo_root="$(git rev-parse --show-toplevel)"
+echo "pre-push: running ktlint, detekt, unit tests, assembleDebug..."
+"$repo_root/scripts/verify.sh" --no-daemon

@@ -16,6 +16,7 @@ live in [`installing.md`](installing.md); everything else here is for contributo
 | [`design.md`](design.md) | End-to-end technical design: architecture, domain model, subsystem specs | Before writing any code; the source of truth for *what* and *why* |
 | [`adr/`](adr/README.md) | One file per decision - project-level choices (`ADR-XXXX`) and Android platform constraints with their mitigations (`C-XX`) | Whenever something doesn't work and you suspect the platform, or before revisiting a settled choice |
 | [`implementation-plan.md`](implementation-plan.md) | Phased build order with tasks, acceptance criteria, spikes and estimates | During implementation; work top to bottom |
+| [`feature-development.md`](feature-development.md) | End-to-end process for a feature: requirements, plan, implementation, tests, build gate, UI validation, documentation, PR - and which parts `scripts/` automates | Starting non-trivial feature work; also available as the `/feature-dev` Claude Code skill |
 | [`open-items.md`](open-items.md) | What's left after the phased plan shipped: still-open plan items, and gaps found afterward | Before picking up new work on a "finished" app |
 | [`improvement-ideas.md`](improvement-ideas.md) | Brainstormed feature/UX ideas, ranked by ROI | When looking for what to build next |
 | [`device-identification-ideas.md`](device-identification-ideas.md) | Brainstormed techniques to make LAN device labels more specific than the TTL/port-signature fallbacks, ranked by ROI | When improving how confidently the app names a device |
