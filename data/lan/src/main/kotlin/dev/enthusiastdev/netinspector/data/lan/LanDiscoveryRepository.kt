@@ -164,6 +164,7 @@ class DefaultLanDiscoveryRepository
                 // Stage B (active sweep) then Stage C (enrichment of what Stage B confirmed).
                 sweepPipeline.run(
                     subnet = subnet,
+                    gateway = gateway,
                     currentHosts = { hostMap.value.values },
                     onObservation = { emit(it) },
                     onProgress = {

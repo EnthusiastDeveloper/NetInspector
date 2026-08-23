@@ -32,16 +32,18 @@ class HostEnricher
     ) {
         suspend fun enrich(
             hosts: List<Host>,
+            gateway: Inet4Address?,
             onObservation: suspend (HostObservation) -> Unit,
         ) = coroutineScope {
             val dispatcher = Dispatchers.IO.limitedParallelism(HOST_CONCURRENCY)
             hosts
-                .map { host -> async(dispatcher) { enrichOne(host, onObservation) } }
+                .map { host -> async(dispatcher) { enrichOne(host, gateway, onObservation) } }
                 .awaitAll()
         }
 
         private suspend fun enrichOne(
             host: Host,
+            gateway: Inet4Address?,
             onObservation: suspend (HostObservation) -> Unit,
         ) = coroutineScope {
             val address = host.address
@@ -51,7 +53,7 @@ class HostEnricher
             // otherwise take milliseconds can sit queued for a slot long enough to blow its own
             // timeout - reproduced on-device as a handful of hosts silently, deterministically
             // never resolving. Dispatchers.IO's own (much larger) pool has room for this.
-            val hostnameJob = async(Dispatchers.IO) { resolveHostname(address) }
+            val hostnameJob = async(Dispatchers.IO) { resolveHostname(address, gateway) }
             val portsJob = async(Dispatchers.IO) { probePorts(address) }
             val ttlJob = async(Dispatchers.IO) { resolveTtl(host) }
 
@@ -79,10 +81,21 @@ class HostEnricher
          * also fanning out ~30 port probes at once), a query can occasionally lose the race for
          * Wi-Fi airtime or a timely server reply even though the query itself is sound; the
          * retry recovers those the same way pass 2 of the Stage B sweep recovers hosts lost to
-         * transient wireless loss. */
-        private suspend fun resolveHostname(address: Inet4Address): String? =
-            runCatching { reverseDnsProbe.resolve(address, DNS_TIMEOUT_MS) }.getOrNull()
-                ?: runCatching { reverseDnsProbe.resolve(address, DNS_TIMEOUT_MS) }.getOrNull()
+         * transient wireless loss. Only once both system-resolver attempts come back empty does
+         * this fall back to [ReverseDnsProbe.resolveViaGateway] - see that function's doc
+         * comment for why the system resolver alone isn't always enough (Private DNS). */
+        private suspend fun resolveHostname(
+            address: Inet4Address,
+            gateway: Inet4Address?,
+        ): String? {
+            val systemResult =
+                runCatching { reverseDnsProbe.resolve(address, DNS_TIMEOUT_MS) }.getOrNull()
+                    ?: runCatching { reverseDnsProbe.resolve(address, DNS_TIMEOUT_MS) }.getOrNull()
+            if (systemResult != null) return systemResult
+            return gateway?.let {
+                runCatching { reverseDnsProbe.resolveViaGateway(address, it, DNS_TIMEOUT_MS) }.getOrNull()
+            }
+        }
 
         /** design §8.2 - TTL is free from Stage B for hosts that answered ICMP there; only a
          * TCP-only confirmed host needs a dedicated probe here. */

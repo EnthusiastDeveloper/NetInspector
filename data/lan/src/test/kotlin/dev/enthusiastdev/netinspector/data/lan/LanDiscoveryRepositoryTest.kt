@@ -43,7 +43,7 @@ class LanDiscoveryRepositoryTest {
         coEvery { mdnsProbe.discover() } returns emptyList()
         coEvery { ssdpProbe.discover() } returns emptyList()
         coEvery { netBiosProbe.discover(any()) } returns emptyList()
-        coEvery { sweepPipeline.run(any(), any(), any(), any()) } just runs
+        coEvery { sweepPipeline.run(any(), any(), any(), any(), any()) } just runs
 
         repository =
             DefaultLanDiscoveryRepository(

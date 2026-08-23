@@ -61,3 +61,4 @@ confirmation.
 | [C-16](c-16-wifilock-needs-wake-lock.md) | `WifiManager.WifiLock` needs `WAKE_LOCK`, not a Wi-Fi permission |
 | [C-17](c-17-networkcallback-premature-null.md) | A merged `NetworkCallback` flow can emit a premature `null` |
 | [C-18](c-18-recvttl-no-constant.md) | Reading a received packet's TTL needs `recvmsg`, and `IP_RECVTTL` has no constant |
+| [C-19](c-19-private-dns-breaks-reverse-lookup.md) | Android's Private DNS breaks reverse-DNS for LAN hosts |
