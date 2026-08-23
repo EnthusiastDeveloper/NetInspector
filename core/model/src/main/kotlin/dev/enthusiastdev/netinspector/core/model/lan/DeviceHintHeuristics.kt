@@ -1,17 +1,26 @@
 package dev.enthusiastdev.netinspector.core.model.lan
 
 /**
- * design §8.2 Stage C, §3 - turns what enrichment found (open ports, ICMP reply TTL) into the
- * single [DeviceHint] a [Host] carries. Pure and heavily unit-tested, same shape as the channel
- * recommendation scoring in `:core:model:wifi` (design §7). Port signatures are checked first
- * and win outright: a specific service on a specific port (design's own examples - 62078 is
- * Apple-only usbmuxd, 5555 is ADB) is a much stronger signal than a coarse OS-family guess from
- * TTL, so it is recorded as [Certainty.LIKELY] against the TTL fingerprint's [Certainty.POSSIBLE].
+ * design §8.2 Stage C, §3 - turns what enrichment found into the single [DeviceHint] a [Host]
+ * carries. Pure and heavily unit-tested, same shape as the channel recommendation scoring in
+ * `:core:model:wifi` (design §7). Every candidate is built independently and the most certain
+ * one wins outright ([Certainty]'s declaration order doubles as rank, lowest ordinal = most
+ * certain, same as `HostMerge.preferredHint`) - `snmpSysDescr` (docs/device-identification-
+ * ideas.md B1) is self-reported, [Certainty.CONFIRMED] like A1/A2's UPnP/mDNS fields; a port
+ * signature (design's own examples - 62078 is Apple-only usbmuxd, 5555 is ADB) is
+ * [Certainty.LIKELY], a coarser signal than that; the TTL fingerprint is the weakest,
+ * [Certainty.POSSIBLE].
  */
 fun deviceHintFor(
     openPorts: List<OpenPort>,
     icmpReplyTtl: Int?,
-): DeviceHint? = portSignatureHint(openPorts) ?: icmpReplyTtl?.let(::ttlDeviceHint)
+    snmpSysDescr: String? = null,
+): DeviceHint? =
+    listOfNotNull(
+        snmpDeviceHint(snmpSysDescr),
+        portSignatureHint(openPorts),
+        icmpReplyTtl?.let(::ttlDeviceHint),
+    ).minByOrNull { it.certainty }
 
 /** design §8.2 - "an initial TTL of 64 implies Linux/Android/iOS/macOS, 128 implies Windows,
  * 255 implies network equipment." A LAN peer's reply arrives a few hops short of its OS's
@@ -92,6 +101,14 @@ fun upnpDeviceHint(
         basis = "UPnP device description → $label",
         certainty = Certainty.CONFIRMED,
     )
+}
+
+/** docs/device-identification-ideas.md B1 - SNMP `sysDescr` (OID 1.3.6.1.2.1.1.1.0) is a
+ * device's own self-reported firmware/model string, [Certainty.CONFIRMED] exactly like A1/A2's
+ * manufacturer/model fields. */
+fun snmpDeviceHint(sysDescr: String?): DeviceHint? {
+    val label = sysDescr?.trim()?.ifBlank { null } ?: return null
+    return DeviceHint(label = label, basis = "SNMP sysDescr → $label", certainty = Certainty.CONFIRMED)
 }
 
 /** docs/device-identification-ideas.md A2 - two tiers from one mDNS record: an explicit model

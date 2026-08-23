@@ -140,4 +140,24 @@ class DeviceHintHeuristicsTest {
         assertThat(mdnsServiceHint("_unknown._tcp", emptyMap())).isNull()
         assertThat(mdnsServiceHint(null, emptyMap())).isNull()
     }
+
+    @Test
+    fun `snmpDeviceHint reports the sysDescr string at CONFIRMED certainty`() {
+        val hint = snmpDeviceHint("Cisco IOS Software, C2960 Software")
+        assertThat(hint?.label).isEqualTo("Cisco IOS Software, C2960 Software")
+        assertThat(hint?.certainty).isEqualTo(Certainty.CONFIRMED)
+    }
+
+    @Test
+    fun `snmpDeviceHint returns null for a blank or absent sysDescr`() {
+        assertThat(snmpDeviceHint(null)).isNull()
+        assertThat(snmpDeviceHint("  ")).isNull()
+    }
+
+    @Test
+    fun `deviceHintFor prefers a self-reported SNMP sysDescr over a port signature`() {
+        val hint = deviceHintFor(openPorts = listOf(port(9100)), icmpReplyTtl = null, snmpSysDescr = "HP LaserJet 4050")
+        assertThat(hint?.label).isEqualTo("HP LaserJet 4050")
+        assertThat(hint?.certainty).isEqualTo(Certainty.CONFIRMED)
+    }
 }

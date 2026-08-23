@@ -584,6 +584,9 @@ false negatives on a congested network.
 - Reverse DNS via `DnsResolver`, async, never blocking the list.
 - Extended port probe over a ~30-port service set.
 - Banner grab: HTTP `Server` header and `<title>`, SSH version string.
+- **SNMP `sysDescr`/`sysName`** (docs/device-identification-ideas.md B1): a single GET-request
+  to UDP 161, community `public`. A hit is `CONFIRMED` tier - the device's own self-reported
+  firmware/model string, same as A1/A2's UPnP/mDNS fields.
 - **ICMP reply TTL fingerprint**: an initial TTL of 64 implies Linux/Android/iOS/macOS,
   128 implies Windows, 255 implies network equipment. Combined with the hop count this is
   a cheap and reasonably reliable OS class hint - recorded as a `DeviceHint` with basis
@@ -598,8 +601,8 @@ Every probe appends an `Evidence` entry rather than overwriting fields. Merge ru
   received. `ANNOUNCED` if only mDNS/SSDP/NetBIOS advertised it. `STALE` if present in the
   previous sweep and absent now - kept visible for one sweep, greyed, then dropped.
 - Hostname precedence for the primary display name: mDNS → SSDP `friendlyName` → NetBIOS
-  → UPnP IGD Hosts (C1) → reverse DNS. All variants remain visible on the detail screen with
-  their source.
+  → UPnP IGD Hosts (C1) → SNMP `sysName` (B1) → reverse DNS. All variants remain visible on
+  the detail screen with their source.
 - Conflicting evidence is never silently resolved. If mDNS and NetBIOS disagree, both are
   shown.
 

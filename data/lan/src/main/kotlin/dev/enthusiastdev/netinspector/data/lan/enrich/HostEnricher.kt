@@ -6,6 +6,7 @@ import dev.enthusiastdev.netinspector.core.model.lan.EvidenceSource
 import dev.enthusiastdev.netinspector.core.model.lan.Host
 import dev.enthusiastdev.netinspector.core.model.lan.HostObservation
 import dev.enthusiastdev.netinspector.core.model.lan.deviceHintFor
+import dev.enthusiastdev.netinspector.data.lan.snmp.SnmpProbe
 import dev.enthusiastdev.netinspector.data.lan.sweep.IcmpSweepProbe
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
@@ -28,6 +29,7 @@ class HostEnricher
         private val reverseDnsProbe: ReverseDnsProbe,
         private val extendedPortProbe: ExtendedPortProbe,
         private val icmpTtlProbe: IcmpSweepProbe,
+        private val snmpProbe: SnmpProbe,
         private val clock: Clock,
     ) {
         suspend fun enrich(
@@ -47,34 +49,48 @@ class HostEnricher
             onObservation: suspend (HostObservation) -> Unit,
         ) = coroutineScope {
             val address = host.address
-            // design §8.2 - HOST_CONCURRENCY caps how many *hosts* enrich at once; these three
+            // design §8.2 - HOST_CONCURRENCY caps how many *hosts* enrich at once; these
             // sub-tasks must not inherit that same limited dispatcher, or a burst of hosts each
-            // launching three more tasks oversubscribes it 4x and a DNS lookup that would
-            // otherwise take milliseconds can sit queued for a slot long enough to blow its own
-            // timeout - reproduced on-device as a handful of hosts silently, deterministically
-            // never resolving. Dispatchers.IO's own (much larger) pool has room for this.
+            // launching more tasks oversubscribes it and a DNS lookup that would otherwise take
+            // milliseconds can sit queued for a slot long enough to blow its own timeout -
+            // reproduced on-device as a handful of hosts silently, deterministically never
+            // resolving. Dispatchers.IO's own (much larger) pool has room for this.
             val hostnameJob = async(Dispatchers.IO) { resolveHostname(address, gateway) }
             val portsJob = async(Dispatchers.IO) { probePorts(address) }
             val ttlJob = async(Dispatchers.IO) { resolveTtl(host) }
+            val snmpJob = async(Dispatchers.IO) { snmpProbe.query(address, SNMP_TIMEOUT_MS) }
 
             val hostname = hostnameJob.await()
             val openPorts = portsJob.await()
             val icmpReplyTtl = ttlJob.await()
-            // deviceHint is derived entirely from openPorts/icmpReplyTtl, so it can never be
-            // non-null when both of those are empty/null - no need to check it separately.
-            if (hostname == null && openPorts.isEmpty() && icmpReplyTtl == null) return@coroutineScope
-            val deviceHint = deviceHintFor(openPorts, icmpReplyTtl)
+            val snmpResult = snmpJob.await()
+            val hasNothing =
+                hostname == null && openPorts.isEmpty() && icmpReplyTtl == null && snmpResult == null
+            if (hasNothing) return@coroutineScope
+            val deviceHint = deviceHintFor(openPorts, icmpReplyTtl, snmpResult?.sysDescr)
 
             onObservation(
                 HostObservation(
                     address = address,
-                    evidence = reverseDnsEvidence(hostname),
-                    hostnames = hostname?.let { mapOf(EvidenceSource.REVERSE_DNS to it) }.orEmpty(),
+                    evidence = reverseDnsEvidence(hostname) + snmpEvidence(snmpResult),
+                    hostnames = hostnames(hostname, snmpResult),
                     openPorts = openPorts,
                     deviceHint = deviceHint,
                     icmpReplyTtl = icmpReplyTtl,
                 ),
             )
+        }
+
+        private fun hostnames(
+            hostname: String?,
+            snmpResult: SnmpProbe.Result?,
+        ): Map<EvidenceSource, String> =
+            (hostname?.let { mapOf(EvidenceSource.REVERSE_DNS to it) }.orEmpty()) +
+                (snmpResult?.sysName?.let { mapOf(EvidenceSource.SNMP to it) }.orEmpty())
+
+        private fun snmpEvidence(result: SnmpProbe.Result?): List<Evidence> {
+            if (result == null) return emptyList()
+            return listOf(Evidence(EvidenceSource.SNMP, clock.instant(), detail = result.sysDescr))
         }
 
         /** A single retry - under Stage C's [HOST_CONCURRENCY]-way concurrent burst (each host
@@ -122,5 +138,6 @@ class HostEnricher
             const val DNS_TIMEOUT_MS = 2_000
             const val PORT_TIMEOUT_MS = 500
             const val TTL_TIMEOUT_MS = 1_000
+            const val SNMP_TIMEOUT_MS = 800
         }
     }

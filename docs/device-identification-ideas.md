@@ -88,17 +88,26 @@ planned for `:data:persistence`, per `implementation-plan.md` Phase 3) lands.
 ---
 
 ## B1. SNMP `sysDescr` query
+**Status:** Implemented
+
 Query OID `1.3.6.1.2.1.1.1.0` over UDP 161 with community string `public`. Printers, managed
 switches, UPSes, and NAS boxes very often leave the default read-only community enabled and
 return an exact model/firmware string - historically one of the highest-value single probes
-for exactly the "Network equipment" bucket that's currently weakest.
+for exactly the "Network equipment" bucket that's currently weakest. Also queries `sysName`
+(OID `1.3.6.1.2.1.1.5.0`, an admin-set device name) in the same GET-request round trip, since
+SNMP allows multiple varbinds per PDU at no extra network cost.
 
 **Requirements:**
 - A minimal SNMP v1/v2c GET-request encoder/decoder (BER/ASN.1 subset - no existing dependency
   for this, would need a small hand-rolled implementation matching the NetBIOS/SSDP probes'
-  existing "hand-roll the wire format" precedent)
-- Wire the result into `DeviceHint` at `CONFIRMED` tier (self-reported by the device)
-- New probe module under `:data:lan`, same shape as `NetBiosProbe`/`SsdpProbe`
+  existing "hand-roll the wire format" precedent) - `SnmpBer.kt`, scoped to exactly the tags a
+  GET round trip uses, not a general ASN.1 codec
+- Wire the result into `DeviceHint` at `CONFIRMED` tier (self-reported by the device) -
+  `snmpDeviceHint` in `DeviceHintHeuristics.kt`; `sysName` also feeds the hostname precedence
+  ladder (`EvidenceSource.SNMP`, alongside `NETBIOS`/`UPNP_HOSTS`)
+- New probe module under `:data:lan`, same shape as `NetBiosProbe`/`SsdpProbe` - `SnmpProbe.kt`,
+  run from `HostEnricher` (Stage C) against every already-`CONFIRMED` host, same as the existing
+  TTL/port enrichment
 
 ---
 
