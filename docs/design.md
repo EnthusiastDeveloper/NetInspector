@@ -791,6 +791,16 @@ migrations.
 | `diagnostic_run` | Ping/traceroute/scan runs with parameters and serialised results | 90 days |
 | `oui` | Prepopulated MAC prefix → vendor, variable prefix length | Static, bundled |
 
+improvement-ideas.md #6 - the "Wi-Fi changes" tool (Tools grid, History group) is pure
+presentation over `scan_session`/`scan_observation`: no new table, no new repository method.
+A user picks two sessions; `diffScanSessions` (`:core:model`, pure, JVM-tested) keys both
+sides' observations by BSSID and reports added/removed/changed access points. A matched BSSID
+only counts as "changed" when security, standard, or channel differ outright, or the RSSI move
+is at least 6 dBm (`notableRssiDeltaDbm`, defaulted not hardcoded) - without that threshold,
+ordinary scan-to-scan RSSI jitter would flag nearly every AP as changed and defeat the view's
+purpose. Each session's own timestamp is always shown (C-02's staleness guidance) - neither
+side is ever implied to be "current."
+
 The vendor table ships as a prepopulated database asset (`createFromAsset`) rather than
 being parsed at first launch - parsing tens of thousands of rows at runtime adds a visible
 cold-start delay.
