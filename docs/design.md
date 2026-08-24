@@ -777,14 +777,14 @@ trips IDS on managed networks and can destabilise cheap consumer routers.
 
 ## 10. Persistence
 
-Room, schema version 4, with `exportSchema = true` and schema files committed for future
+Room, schema version 5, with `exportSchema = true` and schema files committed for future
 migrations.
 
 | Entity | Purpose | Retention |
 |---|---|---|
 | `scan_session` | One row per scan snapshot: timestamp, connected BSSID, location-free | 30 days, configurable |
 | `scan_observation` | AP observation joined to a session: BSSID, RSSI, channel, width | Cascade with session |
-| `known_ap` | Stable per-BSSID record: SSID, vendor, first/last seen, best RSSI | Indefinite |
+| `known_ap` | Stable per-BSSID record: SSID, vendor, first/last seen, best RSSI, plus a current/previous security-standard-channel snapshot for improvement-ideas.md #11's capability-change detection | Indefinite |
 | `saved_wol_target` | Manually-entered Wake-on-LAN target: label, MAC, broadcast address | Indefinite |
 | `saved_host` | Manual per-host nickname (docs/device-identification-ideas.md D) plus the `isKnownDevice` "known device" flag (improvement-ideas.md #24), keyed by MAC when known or a stable address+hostname combo otherwise | Indefinite |
 | `known_lan_host` | Periodic-sweep presence tracking per host identity for new/vanished/reappeared alerts (improvement-ideas.md #24, §8.5) | Same window as `scan_session` |
@@ -800,6 +800,18 @@ is at least 6 dBm (`notableRssiDeltaDbm`, defaulted not hardcoded) - without tha
 ordinary scan-to-scan RSSI jitter would flag nearly every AP as changed and defeat the view's
 purpose. Each session's own timestamp is always shown (C-02's staleness guidance) - neither
 side is ever implied to be "current."
+
+improvement-ideas.md #11 - `known_ap`'s capability columns (§10's table above) track this
+automatically rather than requiring the user to pick sessions like #6 does. On every
+`upsertKnownAp` (`ScanHistoryRepository`), if the row already has a captured baseline, the
+incoming scan's security/standard/channel is compared against it with `diffApCapabilities`
+(`:core:model`, pure, same shape as `diffScanSessions`). A notable difference freezes the whole
+pre-change snapshot into `previousSecurity`/`previousStandard`/`previousPrimaryChannel` and
+stamps `lastCapabilityChangeMillis`, surfaced as a card on the AP's Wi-Fi detail screen. A row
+with no baseline yet - a brand-new BSSID, or one written before this migration - never flags a
+change on its first post-migration sighting; all seven columns are nullable specifically so
+"no baseline" is representable without a sentinel value that would otherwise read as a false
+positive the moment the migration runs.
 
 The vendor table ships as a prepopulated database asset (`createFromAsset`) rather than
 being parsed at first launch - parsing tens of thousands of rows at runtime adds a visible

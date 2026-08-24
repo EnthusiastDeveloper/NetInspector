@@ -4,6 +4,7 @@ import dev.enthusiastdev.netinspector.core.model.settings.RssiDisplayUnit
 import dev.enthusiastdev.netinspector.core.model.wifi.AccessPoint
 import dev.enthusiastdev.netinspector.core.model.wifi.ChannelSpan
 import dev.enthusiastdev.netinspector.core.model.wifi.ScanBudget
+import dev.enthusiastdev.netinspector.data.persistence.scan.KnownApEntity
 import java.time.Instant
 
 /** design §4.1, C-03 - the same gate as the dashboard's
@@ -29,5 +30,9 @@ sealed interface WifiUiState {
          * withheld and the OS redacts the connected network's BSSID (C-04). */
         val connectedBssid: String? = null,
         val connectedSpan: ChannelSpan? = null,
+        /** improvement-ideas.md #11 - known APs with a detected capability change, keyed by
+         * BSSID; only entries with a non-null `lastCapabilityChangeMillis` are included, so
+         * this stays empty for the common case. */
+        val apCapabilityChanges: Map<String, KnownApEntity> = emptyMap(),
     ) : WifiUiState
 }

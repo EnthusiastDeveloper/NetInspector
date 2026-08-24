@@ -11,6 +11,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dev.enthusiastdev.netinspector.core.model.wifi.ScanOutcome
 import dev.enthusiastdev.netinspector.data.persistence.preferences.AppSettingsRepository
+import dev.enthusiastdev.netinspector.data.persistence.scan.ScanHistoryRepository
 import dev.enthusiastdev.netinspector.data.wifi.ConnectionRepository
 import dev.enthusiastdev.netinspector.data.wifi.WifiScanRepository
 import dev.enthusiastdev.netinspector.usecase.RecordWifiScanUseCase
@@ -35,6 +36,7 @@ class WifiViewModel
         connectionRepository: ConnectionRepository,
         private val recordWifiScan: RecordWifiScanUseCase,
         private val appSettingsRepository: AppSettingsRepository,
+        scanHistoryRepository: ScanHistoryRepository,
         @ApplicationContext private val context: Context,
     ) : ViewModel() {
         // Drives the throttle countdown and the permission-state check - neither has its own
@@ -65,7 +67,11 @@ class WifiViewModel
                 // Read only to tell the channel recommendation which AP is *this* device's, so it
                 // can be excluded from the interference it is being compared against.
                 connectionRepository.connectionSnapshot,
-            ) { scanState, _, rssiDisplayUnit, connection ->
+                // improvement-ideas.md #11 - source of the AP detail screen's capability-change
+                // card; filtered down to only the entries that actually have one, so the common
+                // case is an empty map.
+                scanHistoryRepository.knownAps(),
+            ) { scanState, _, rssiDisplayUnit, connection, knownAps ->
                 WifiUiState.Content(
                     accessPoints = scanState.accessPoints,
                     sampleCount = scanState.sampleCount,
@@ -75,6 +81,8 @@ class WifiViewModel
                     rssiDisplayUnit = rssiDisplayUnit,
                     connectedBssid = connection?.bssid,
                     connectedSpan = connection?.span,
+                    apCapabilityChanges =
+                        knownAps.filter { it.lastCapabilityChangeMillis != null }.associateBy { it.bssid },
                 )
             }.stateIn(
                 scope = viewModelScope,

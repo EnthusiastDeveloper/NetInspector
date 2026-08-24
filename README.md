@@ -7,7 +7,8 @@ accounts, no telemetry, no analytics.
 ## Features
 
 - **Wi-Fi analysis** - visible access points with band, channel, width, security and
-  standard; channel occupancy graph; a recommendation engine for picking a clear channel.
+  standard; channel occupancy graph; a recommendation engine for picking a clear channel;
+  flags a known access point whose security, standard, or channel changes between scans.
 - **LAN discovery** - enumerates hosts on the connected subnet and identifies them via
   mDNS, SSDP and vendor OUI lookup, with a confidence label on each guess.
 - **Diagnostics** - ping, traceroute, reverse DNS, and port scanning, launchable directly

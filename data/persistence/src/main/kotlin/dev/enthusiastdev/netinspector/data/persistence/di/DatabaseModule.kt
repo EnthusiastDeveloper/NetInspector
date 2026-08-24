@@ -11,6 +11,7 @@ import dagger.hilt.components.SingletonComponent
 import dev.enthusiastdev.netinspector.data.persistence.MIGRATION_1_2
 import dev.enthusiastdev.netinspector.data.persistence.MIGRATION_2_3
 import dev.enthusiastdev.netinspector.data.persistence.MIGRATION_3_4
+import dev.enthusiastdev.netinspector.data.persistence.MIGRATION_4_5
 import dev.enthusiastdev.netinspector.data.persistence.NetInspectorDatabase
 import dev.enthusiastdev.netinspector.data.persistence.diagnostics.DefaultDiagnosticRunRepository
 import dev.enthusiastdev.netinspector.data.persistence.diagnostics.DiagnosticRunDao
@@ -62,7 +63,7 @@ abstract class DatabaseModule {
         ): NetInspectorDatabase =
             Room
                 .databaseBuilder(context, NetInspectorDatabase::class.java, "netinspector.db")
-                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
                 .build()
 
         @Provides

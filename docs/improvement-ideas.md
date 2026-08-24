@@ -143,6 +143,8 @@ storage or display-name override.
 ---
 
 ## 11. AP capability diffing
+**Status:** Implemented
+
 Flag when a known AP's stored capabilities change (e.g. WPA3 → WPA2, 802.11ax dropped) -
 compares against data already stored in `KnownApEntity`.
 

@@ -29,12 +29,12 @@ import dev.enthusiastdev.netinspector.core.model.wifi.ApChange
 import dev.enthusiastdev.netinspector.core.model.wifi.Band
 import dev.enthusiastdev.netinspector.core.model.wifi.ObservedAp
 import dev.enthusiastdev.netinspector.core.model.wifi.ScanSessionDiff
-import dev.enthusiastdev.netinspector.core.model.wifi.SecurityType
-import dev.enthusiastdev.netinspector.core.model.wifi.WifiStandard
 import dev.enthusiastdev.netinspector.data.persistence.scan.ScanSessionEntity
 import dev.enthusiastdev.netinspector.ui.screens.connection.label
 import dev.enthusiastdev.netinspector.ui.screens.tools.history.asRelativeTime
 import dev.enthusiastdev.netinspector.ui.screens.wifi.label
+import dev.enthusiastdev.netinspector.ui.screens.wifi.parsedSecurityLabel
+import dev.enthusiastdev.netinspector.ui.screens.wifi.parsedStandardLabel
 
 @Composable
 fun WifiChangesRoute(
@@ -235,13 +235,6 @@ private fun ApChangeRow(change: ApChange) {
 
 private fun ObservedAp.bandLabel(): String = runCatching { Band.valueOf(band) }.getOrNull()?.label() ?: band
 
-private fun ObservedAp.standardLabel(): String =
-    runCatching { WifiStandard.valueOf(standard) }.getOrNull()?.label() ?: standard
+private fun ObservedAp.standardLabel(): String = standard.parsedStandardLabel()
 
-private fun ObservedAp.securityLabel(): String =
-    security
-        .split(",")
-        .filter { it.isNotBlank() }
-        .mapNotNull { runCatching { SecurityType.valueOf(it) }.getOrNull() }
-        .toSet()
-        .label()
+private fun ObservedAp.securityLabel(): String = security.parsedSecurityLabel()
