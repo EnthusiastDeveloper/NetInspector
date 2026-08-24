@@ -24,7 +24,12 @@ the user, just follow it.
 3. **Implement**, scoped to the plan.
 
 4. **Tests.** Land unit tests with the code, per design.md §12's split between JVM unit
-   tests, instrumented tests, and the manual device matrix.
+   tests, instrumented tests, and the manual device matrix. Check the diff against §12's
+   "Boundary and negative-path coverage" list: a clamped/bounded parameter, a throttle or
+   quota gate, or an async action with a minimum-duration UI affordance each need the
+   boundary or non-happy-path branch under test, not just the typical case. If the change
+   modifies behavior an existing test already covers, update that test as part of the same
+   change - a test that still asserts the old behavior is worse than no test at all.
 
 5. **Build gate.** Run `./scripts/verify.sh`. Do not proceed past a failure - fix it, don't
    route around it (no skipping ktlint/detekt rules, no `--no-verify`).
@@ -32,9 +37,15 @@ the user, just follow it.
 6. **UI validation.**
    - Layout (rotation, window size class, fold posture) needs no radio (ADR `C-13`) and is
      fully scripted: `./scripts/ui-matrix.sh boot <NetInspector_Resizable|NetInspector_Fold76>`,
-     install the debug APK, navigate to each touched screen and run
+     install the debug APK, navigate to each screen in the **family** the diff touches - not
+     only the specific sub-view the plan named, every screen reachable from it - and run
      `./scripts/ui-matrix.sh sweep <serial> <outdir> <label>` per screen, review the
-     screenshots, `./scripts/ui-matrix.sh kill <serial>` when done.
+     screenshots, `./scripts/ui-matrix.sh kill <serial>` when done. Sweep by blast radius,
+     not by diff lines: a change confined to one sub-view can still leave the rest of that
+     screen unvalidated if nothing puts it back in front of a reviewer. While reviewing the
+     screenshots, also confirm every capability design.md claims for that screen has a
+     visible affordance, not just correct layout - a gesture-only action with no visible
+     control is a discoverability bug even when nothing overflows.
    - Anything radio-dependent (scanning, RSSI, ping, real hosts) needs a real device.
      **Before touching one, ask the user which device to use via AskUserQuestion, unless
      the prompt already named it.** List `adb devices -l` output as the options. Do not

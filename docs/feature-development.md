@@ -60,6 +60,15 @@ Write the code. Keep changes scoped to what the plan called for.
 Unit tests land with the code that needs them, not after. `docs/design.md` §12 lists what
 belongs in JVM unit tests versus instrumented tests versus the manual device matrix -
 golden-file parser tests are called out there as the highest-value tests in the project.
+§12's "Boundary and negative-path coverage" list is a checklist, not just prose: if the
+diff touches a clamped/bounded parameter, a throttle or quota gate, or an async action with
+a minimum-duration UI affordance, the boundary or the non-happy-path branch needs a test of
+its own, not just the typical-case path.
+
+**Changing code that existing tests already cover updates those tests, not just the code.**
+A test left asserting stale behaviour is worse than no test - it passes while lying about
+what the code does. If a fix or a refactor changes what a covered function returns or how
+it behaves, the test for it is part of the same change, not a follow-up.
 
 ### 5. Build gate
 
@@ -91,8 +100,22 @@ has no Wi-Fi radio (ADR `C-13`):
   `sweep` captures one screenshot per rotation (0/90/180/270), per width size class
   (compact/medium/expanded, computed from the device's actual density), and - on a
   foldable-capable target - per posture (closed/half-opened/opened), then restores every
-  override. Run it once per screen the change touches, review the resulting screenshots,
-  repeat for the next screen. This replaces tapping through each combination live over adb.
+  override. Run it once per screen **family** the change touches - every screen reachable
+  from the one the diff edits, not only the specific sub-view the plan called out - review
+  the resulting screenshots, repeat for the next screen. This replaces tapping through each
+  combination live over adb.
+
+  Sweep by blast radius, not by diff lines: three bugs shipped in a Wi-Fi screen change that
+  never touched the code they lived in, because that code sat in the same screen family but
+  outside the specific sub-view the plan named, so it was never navigated to during
+  validation. A change to any file under a screen's package puts the whole screen back in
+  scope for this step.
+
+  Reviewing the screenshots is also where a missing affordance gets caught, not just a
+  layout mistake - check the screen actually exposes, visibly, every capability
+  `docs/design.md` claims for it. A gesture-only action (pull-to-refresh, a hidden swipe)
+  with no visible control is a discoverability bug even when it works and even when nothing
+  overflows.
 
 - **Anything radio-dependent** (scanning, RSSI, ping, real host data) needs a real device.
   **Ask which physical device to use before touching one**, unless the request already
