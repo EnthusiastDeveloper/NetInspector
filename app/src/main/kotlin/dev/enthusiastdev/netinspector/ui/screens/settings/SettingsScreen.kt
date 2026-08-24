@@ -62,6 +62,9 @@ fun SettingsDestination(
         onAlertOnRssiDropChange = viewModel::setAlertOnRssiDrop,
         onAlertOnDisconnectChange = viewModel::setAlertOnDisconnect,
         onAlertOnReconnectChange = viewModel::setAlertOnReconnect,
+        onAutoScanEnabledChange = viewModel::setAutoScanEnabled,
+        onAutoScanIntervalChange = viewModel::setAutoScanIntervalMinutes,
+        onAlertOnLanHostChangesChange = viewModel::setAlertOnLanHostChanges,
         onCrashReportingToggle = viewModel::setCrashReportingEnabled,
         onExportCrashReport = viewModel::exportCrashReport,
         onExportDebugBundle = viewModel::exportDebugBundle,
@@ -81,6 +84,9 @@ fun SettingsScreen(
     onAlertOnRssiDropChange: (Boolean) -> Unit,
     onAlertOnDisconnectChange: (Boolean) -> Unit,
     onAlertOnReconnectChange: (Boolean) -> Unit,
+    onAutoScanEnabledChange: (Boolean) -> Unit,
+    onAutoScanIntervalChange: (Int) -> Unit,
+    onAlertOnLanHostChangesChange: (Boolean) -> Unit,
     onCrashReportingToggle: (Boolean) -> Unit,
     onExportCrashReport: () -> Unit,
     onExportDebugBundle: () -> Unit,
@@ -111,6 +117,14 @@ fun SettingsScreen(
                 onRssiDropChange = onAlertOnRssiDropChange,
                 onDisconnectChange = onAlertOnDisconnectChange,
                 onReconnectChange = onAlertOnReconnectChange,
+            )
+        }
+        item {
+            AutomaticScanningSection(
+                uiState = uiState,
+                onAutoScanEnabledChange = onAutoScanEnabledChange,
+                onIntervalChange = onAutoScanIntervalChange,
+                onAlertOnLanHostChangesChange = onAlertOnLanHostChangesChange,
             )
         }
         item {

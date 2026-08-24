@@ -53,4 +53,13 @@ message AppPreferences {
   // ever surfaces once per report rather than nagging on every app start. Proto3's empty-string
   // default already means "nothing acknowledged yet."
   string last_acknowledged_crash_report = 15;
+
+  // improvement-ideas.md #23/#24 - opt-in periodic background scanning: a WorkManager job that
+  // records Wi-Fi scan history and, if alert_on_lan_host_changes is also set, runs a LAN sweep
+  // and diffs it for new/vanished/reappeared devices. Off by default, same as every other
+  // opt-in notification-adjacent setting in this file. 0 is never a valid interval, so it
+  // doubles as "unset" the same way rssi_alert_threshold_dbm above does.
+  bool auto_scan_enabled = 16;
+  int32 auto_scan_interval_minutes = 17;
+  bool alert_on_lan_host_changes = 18;
 }

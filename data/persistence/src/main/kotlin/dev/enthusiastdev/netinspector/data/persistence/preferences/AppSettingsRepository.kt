@@ -12,12 +12,12 @@ import kotlinx.coroutines.flow.map
 import javax.inject.Inject
 
 /** design §10 - the settings screen's fields other than retention (see
- * [RetentionSettingsRepository]): theme, RSSI display unit, and the port scanner's default
- * preset. "Scan cadence" and "sweep concurrency/timeouts" from that same design line are
- * deliberately not here - neither maps to a real knob in the current implementation
- * ([dev.enthusiastdev.netinspector.data.wifi.ScanGovernor] has no periodic-scan concept to set
- * a cadence on, and the LAN sweep's three-pass timeout/concurrency values are tuned per-pass,
- * not a single adjustable number) - see the Phase 8 milestone 5 commit for the full rationale. */
+ * [RetentionSettingsRepository]) and periodic background scanning (see
+ * [AutoScanSettingsRepository], improvement-ideas.md #23/#24, design §8.5 - "scan cadence"
+ * from that same design line): theme, RSSI display unit, and the port scanner's default
+ * preset. "Sweep concurrency/timeouts" from that design line is still deliberately not here -
+ * the LAN sweep's three-pass timeout/concurrency values are tuned per-pass, not a single
+ * adjustable number - see the Phase 8 milestone 5 commit for the full rationale. */
 interface AppSettingsRepository {
     val themeMode: Flow<ThemeMode>
     val rssiDisplayUnit: Flow<RssiDisplayUnit>

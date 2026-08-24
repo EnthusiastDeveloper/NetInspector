@@ -14,6 +14,10 @@ accounts, no telemetry, no analytics.
   from a discovered host's detail screen.
 - **History & export** - scan and diagnostic runs are persisted locally and can be
   exported to CSV/JSON.
+- **Automatic background scanning** - opt-in periodic Wi-Fi scans so history builds up
+  without opening the app, plus optional alerts when a new device joins the LAN or a
+  known one vanishes or reappears. Devices you mark "known" (a laptop that sleeps, a
+  phone that leaves and returns home) are excluded from vanish/reappear alerts.
 - **Adaptive UI** - built for phones, tablets and foldables from the start: window size
   classes, fold-aware layout, and UI state preserved across rotation.
 - **Troubleshooting** - opt-in local crash reports and on-demand debug-bundle export for

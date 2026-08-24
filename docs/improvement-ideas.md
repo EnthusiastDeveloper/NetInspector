@@ -285,6 +285,8 @@ reports don't require ADB. Shares infrastructure with #21.
 ---
 
 ## 23. Scheduled/automatic periodic scans
+**Status:** Implemented
+
 Opt-in background snapshots so history builds up without manual runs, using the same
 WorkManager pattern already used for `RetentionCleanupWorker`.
 
@@ -296,6 +298,8 @@ WorkManager pattern already used for `RetentionCleanupWorker`.
 ---
 
 ## 24. New/vanished device alerts
+**Status:** Implemented
+
 Notify when an unrecognized MAC joins the LAN, or a normally-present device disappears.
 
 **Requirements:**

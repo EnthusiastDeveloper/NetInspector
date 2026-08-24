@@ -9,27 +9,44 @@ import dev.enthusiastdev.netinspector.core.model.diagnostics.PortSelection
 import dev.enthusiastdev.netinspector.core.model.settings.RssiDisplayUnit
 import dev.enthusiastdev.netinspector.core.model.settings.ThemeMode
 import dev.enthusiastdev.netinspector.data.persistence.preferences.AppSettingsRepository
+import dev.enthusiastdev.netinspector.data.persistence.preferences.AutoScanSettingsRepository
 import dev.enthusiastdev.netinspector.data.persistence.preferences.RetentionSettingsRepository
 import dev.enthusiastdev.netinspector.debug.CrashReportStore
 import dev.enthusiastdev.netinspector.debug.DebugBundleBuilder
 import dev.enthusiastdev.netinspector.debug.ShareFileLauncher
 import dev.enthusiastdev.netinspector.monitoring.ConnectionAlertSettings
+import dev.enthusiastdev.netinspector.work.AutoScanScheduler
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+/** Local to this ViewModel, unlike [ConnectionAlertSettings] which `MonitoringService` also
+ * reads - no other consumer needs this grouping. */
+private data class AutoScanUiSettings(
+    val enabled: Boolean,
+    val intervalMinutes: Int,
+    val alertOnLanHostChanges: Boolean,
+)
+
+// detekt.yml already accepts this ViewModel growing large (see its TooManyFunctions override
+// comment) - it's a flat aggregation of one repository per independent settings section, not
+// a sign it needs splitting up. Same reasoning applies to its constructor's parameter count.
+@Suppress("LongParameterList")
 @HiltViewModel
 class SettingsViewModel
     @Inject
     constructor(
         private val appSettingsRepository: AppSettingsRepository,
         private val retentionSettingsRepository: RetentionSettingsRepository,
+        private val autoScanSettingsRepository: AutoScanSettingsRepository,
+        private val autoScanScheduler: AutoScanScheduler,
         private val crashReportStore: CrashReportStore,
         private val debugBundleBuilder: DebugBundleBuilder,
         @ApplicationContext private val context: Context,
@@ -72,6 +89,16 @@ class SettingsViewModel
                 ::ConnectionAlertSettings,
             )
 
+        // improvement-ideas.md #23/#24 - same reason [alertSettings] is separate: past the
+        // fixed-arity combine() overload count.
+        private val autoScanSettings =
+            combine(
+                autoScanSettingsRepository.autoScanEnabled,
+                autoScanSettingsRepository.autoScanIntervalMinutes,
+                autoScanSettingsRepository.alertOnLanHostChanges,
+                ::AutoScanUiSettings,
+            )
+
         val uiState: StateFlow<SettingsUiState> =
             baseSettings
                 .combine(alertSettings) { state, alerts ->
@@ -87,6 +114,12 @@ class SettingsViewModel
                     crashReportAvailabilityTrigger.map { crashReportStore.hasReports() },
                 ) { state, hasCrashReports ->
                     state.copy(hasCrashReports = hasCrashReports)
+                }.combine(autoScanSettings) { state, autoScan ->
+                    state.copy(
+                        autoScanEnabled = autoScan.enabled,
+                        autoScanIntervalMinutes = autoScan.intervalMinutes,
+                        alertOnLanHostChanges = autoScan.alertOnLanHostChanges,
+                    )
                 }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SettingsUiState())
 
         fun setThemeMode(mode: ThemeMode) {
@@ -133,6 +166,33 @@ class SettingsViewModel
 
         fun setAlertOnReconnect(enabled: Boolean) {
             viewModelScope.launch { appSettingsRepository.setAlertOnReconnect(enabled) }
+        }
+
+        /** improvement-ideas.md #23 - the write and the (re)schedule/cancel have to happen
+         * together: `AutoScanScheduler` is the only thing that actually starts/stops
+         * `PeriodicScanWorker`, the DataStore write alone wouldn't. */
+        fun setAutoScanEnabled(enabled: Boolean) {
+            viewModelScope.launch {
+                autoScanSettingsRepository.setAutoScanEnabled(enabled)
+                if (enabled) {
+                    autoScanScheduler.enqueue(autoScanSettingsRepository.autoScanIntervalMinutes.first())
+                } else {
+                    autoScanScheduler.cancel()
+                }
+            }
+        }
+
+        fun setAutoScanIntervalMinutes(minutes: Int) {
+            viewModelScope.launch {
+                autoScanSettingsRepository.setAutoScanIntervalMinutes(minutes)
+                if (autoScanSettingsRepository.autoScanEnabled.first()) {
+                    autoScanScheduler.enqueue(autoScanSettingsRepository.autoScanIntervalMinutes.first())
+                }
+            }
+        }
+
+        fun setAlertOnLanHostChanges(enabled: Boolean) {
+            viewModelScope.launch { autoScanSettingsRepository.setAlertOnLanHostChanges(enabled) }
         }
 
         fun setCrashReportingEnabled(enabled: Boolean) {
