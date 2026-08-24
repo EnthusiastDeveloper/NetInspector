@@ -2,6 +2,7 @@ package dev.enthusiastdev.netinspector.ui.screens.tools
 
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Calculate
+import androidx.compose.material.icons.filled.Compare
 import androidx.compose.material.icons.filled.Dns
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Http
@@ -49,4 +50,5 @@ enum class Tool(
     WAKE_ON_LAN("Wake-on-LAN", Icons.Filled.SettingsEthernet, ToolCategory.UTILITIES),
     SCAN_HISTORY("Wi-Fi history", Icons.Filled.Timeline, ToolCategory.HISTORY),
     DIAGNOSTIC_HISTORY("Diagnostic history", Icons.Filled.History, ToolCategory.HISTORY),
+    WIFI_CHANGES("Wi-Fi changes", Icons.Filled.Compare, ToolCategory.HISTORY),
 }

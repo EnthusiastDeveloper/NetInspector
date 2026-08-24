@@ -79,6 +79,8 @@ when RSSI drops below a threshold or the connection drops/restores.
 ---
 
 ## 6. Scan session comparison view
+**Status:** Implemented
+
 Diff two persisted scan sessions side by side ("before/after I moved the router") using
 data that's already stored.
 

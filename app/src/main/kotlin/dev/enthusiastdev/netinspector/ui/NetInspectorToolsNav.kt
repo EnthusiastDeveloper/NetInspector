@@ -19,6 +19,7 @@ import dev.enthusiastdev.netinspector.ui.navigation.ToolsRoute
 import dev.enthusiastdev.netinspector.ui.navigation.TracerouteToolRoute
 import dev.enthusiastdev.netinspector.ui.navigation.WakeOnLanToolRoute
 import dev.enthusiastdev.netinspector.ui.navigation.WhoisToolRoute
+import dev.enthusiastdev.netinspector.ui.navigation.WifiChangesToolRoute
 import dev.enthusiastdev.netinspector.ui.screens.tools.Tool
 import dev.enthusiastdev.netinspector.ui.screens.tools.ToolPageScaffold
 import dev.enthusiastdev.netinspector.ui.screens.tools.ToolsScreen
@@ -32,6 +33,7 @@ import dev.enthusiastdev.netinspector.ui.screens.tools.signalmeter.SignalMeterRo
 import dev.enthusiastdev.netinspector.ui.screens.tools.subnetcalc.SubnetCalculatorRoute
 import dev.enthusiastdev.netinspector.ui.screens.tools.traceroute.TracerouteRoute
 import dev.enthusiastdev.netinspector.ui.screens.tools.whois.WhoisRoute
+import dev.enthusiastdev.netinspector.ui.screens.tools.wifichanges.WifiChangesRoute
 import dev.enthusiastdev.netinspector.ui.screens.tools.wol.WakeOnLanRoute
 
 /** The Tools tab's own nested graph - split out of [AppNavHost] to keep this file's tool-page
@@ -57,6 +59,7 @@ internal fun NavGraphBuilder.toolsGraph(navController: NavHostController) {
         composable<DiagnosticHistoryToolRoute> {
             ToolPage(Tool.DIAGNOSTIC_HISTORY, navController) { DiagnosticHistoryRoute() }
         }
+        composable<WifiChangesToolRoute> { ToolPage(Tool.WIFI_CHANGES, navController) { WifiChangesRoute() } }
     }
 }
 
@@ -100,5 +103,6 @@ private fun NavHostController.navigateToTool(tool: Tool) {
         Tool.SIGNAL_METER -> navigate(SignalMeterToolRoute)
         Tool.SCAN_HISTORY -> navigate(ScanHistoryToolRoute)
         Tool.DIAGNOSTIC_HISTORY -> navigate(DiagnosticHistoryToolRoute)
+        Tool.WIFI_CHANGES -> navigate(WifiChangesToolRoute)
     }
 }
