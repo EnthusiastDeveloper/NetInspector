@@ -159,6 +159,8 @@ private fun WifiContent(
 @Composable
 private fun WifiHeaderBlock(
     state: WifiUiState.Content,
+    isRefreshing: Boolean,
+    onRefresh: () -> Unit,
     viewMode: WifiViewMode,
     onViewModeChange: (WifiViewMode) -> Unit,
     onWifiAccessChanged: () -> Unit,
@@ -171,7 +173,13 @@ private fun WifiHeaderBlock(
             textAlign = TextAlign.Center,
             modifier = Modifier.fillMaxWidth(),
         )
-        WifiHeader(apCount = state.accessPoints.size, lastUpdated = state.lastUpdated, budget = state.budget)
+        WifiHeader(
+            apCount = state.accessPoints.size,
+            lastUpdated = state.lastUpdated,
+            budget = state.budget,
+            isRefreshing = isRefreshing,
+            onRefresh = onRefresh,
+        )
         if (state.wifiAccess != WifiAccessState.GRANTED) {
             WifiLocationAccessCard(state.wifiAccess, onWifiAccessChanged)
         }
@@ -203,7 +211,7 @@ private fun WifiListPane(
             contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            item { WifiHeaderBlock(state, viewMode, onViewModeChange, onWifiAccessChanged) }
+            item { WifiHeaderBlock(state, isRefreshing, onRefresh, viewMode, onViewModeChange, onWifiAccessChanged) }
             item {
                 WifiFilterSortBar(
                     sortOrder = sortOrder,
@@ -251,6 +259,8 @@ private fun WifiGraphScreen(
         if (tabletopPosture != null) {
             WifiGraphTabletopContent(
                 state = state,
+                isRefreshing = isRefreshing,
+                onRefresh = onRefresh,
                 hingeBounds = tabletopPosture.hingeBounds,
                 viewMode = viewMode,
                 onViewModeChange = onViewModeChange,
@@ -261,6 +271,8 @@ private fun WifiGraphScreen(
                 Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
                     WifiHeaderBlock(
                         state,
+                        isRefreshing,
+                        onRefresh,
                         viewMode,
                         onViewModeChange,
                         onWifiAccessChanged,
@@ -285,6 +297,8 @@ private fun WifiGraphScreen(
 @Composable
 private fun WifiGraphTabletopContent(
     state: WifiUiState.Content,
+    isRefreshing: Boolean,
+    onRefresh: () -> Unit,
     hingeBounds: Rect,
     viewMode: WifiViewMode,
     onViewModeChange: (WifiViewMode) -> Unit,
@@ -294,7 +308,15 @@ private fun WifiGraphTabletopContent(
     var highlightedBssid by rememberSaveable { mutableStateOf<String?>(null) }
 
     Column(modifier = Modifier.fillMaxSize()) {
-        WifiHeaderBlock(state, viewMode, onViewModeChange, onWifiAccessChanged, modifier = Modifier.padding(16.dp))
+        WifiHeaderBlock(
+            state,
+            isRefreshing,
+            onRefresh,
+            viewMode,
+            onViewModeChange,
+            onWifiAccessChanged,
+            modifier = Modifier.padding(16.dp),
+        )
 
         TabletopSplitLayout(
             hingeBounds = hingeBounds,

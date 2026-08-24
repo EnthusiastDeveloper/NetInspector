@@ -99,4 +99,6 @@ dependencies {
     implementation(libs.kotlinx.serialization.core)
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.timber)
+
+    testImplementation(libs.mockk)
 }

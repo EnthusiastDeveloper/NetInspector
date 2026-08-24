@@ -1001,12 +1001,51 @@ requires explicit acknowledgement. Stored in DataStore. Not skippable, not repea
   iputils, and for SSDP and NetBIOS responses. These are the highest-value tests in the
   project - the parsers are where silent inaccuracy hides.
 - ICMP checksum and packet construction against known-good byte vectors.
+- **A ViewModel action handler that gates a UI-visible state flag** (a refresh spinner, a
+  disabled button, a countdown): every outcome branch the underlying call can return needs
+  its own test, not just the happy path. `WifiViewModel.onRefresh` shipped a bug where the
+  spinner flickered without animating specifically on the throttled/failed branches, and
+  those branches had never been tested at all (`WifiViewModelTest`).
+- **The governor or gate a bounded resource sits behind** (a throttle, a quota, a rate
+  limiter) needs direct tests of its own, not just indirect coverage through whatever calls
+  it. `ScanGovernor` is design §6.1's throttle and had none - `ScanGovernorTest` now covers
+  the quota arithmetic, the reserved-token carve-out for user-initiated refreshes, and the
+  specific property that made the above `onRefresh` bug possible: a throttled
+  `requestScan` returns the moment it decides to throttle, never after waiting out the
+  retry window.
+
+**Boundary and negative-path coverage.** A feature that clamps, throttles, or bounds
+something needs the boundary itself under test, not just typical mid-range values - the
+crash and the stuck-spinner bug both fixed alongside this section came from exactly this
+gap. Three recurring shapes in this codebase:
+
+- **A clamped/bounded interactive parameter** - anything with a `MAX_`/`MIN_` constant,
+  such as the channel graph's `MAX_AXIS_ZOOM`. Test at the bound, not only in the middle of
+  the range, and test whatever *consumes* the bounded value downstream, not only the
+  function that does the clamping - `AxisViewport`'s zoom-ceiling test already covered the
+  clamp itself, but nothing tested that `AxisMapper.xPx` stays consumable by the drawing
+  code once a curve sits outside a zoomed-in viewport, which is exactly where the crash was
+  (`AxisMapperTest`, `ChannelOccupancyGraphRenderTest`).
+- **A throttle, quota, or cooldown gate.** Test the denied path with the same care as the
+  granted one, and confirm what the *caller* can assume about it - in particular, whether a
+  denial can return before any real time has passed. A caller that assumes a gate always
+  takes time to say no will misbehave the moment it doesn't (`ScanGovernorTest`).
+- **An async action with a minimum-duration UI affordance** (a spinner sized to "how long
+  this usually takes", not to the actual result). Test every outcome the underlying call can
+  return, since the fast, unhappy outcomes are exactly where a hardcoded duration assumption
+  breaks (`WifiViewModelTest`).
 
 **Instrumented tests**: `ACCESS_FINE_LOCATION` permission state machine (granted, denied,
 permanently denied), Room migrations,
 vendor lookup correctness and performance - including longest-prefix precedence, where a
 36-bit entry must win over a 24-bit entry covering the same address -
-`NetworkCallback` lifecycle.
+`NetworkCallback` lifecycle. **Compose `Canvas`/`DrawScope` rendering logic** belongs here
+too, not only in the manual screenshot sweep below: a pure-math unit test on the values fed
+into a draw call (an `AxisMapper`, a viewport transform) cannot prove the draw call itself
+survives those values, since `DrawScope` extension functions need a real composition to
+run. `ChannelOccupancyGraphRenderTest` renders the graph directly rather than only
+screenshotting it, specifically so a crash - not just a layout mistake - gets caught by a
+test rather than by a user's phone.
 
 **Manual device matrix** - physical devices only, since the emulator cannot scan Wi-Fi at
 all (C-13). The primary targets are the two owned Android 15 devices; the third row is
