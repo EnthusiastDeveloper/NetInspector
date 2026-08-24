@@ -1,7 +1,9 @@
 package dev.enthusiastdev.netinspector.data.persistence.scan
 
 import dev.enthusiastdev.netinspector.core.model.wifi.AccessPoint
+import dev.enthusiastdev.netinspector.core.model.wifi.ApCapabilitySnapshot
 import dev.enthusiastdev.netinspector.core.model.wifi.ScanSnapshot
+import dev.enthusiastdev.netinspector.core.model.wifi.diffApCapabilities
 import kotlinx.coroutines.flow.Flow
 import java.time.Instant
 import javax.inject.Inject
@@ -53,11 +55,24 @@ class DefaultScanHistoryRepository
             }
         }
 
+        /** improvement-ideas.md #11 - a notable capability change is only detected when
+         * [existing] already carries a captured baseline ([KnownApEntity.toBaseline] returns
+         * non-null); a brand-new BSSID or a pre-migration row with no baseline just records one
+         * silently, per [KnownApEntity]'s doc comment. */
         private suspend fun upsertKnownAp(
             accessPoint: AccessPoint,
             timestampMillis: Long,
         ) {
             val existing = knownApDao.get(accessPoint.bssid)
+            val current =
+                ApCapabilitySnapshot(
+                    security = accessPoint.security.joinToString(",") { it.name },
+                    standard = accessPoint.standard.name,
+                    primaryChannel = accessPoint.span.primaryChannel,
+                )
+            val baseline = existing?.toBaseline()
+            val notable = baseline != null && diffApCapabilities(baseline, current).isNotable
+
             knownApDao.upsert(
                 KnownApEntity(
                     bssid = accessPoint.bssid,
@@ -66,6 +81,15 @@ class DefaultScanHistoryRepository
                     firstSeenMillis = existing?.firstSeenMillis ?: timestampMillis,
                     lastSeenMillis = timestampMillis,
                     bestRssiDbm = maxOf(accessPoint.rssiDbm, existing?.bestRssiDbm ?: Int.MIN_VALUE),
+                    security = current.security,
+                    standard = current.standard,
+                    primaryChannel = current.primaryChannel,
+                    previousSecurity = if (notable) baseline?.security else existing?.previousSecurity,
+                    previousStandard = if (notable) baseline?.standard else existing?.previousStandard,
+                    previousPrimaryChannel =
+                        if (notable) baseline?.primaryChannel else existing?.previousPrimaryChannel,
+                    lastCapabilityChangeMillis =
+                        if (notable) timestampMillis else existing?.lastCapabilityChangeMillis,
                 ),
             )
         }
@@ -86,6 +110,15 @@ class DefaultScanHistoryRepository
             sessionDao.deleteOlderThan(cutoff.toEpochMilli())
         }
     }
+
+/** Null when this row has no captured capability baseline yet (a brand-new BSSID, or a row
+ * written before improvement-ideas.md #11's migration) - see [KnownApEntity]'s doc comment. */
+private fun KnownApEntity.toBaseline(): ApCapabilitySnapshot? {
+    val security = security ?: return null
+    val standard = standard ?: return null
+    val primaryChannel = primaryChannel ?: return null
+    return ApCapabilitySnapshot(security, standard, primaryChannel)
+}
 
 private fun AccessPoint.toObservation(sessionId: Long) =
     ScanObservationEntity(

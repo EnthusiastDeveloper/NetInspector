@@ -77,3 +77,22 @@ val MIGRATION_3_4 =
             )
         }
     }
+
+/** design §10/improvement-ideas.md #11 - version 5 adds seven nullable capability-tracking
+ * columns to the existing `known_ap` table, all `ALTER TABLE ADD COLUMN` like [MIGRATION_3_4]'s
+ * `isKnownDevice` case - unlike that one, none of these need a `DEFAULT`, since `NULL` is the
+ * correct value for a row with no captured capability baseline yet (see `KnownApEntity`'s doc
+ * comment). SQL copied verbatim from the KSP-generated `schemas/.../5.json`, same convention as
+ * every migration in this file. */
+val MIGRATION_4_5 =
+    object : Migration(4, 5) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE `known_ap` ADD COLUMN `security` TEXT")
+            db.execSQL("ALTER TABLE `known_ap` ADD COLUMN `standard` TEXT")
+            db.execSQL("ALTER TABLE `known_ap` ADD COLUMN `primaryChannel` INTEGER")
+            db.execSQL("ALTER TABLE `known_ap` ADD COLUMN `previousSecurity` TEXT")
+            db.execSQL("ALTER TABLE `known_ap` ADD COLUMN `previousStandard` TEXT")
+            db.execSQL("ALTER TABLE `known_ap` ADD COLUMN `previousPrimaryChannel` INTEGER")
+            db.execSQL("ALTER TABLE `known_ap` ADD COLUMN `lastCapabilityChangeMillis` INTEGER")
+        }
+    }

@@ -21,6 +21,7 @@ import dev.enthusiastdev.netinspector.core.designsystem.gauge.RssiGauge
 import dev.enthusiastdev.netinspector.core.model.settings.RssiDisplayUnit
 import dev.enthusiastdev.netinspector.core.model.wifi.AccessPoint
 import dev.enthusiastdev.netinspector.core.model.wifi.InformationElementSummary
+import dev.enthusiastdev.netinspector.data.persistence.scan.KnownApEntity
 import dev.enthusiastdev.netinspector.ui.screens.connection.label
 
 /** Owns fetching the on-demand [InformationElementSummary] for whichever BSSID the list-detail
@@ -29,6 +30,7 @@ import dev.enthusiastdev.netinspector.ui.screens.connection.label
 internal fun WifiDetailPane(
     bssid: String,
     accessPoints: List<AccessPoint>,
+    apCapabilityChanges: Map<String, KnownApEntity>,
     informationElementsFor: (String) -> InformationElementSummary,
     rssiDisplayUnit: RssiDisplayUnit,
     modifier: Modifier = Modifier,
@@ -45,12 +47,13 @@ internal fun WifiDetailPane(
         return
     }
     val informationElements = remember(bssid) { informationElementsFor(bssid) }
-    WifiDetailContent(accessPoint, informationElements, rssiDisplayUnit, modifier)
+    WifiDetailContent(accessPoint, apCapabilityChanges[bssid], informationElements, rssiDisplayUnit, modifier)
 }
 
 @Composable
 internal fun WifiDetailContent(
     accessPoint: AccessPoint,
+    capabilityChange: KnownApEntity? = null,
     informationElements: InformationElementSummary,
     rssiDisplayUnit: RssiDisplayUnit = RssiDisplayUnit.DBM,
     modifier: Modifier = Modifier,
@@ -61,6 +64,9 @@ internal fun WifiDetailContent(
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         item { WifiDetailHeader(accessPoint, rssiDisplayUnit) }
+        if (capabilityChange != null) {
+            item { WifiDetailCapabilityChangeSection(capabilityChange) }
+        }
         item { WifiDetailRadioSection(accessPoint) }
         item { WifiDetailSecuritySection(accessPoint) }
         item { WifiDetailInformationElementsSection(informationElements) }
@@ -87,6 +93,30 @@ private fun WifiDetailHeader(
             style = MaterialTheme.typography.bodyMedium,
             fontFamily = FontFamily.Monospace,
         )
+    }
+}
+
+/** improvement-ideas.md #11 - only rendered when [KnownApEntity.toCapabilityChangeDisplay]
+ * returns non-null, i.e. there's a complete before/after snapshot and it's actually notable. */
+@Composable
+private fun WifiDetailCapabilityChangeSection(knownAp: KnownApEntity) {
+    val display = knownAp.toCapabilityChangeDisplay() ?: return
+    val previousSecurity = display.previous.security.parsedSecurityLabel()
+    val currentSecurity = display.current.security.parsedSecurityLabel()
+    val previousStandard = display.previous.standard.parsedStandardLabel()
+    val currentStandard = display.current.standard.parsedStandardLabel()
+
+    InfoCard(title = "Capability change detected") {
+        if (display.change.securityChanged) {
+            InfoRow("Security", "$previousSecurity → $currentSecurity")
+        }
+        if (display.change.standardChanged) {
+            InfoRow("Standard", "$previousStandard → $currentStandard")
+        }
+        if (display.change.channelChanged) {
+            InfoRow("Channel", "${display.previous.primaryChannel} → ${display.current.primaryChannel}")
+        }
+        InfoRow("Detected", display.changedAt.asChangeTimestamp())
     }
 }
 

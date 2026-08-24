@@ -38,4 +38,5 @@ dependencies {
     ksp(libs.androidx.room.compiler)
     implementation(libs.androidx.datastore.core)
     implementation(libs.protobuf.kotlin.lite)
+    testImplementation(libs.mockk)
 }
