@@ -113,6 +113,10 @@ internal fun DrawScope.drawCurveLabels(
         val style = if (curve.key == highlightedKey) labelStyles.highlighted else labelStyles.default
         val labelSpan = curve.secondary ?: curve.primary
         val x = mapper.xPx(labelSpan.centerMhz) + 4.dp.toPx()
+        // At extreme zoom a curve well outside the visible axis range still gets drawn (its
+        // outline is clipped by the canvas), but its label's x can land far past the right edge -
+        // drawText's constraints go negative there and crash. Nothing to place off-canvas anyway.
+        if (x > size.width) return@forEach
         val labelWidthPx =
             textMeasurer
                 .measure(curve.label, style)

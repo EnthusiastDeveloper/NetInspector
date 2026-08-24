@@ -105,12 +105,16 @@ class WifiViewModel
         /** design §6.1 - the explicit pull-to-refresh scan; dips into the two reserved
          * tokens if the non-reserved ones are already spent. `isRefreshing` is purely a spinner
          * affordance sized to a typical scan's completion time - the header's "results as of"
-         * timestamp remains the actual freshness signal regardless of this flag. */
+         * timestamp remains the actual freshness signal regardless of this flag.
+         *
+         * The delay always runs, even when throttled: `requestScan` returns near-instantly in
+         * that case, and flipping `isRefreshing` true then false within the same frame leaves
+         * PullToRefreshBox's indicator stuck visible without ever starting its spin animation. */
         fun onRefresh() {
             viewModelScope.launch {
                 _isRefreshing.value = true
                 val outcome = wifiScanRepository.requestScan(isUserInitiated = true)
-                if (outcome is ScanOutcome.Started) delay(3_000)
+                delay(if (outcome is ScanOutcome.Started) 3_000 else 500)
                 _isRefreshing.value = false
             }
         }

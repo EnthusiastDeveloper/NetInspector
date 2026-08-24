@@ -1,5 +1,11 @@
 package dev.enthusiastdev.netinspector.ui.screens.wifi
 
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -13,11 +19,13 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.Card
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -28,6 +36,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.unit.dp
 import dev.enthusiastdev.netinspector.core.common.wifi.rssiToQualityPercent
 import dev.enthusiastdev.netinspector.core.designsystem.component.InfoRow
@@ -38,11 +47,15 @@ import dev.enthusiastdev.netinspector.ui.screens.connection.label
 import java.time.Duration
 import java.time.Instant
 
+/** The pull-to-refresh gesture that drives a rescan has no visible affordance of its own, so
+ * this button gives it one - tapping it calls the same [onRefresh] the gesture does. */
 @Composable
 internal fun WifiHeader(
     apCount: Int,
     lastUpdated: Instant?,
     budget: ScanBudget,
+    isRefreshing: Boolean,
+    onRefresh: () -> Unit,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
         val headerText =
@@ -51,10 +64,34 @@ internal fun WifiHeader(
             } else {
                 "$apCount networks - results as of ${lastUpdated.asClockTime()}"
             }
-        Text(
-            text = headerText,
-            style = MaterialTheme.typography.titleMedium,
-        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = headerText,
+                style = MaterialTheme.typography.titleMedium,
+            )
+            val rotation by
+                rememberInfiniteTransition(label = "wifi-scan-rotation").animateFloat(
+                    initialValue = 0f,
+                    targetValue = if (isRefreshing) 360f else 0f,
+                    animationSpec =
+                        infiniteRepeatable(
+                            animation = tween(durationMillis = 1000, easing = LinearEasing),
+                            repeatMode = RepeatMode.Restart,
+                        ),
+                    label = "wifi-scan-rotation",
+                )
+            IconButton(onClick = onRefresh, enabled = !isRefreshing) {
+                Icon(
+                    Icons.Filled.Refresh,
+                    contentDescription = "Scan for networks",
+                    modifier = Modifier.rotate(if (isRefreshing) rotation else 0f),
+                )
+            }
+        }
         val retryAt = budget.nextAvailableAt
         if (retryAt != null) {
             val remaining = Duration.between(Instant.now(), retryAt).let { if (it.isNegative) Duration.ZERO else it }
