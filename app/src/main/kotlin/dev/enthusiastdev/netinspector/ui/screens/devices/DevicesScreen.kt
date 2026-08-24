@@ -58,6 +58,7 @@ fun DevicesScreen(
     onSortOrderChange: (DevicesSortOrder) -> Unit,
     onToggleConfidenceFilter: (HostConfidence) -> Unit,
     onSetNickname: (String, String) -> Unit,
+    onSetKnownDevice: (String, Boolean) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     when (uiState) {
@@ -76,6 +77,7 @@ fun DevicesScreen(
                 onSortOrderChange,
                 onToggleConfidenceFilter,
                 onSetNickname,
+                onSetKnownDevice,
                 modifier,
             )
     }
@@ -121,6 +123,7 @@ private fun DevicesContent(
     onSortOrderChange: (DevicesSortOrder) -> Unit,
     onToggleConfidenceFilter: (HostConfidence) -> Unit,
     onSetNickname: (String, String) -> Unit,
+    onSetKnownDevice: (String, Boolean) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     // design §11.4 - the ack dialog gates the act of starting a sweep, not opening the screen,
@@ -165,23 +168,44 @@ private fun DevicesContent(
                         onTracerouteHost,
                         onPortScanHost,
                         onSetNickname,
+                        onSetKnownDevice,
                     )
                 }
             }
         },
     )
 
+    DevicesContentDialogs(
+        showAcknowledgement = showAcknowledgement,
+        onAcknowledge = {
+            showAcknowledgement = false
+            onAcknowledgeAndScan()
+        },
+        onDismissAcknowledgement = { showAcknowledgement = false },
+        pendingConfirmationHostCount = state.pendingConfirmationHostCount,
+        onConfirmShortPrefixScan = onConfirmShortPrefixScan,
+        onDismissConfirmation = onDismissConfirmation,
+    )
+}
+
+/** Split out of [DevicesContent] purely to keep that function's length in check - both dialogs
+ * are independent, gated by their own state, and have no relationship to each other. */
+@Composable
+private fun DevicesContentDialogs(
+    showAcknowledgement: Boolean,
+    onAcknowledge: () -> Unit,
+    onDismissAcknowledgement: () -> Unit,
+    pendingConfirmationHostCount: Long?,
+    onConfirmShortPrefixScan: () -> Unit,
+    onDismissConfirmation: () -> Unit,
+) {
     if (showAcknowledgement) {
         FirstRunAcknowledgementDialog(
-            onAcknowledge = {
-                showAcknowledgement = false
-                onAcknowledgeAndScan()
-            },
-            onDismiss = { showAcknowledgement = false },
+            onAcknowledge = onAcknowledge,
+            onDismiss = onDismissAcknowledgement,
         )
     }
-
-    state.pendingConfirmationHostCount?.let { hostCount ->
+    pendingConfirmationHostCount?.let { hostCount ->
         ShortPrefixConfirmationDialog(
             hostCount = hostCount,
             onConfirm = onConfirmShortPrefixScan,

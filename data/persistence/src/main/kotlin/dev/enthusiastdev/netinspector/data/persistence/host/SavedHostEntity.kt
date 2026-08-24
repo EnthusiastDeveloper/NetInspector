@@ -11,4 +11,9 @@ import androidx.room.PrimaryKey
 data class SavedHostEntity(
     @PrimaryKey val key: String,
     val nickname: String,
+    /** improvement-ideas.md #24 - "this host is expected to come and go" (a laptop that
+     * sleeps, a phone that leaves and returns home); suppresses the periodic background
+     * sweep's vanish/reappear alerts for this key. Independent of [nickname] - a row can carry
+     * either, both, so the delete-when-empty logic in `SavedHostRepository` checks both. */
+    val isKnownDevice: Boolean = false,
 )

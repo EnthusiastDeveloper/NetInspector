@@ -11,7 +11,9 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import dev.enthusiastdev.netinspector.data.persistence.preferences.AppPreferencesSerializer
 import dev.enthusiastdev.netinspector.data.persistence.preferences.AppSettingsRepository
+import dev.enthusiastdev.netinspector.data.persistence.preferences.AutoScanSettingsRepository
 import dev.enthusiastdev.netinspector.data.persistence.preferences.DefaultAppSettingsRepository
+import dev.enthusiastdev.netinspector.data.persistence.preferences.DefaultAutoScanSettingsRepository
 import dev.enthusiastdev.netinspector.data.persistence.preferences.DefaultLanAcknowledgementRepository
 import dev.enthusiastdev.netinspector.data.persistence.preferences.DefaultRetentionSettingsRepository
 import dev.enthusiastdev.netinspector.data.persistence.preferences.LanAcknowledgementRepository
@@ -36,6 +38,10 @@ abstract class PreferencesModule {
     @Binds
     @Singleton
     abstract fun bindAppSettingsRepository(impl: DefaultAppSettingsRepository): AppSettingsRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindAutoScanSettingsRepository(impl: DefaultAutoScanSettingsRepository): AutoScanSettingsRepository
 
     companion object {
         @Provides

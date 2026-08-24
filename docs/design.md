@@ -625,6 +625,38 @@ released immediately on completion or cancellation. The whole pipeline is a sing
 structured-concurrency scope tied to the screen lifecycle, so backgrounding the app
 cancels every in-flight probe.
 
+### 8.5 Periodic background scanning
+
+improvement-ideas.md #23/#24 - an opt-in `WorkManager` periodic job (`PeriodicScanWorker`,
+`:app`), off by default, that reuses this pipeline and §6.1's `ScanGovernor` rather than
+building a second scanning path. ADR C-10 governs it directly: a run can be skipped or
+delayed by Doze, and that is meant to be visible as a gap, never interpolated or retried.
+
+One job with two independently-toggleable effects, so there is one battery-relevant
+background wake-up rather than two:
+
+- **Wi-Fi scan history** (#23) - `ScanGovernor.requestScan(isUserInitiated = false)`; if
+  throttled (C-02) or failed, that half of the run is simply skipped. On success, the
+  resulting `ScanSnapshot` is recorded via the same `RecordWifiScanUseCase` the Wi-Fi screen
+  uses, so history builds up in `scan_session`/`scan_observation` without the user ever
+  opening that screen.
+- **New/vanished/reappeared device alerts** (#24), nested under the above in the Settings UI
+  since it only ever runs as part of the same job - gated additionally on
+  `LanAcknowledgementRepository.isAcknowledged` (§11.4's consent screen still applies to a
+  background sweep). Runs an ordinary §8.2 sweep, then diffs the `CONFIRMED` hosts against a
+  new `known_lan_host` table (§10) via `diffLanPresence` (`:core:model` - pure, JVM-tested,
+  no Room/Android). A host absent for a single periodic sweep is tolerated as transient/DHCP
+  churn; a "vanished" alert fires only on a second consecutive miss, mirroring §8.3's
+  single-sweep STALE grace period but extended for periodic sweeps. A host that returns after
+  a real vanish alert gets one "reappeared" alert. The very first run for a given network only
+  ever records a baseline - never a flood of "new device" alerts for everything already there.
+- **Known device flag** - a per-host, user-set `isKnownDevice` column on `saved_host`
+  (docs/device-identification-ideas.md D's existing per-host table), toggled from the Devices
+  detail screen. A host so flagged never produces a vanish or reappear alert - the intended
+  case is a laptop that sleeps or a phone that leaves and returns home, both of which are
+  expected churn, not a signal worth alerting on. It does not suppress the initial "new
+  device" alert, since a device can't be flagged known before the user has first seen it.
+
 ---
 
 ## 9. Diagnostics
@@ -745,7 +777,7 @@ trips IDS on managed networks and can destabilise cheap consumer routers.
 
 ## 10. Persistence
 
-Room, schema version 3, with `exportSchema = true` and schema files committed for future
+Room, schema version 4, with `exportSchema = true` and schema files committed for future
 migrations.
 
 | Entity | Purpose | Retention |
@@ -754,7 +786,8 @@ migrations.
 | `scan_observation` | AP observation joined to a session: BSSID, RSSI, channel, width | Cascade with session |
 | `known_ap` | Stable per-BSSID record: SSID, vendor, first/last seen, best RSSI | Indefinite |
 | `saved_wol_target` | Manually-entered Wake-on-LAN target: label, MAC, broadcast address | Indefinite |
-| `saved_host` | Manual per-host nickname (docs/device-identification-ideas.md D), keyed by MAC when known or a stable address+hostname combo otherwise | Indefinite |
+| `saved_host` | Manual per-host nickname (docs/device-identification-ideas.md D) plus the `isKnownDevice` "known device" flag (improvement-ideas.md #24), keyed by MAC when known or a stable address+hostname combo otherwise | Indefinite |
+| `known_lan_host` | Periodic-sweep presence tracking per host identity for new/vanished/reappeared alerts (improvement-ideas.md #24, §8.5) | Same window as `scan_session` |
 | `diagnostic_run` | Ping/traceroute/scan runs with parameters and serialised results | 90 days |
 | `oui` | Prepopulated MAC prefix → vendor, variable prefix length | Static, bundled |
 

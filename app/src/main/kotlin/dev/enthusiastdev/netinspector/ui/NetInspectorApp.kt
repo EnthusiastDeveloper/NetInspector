@@ -247,5 +247,6 @@ private fun DevicesDestination(
         onSortOrderChange = devicesViewModel::setSortOrder,
         onToggleConfidenceFilter = devicesViewModel::toggleConfidenceFilter,
         onSetNickname = devicesViewModel::setNickname,
+        onSetKnownDevice = devicesViewModel::setKnownDevice,
     )
 }

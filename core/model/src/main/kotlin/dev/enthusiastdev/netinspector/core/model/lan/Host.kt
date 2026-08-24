@@ -28,6 +28,11 @@ data class Host(
      * one); the UI layer overlays it from [nicknameKey], since a nickname outlives any single
      * host record still being rebuilt sweep to sweep. */
     val nickname: String? = null,
+    /** improvement-ideas.md #24 - a user-set flag meaning "this host is expected to come and
+     * go" (a laptop that sleeps, a phone that leaves and returns home), so the periodic
+     * background sweep's vanish/reappear alerts skip it. Same overlay mechanism as [nickname]:
+     * never populated by [mergeObservation], joined in by the UI layer from [nicknameKey]. */
+    val isKnownDevice: Boolean = false,
 )
 
 /** design §11.3 - hostname precedence for the primary display name; every variant stays

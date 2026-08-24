@@ -56,3 +56,24 @@ val MIGRATION_2_3 =
             )
         }
     }
+
+/** design §10/improvement-ideas.md #24 - version 4 adds one table for periodic-sweep presence
+ * tracking, and one column on the existing `saved_host` table for the "known device" flag.
+ * `known_lan_host`'s `CREATE TABLE` is copied verbatim from the KSP-generated
+ * `schemas/.../4.json`, same convention as [MIGRATION_2_3]; the `saved_host` change is an
+ * `ALTER TABLE ADD COLUMN` instead, since it already has rows in the wild - a `DEFAULT 0`
+ * is required here (unlike a fresh `CREATE TABLE`) so those existing rows get a value. */
+val MIGRATION_3_4 =
+    object : Migration(3, 4) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL(
+                "ALTER TABLE `saved_host` ADD COLUMN `isKnownDevice` INTEGER NOT NULL DEFAULT 0",
+            )
+            db.execSQL(
+                "CREATE TABLE IF NOT EXISTS `known_lan_host` (`key` TEXT NOT NULL, `displayName` TEXT, " +
+                    "`firstSeenMillis` INTEGER NOT NULL, `lastSeenMillis` INTEGER NOT NULL, " +
+                    "`consecutiveMissedSweeps` INTEGER NOT NULL, `vanishedAlertSent` INTEGER NOT NULL, " +
+                    "PRIMARY KEY(`key`))",
+            )
+        }
+    }

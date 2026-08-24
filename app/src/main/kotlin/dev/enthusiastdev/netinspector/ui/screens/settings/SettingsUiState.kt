@@ -4,6 +4,7 @@ import dev.enthusiastdev.netinspector.core.model.diagnostics.PortSelection
 import dev.enthusiastdev.netinspector.core.model.settings.RssiDisplayUnit
 import dev.enthusiastdev.netinspector.core.model.settings.ThemeMode
 import dev.enthusiastdev.netinspector.data.persistence.preferences.AppSettingsRepository
+import dev.enthusiastdev.netinspector.data.persistence.preferences.AutoScanSettingsRepository
 import dev.enthusiastdev.netinspector.data.persistence.preferences.RetentionSettingsRepository
 
 data class SettingsUiState(
@@ -18,4 +19,7 @@ data class SettingsUiState(
     val alertOnReconnect: Boolean = false,
     val crashReportingEnabled: Boolean = false,
     val hasCrashReports: Boolean = false,
+    val autoScanEnabled: Boolean = false,
+    val autoScanIntervalMinutes: Int = AutoScanSettingsRepository.DEFAULT_INTERVAL_MINUTES,
+    val alertOnLanHostChanges: Boolean = false,
 )

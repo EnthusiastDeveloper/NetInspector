@@ -52,8 +52,17 @@ class DevicesViewModel
          * touching `mergeObservation`: every host from the live sweep gets overlaid with
          * whatever `SavedHostRepository` has for its `nicknameKey()`, or nothing if unset. */
         private val hostsWithNicknames: Flow<List<Host>> =
-            combine(lanDiscoveryRepository.hosts, savedHostRepository.observeNicknames()) { hosts, nicknames ->
-                hosts.map { host -> host.copy(nickname = nicknames[host.nicknameKey()]) }
+            combine(
+                lanDiscoveryRepository.hosts,
+                savedHostRepository.observeNicknames(),
+                savedHostRepository.observeKnownDeviceKeys(),
+            ) { hosts, nicknames, knownDeviceKeys ->
+                hosts.map { host ->
+                    host.copy(
+                        nickname = nicknames[host.nicknameKey()],
+                        isKnownDevice = host.nicknameKey() in knownDeviceKeys,
+                    )
+                }
             }
 
         val uiState =
@@ -129,6 +138,16 @@ class DevicesViewModel
             nickname: String,
         ) {
             viewModelScope.launch { savedHostRepository.setNickname(key, nickname) }
+        }
+
+        /** improvement-ideas.md #24 - marks/unmarks [key] as a "known device," suppressing the
+         * periodic background sweep's vanish/reappear alerts for it (`diffLanPresence`,
+         * `:core:model`). */
+        fun setKnownDevice(
+            key: String,
+            isKnown: Boolean,
+        ) {
+            viewModelScope.launch { savedHostRepository.setKnownDevice(key, isKnown) }
         }
 
         private fun startSweep(confirmShortPrefix: Boolean = false) {

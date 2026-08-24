@@ -37,6 +37,7 @@ import androidx.compose.ui.unit.dp
 import dev.enthusiastdev.netinspector.core.model.lan.Host
 import dev.enthusiastdev.netinspector.core.model.lan.HostConfidence
 import dev.enthusiastdev.netinspector.core.model.lan.nicknameKey
+import dev.enthusiastdev.netinspector.ui.screens.settings.AlertToggleRow
 
 /** design §3 Phase 6 - the Devices detail pane counterpart to [DevicesListPane]'s [HostCard]
  * rows. Looks up the host by address string each recomposition rather than capturing a [Host]
@@ -50,6 +51,7 @@ internal fun DevicesDetailPane(
     onTracerouteHost: (String) -> Unit,
     onPortScanHost: (String) -> Unit,
     onSetNickname: (String, String) -> Unit,
+    onSetKnownDevice: (String, Boolean) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val host = hosts.firstOrNull { it.address.addressString == address }
@@ -63,7 +65,7 @@ internal fun DevicesDetailPane(
         }
         return
     }
-    DevicesDetailContent(host, onPingHost, onTracerouteHost, onPortScanHost, onSetNickname, modifier)
+    DevicesDetailContent(host, onPingHost, onTracerouteHost, onPortScanHost, onSetNickname, onSetKnownDevice, modifier)
 }
 
 @Composable
@@ -73,6 +75,7 @@ internal fun DevicesDetailContent(
     onTracerouteHost: (String) -> Unit,
     onPortScanHost: (String) -> Unit,
     onSetNickname: (String, String) -> Unit,
+    onSetKnownDevice: (String, Boolean) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     LazyColumn(
@@ -80,7 +83,9 @@ internal fun DevicesDetailContent(
         contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        item { DevicesDetailHeader(host, onPingHost, onTracerouteHost, onPortScanHost, onSetNickname) }
+        item {
+            DevicesDetailHeader(host, onPingHost, onTracerouteHost, onPortScanHost, onSetNickname, onSetKnownDevice)
+        }
         host.deviceHint?.let { hint -> item { DevicesDetailHintCard(hint) } }
         item { DevicesDetailIdentificationCard(host) }
         if (host.hostnames.isNotEmpty()) item { DevicesDetailHostnamesCard(host) }
@@ -98,6 +103,7 @@ private fun DevicesDetailHeader(
     onTracerouteHost: (String) -> Unit,
     onPortScanHost: (String) -> Unit,
     onSetNickname: (String, String) -> Unit,
+    onSetKnownDevice: (String, Boolean) -> Unit,
 ) {
     val context = LocalContext.current
     var showNicknameEditor by remember { mutableStateOf(false) }
@@ -125,24 +131,19 @@ private fun DevicesDetailHeader(
                 },
         )
         ConfidenceLabel(host.confidence)
-        // design §3 Phase 6 - deep links into the diagnostic tools, pre-filled. Every action
-        // here is a no-op the tool would just resolve straight back to itself for isSelf, so
-        // the whole row is skipped rather than offered as dead-feeling actions.
+        // improvement-ideas.md #24 - "this host is expected to come and go" (sleep, roaming
+        // off the LAN and back), so the periodic background sweep's vanish/reappear alerts
+        // skip it. Meaningless for the always-present self entry, same gate as the diagnostic
+        // actions below.
         if (!host.isSelf) {
-            FlowRow(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier.padding(top = 8.dp),
-            ) {
-                Button(onClick = { onPingHost(host.address.addressString) }) {
-                    Text("Ping")
-                }
-                OutlinedButton(onClick = { onTracerouteHost(host.address.addressString) }) {
-                    Text("Traceroute")
-                }
-                OutlinedButton(onClick = { onPortScanHost(host.address.addressString) }) {
-                    Text("Scan ports")
-                }
-            }
+            AlertToggleRow(
+                label = "Known device (no vanish/reappear alerts)",
+                checked = host.isKnownDevice,
+                onCheckedChange = { onSetKnownDevice(host.nicknameKey(), it) },
+            )
+        }
+        if (!host.isSelf) {
+            DevicesDetailActions(host.address.addressString, onPingHost, onTracerouteHost, onPortScanHost)
         }
     }
     if (showNicknameEditor) {
@@ -154,6 +155,33 @@ private fun DevicesDetailHeader(
             },
             onDismiss = { showNicknameEditor = false },
         )
+    }
+}
+
+/** design §3 Phase 6 - deep links into the diagnostic tools, pre-filled. Split out of
+ * [DevicesDetailHeader] purely to keep that function's length in check. Every action here is a
+ * no-op the tool would just resolve straight back to itself for [Host.isSelf], so the caller
+ * skips the whole row for that case rather than offering dead-feeling actions. */
+@Composable
+private fun DevicesDetailActions(
+    address: String,
+    onPingHost: (String) -> Unit,
+    onTracerouteHost: (String) -> Unit,
+    onPortScanHost: (String) -> Unit,
+) {
+    FlowRow(
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        modifier = Modifier.padding(top = 8.dp),
+    ) {
+        Button(onClick = { onPingHost(address) }) {
+            Text("Ping")
+        }
+        OutlinedButton(onClick = { onTracerouteHost(address) }) {
+            Text("Traceroute")
+        }
+        OutlinedButton(onClick = { onPortScanHost(address) }) {
+            Text("Scan ports")
+        }
     }
 }
 
