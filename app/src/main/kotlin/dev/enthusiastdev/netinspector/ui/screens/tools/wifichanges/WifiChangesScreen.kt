@@ -124,7 +124,10 @@ private fun SessionPickerDialog(
         title = { Text("Choose a scan") },
         text = {
             if (sessions.isEmpty()) {
-                Text("No scan history yet - visit the Wi-Fi tab to start collecting it.")
+                Text(
+                    "No scan history yet - visit the Wi-Fi tab, or turn on \"Scan " +
+                        "automatically in background\" in Settings.",
+                )
             } else {
                 LazyColumn(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     items(sessions, key = { it.id }) { session ->
