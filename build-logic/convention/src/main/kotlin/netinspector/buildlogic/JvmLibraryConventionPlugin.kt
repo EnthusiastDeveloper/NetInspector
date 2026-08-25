@@ -27,6 +27,7 @@ class JvmLibraryConventionPlugin : Plugin<Project> {
 
             enforceModuleBoundaries()
             configureStaticAnalysis()
+            configureBenchmarks(baseTestTaskName = "test")
         }
     }
 }

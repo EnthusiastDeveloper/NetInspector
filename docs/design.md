@@ -1066,6 +1066,31 @@ third exists purely to validate that the API 33 floor is real rather than theore
 the app is never installed below 35, consider raising `minSdk` and deleting the last
 version branch (§6.2).
 
+**Benchmark suite (dev-facing, non-blocking)** - improvement-ideas.md #32. §8.2's active
+sweep is parallel and timing-sensitive enough (64/32-way concurrency-limited passes, a
+map-copy-per-observation merge in the hot path) that a regression there is easy to introduce
+and easy to miss in an ordinary unit test, which only checks correctness, not cost. A small
+hand-rolled harness (`Benchmark.kt`, duplicated in `:core:common`, `:core:model`, and
+`:data:lan` - ADR-0010 covers why not JMH/kotlinx-benchmark) times three scenarios at design
+§12's reference /24 scale (254 addresses):
+
+| Module | Benchmark class | What it measures |
+|---|---|---|
+| `:core:common` | `IcmpPacketBenchmark` | ICMP echo request/reply framing (parsing) - the hot path of every pass 1/2 probe |
+| `:core:model` | `HostMergeBenchmark` | `mergeObservation`/`finalizeSweep` (scoring/merge) and `Host.primaryHostname` (precedence) over a full sweep's worth of observations |
+| `:data:lan` | `HostSweeperBenchmark` | `HostSweeper.sweep`'s three-pass concurrency-limited scheduling, with `IcmpSweepProbe`/`TcpSweepProbe` mocked (design C-07 - real ICMP needs `android.system.Os`, unavailable on the JVM) |
+
+Benchmarks live as ordinary `*Benchmark.kt` classes in each module's `src/test`, but a
+`build-logic` convention (`configureBenchmarks`) splits them into a separate `benchmark`
+Gradle task, excluded from `test` - a wall-clock number is meaningless once mixed into the
+same JVM run as unrelated `@Test` assertions, and the blocking build gate must stay fast and
+deterministic regardless. `scripts/run-benchmarks.sh` runs the suite and writes
+`benchmarks/current.csv`; `scripts/compare-benchmarks.sh` diffs it against the committed
+`benchmarks/baseline.csv` and prints a `::warning::` annotation for a >50% median regression,
+without ever failing the build (ADR-0010). CI wires this in as a separate,
+`continue-on-error: true` job in `.github/workflows/ci.yml` - informational only, exactly as
+improvement-ideas.md #32 asks for.
+
 ---
 
 ## 13. Known degradations

@@ -399,6 +399,8 @@ Simple throughput test correlated against RSSI/channel.
 ---
 
 ## 32. Benchmark/perf test suite for the LAN sweep pipeline
+**Status:** Implemented (PR #20, open for review)
+
 Dev-facing only - given how parallel and timing-sensitive host discovery is, a benchmark
 harness would catch regressions, but it delivers no direct user value.
 
