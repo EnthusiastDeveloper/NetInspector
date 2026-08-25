@@ -1,4 +1,4 @@
-# ADR-0009: Hand-rolled wall-clock benchmark harness, not JMH or kotlinx-benchmark
+# ADR-0010: Hand-rolled wall-clock benchmark harness, not JMH or kotlinx-benchmark
 
 Status: Accepted
 

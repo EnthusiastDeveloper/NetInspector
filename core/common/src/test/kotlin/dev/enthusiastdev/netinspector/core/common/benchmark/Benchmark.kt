@@ -5,7 +5,7 @@ import java.io.File
 /**
  * improvement-ideas.md #32 - a minimal wall-clock benchmark harness for the LAN sweep
  * pipeline's pure logic. Deliberately hand-rolled rather than JMH or kotlinx-benchmark: see
- * docs/adr/0009-hand-rolled-benchmark-harness.md for why. This is intentionally duplicated
+ * docs/adr/0010-hand-rolled-benchmark-harness.md for why. This is intentionally duplicated
  * (not shared via a project dependency) in every module with a `*Benchmark.kt` file -
  * `:core:model` cannot depend on any other project at all (design §2.1), so a shared
  * `testFixtures` artifact isn't an option for the one module that most needs this, and three

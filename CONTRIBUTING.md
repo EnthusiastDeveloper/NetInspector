@@ -55,7 +55,7 @@ documentation - everywhere, not just where the `commit-msg` hook checks:
   [`.github/workflows/ci.yml`](.github/workflows/ci.yml)) must pass on a
   branch that's up to date with `main`. The separate `benchmark` check
   (LAN sweep pipeline perf, `scripts/run-benchmarks.sh`) is informational
-  only and never blocks a merge - see docs/adr/0009.
+  only and never blocks a merge - see docs/adr/0010.
 - At least one approving review.
 - No merge commits - `main`'s history is linear, so PRs are merged via
   squash or rebase (both enabled; merge commits are disabled at the repo

@@ -1071,7 +1071,7 @@ sweep is parallel and timing-sensitive enough (64/32-way concurrency-limited pas
 map-copy-per-observation merge in the hot path) that a regression there is easy to introduce
 and easy to miss in an ordinary unit test, which only checks correctness, not cost. A small
 hand-rolled harness (`Benchmark.kt`, duplicated in `:core:common`, `:core:model`, and
-`:data:lan` - ADR-0009 covers why not JMH/kotlinx-benchmark) times three scenarios at design
+`:data:lan` - ADR-0010 covers why not JMH/kotlinx-benchmark) times three scenarios at design
 §12's reference /24 scale (254 addresses):
 
 | Module | Benchmark class | What it measures |
@@ -1087,7 +1087,7 @@ same JVM run as unrelated `@Test` assertions, and the blocking build gate must s
 deterministic regardless. `scripts/run-benchmarks.sh` runs the suite and writes
 `benchmarks/current.csv`; `scripts/compare-benchmarks.sh` diffs it against the committed
 `benchmarks/baseline.csv` and prints a `::warning::` annotation for a >50% median regression,
-without ever failing the build (ADR-0009). CI wires this in as a separate,
+without ever failing the build (ADR-0010). CI wires this in as a separate,
 `continue-on-error: true` job in `.github/workflows/ci.yml` - informational only, exactly as
 improvement-ideas.md #32 asks for.
 
