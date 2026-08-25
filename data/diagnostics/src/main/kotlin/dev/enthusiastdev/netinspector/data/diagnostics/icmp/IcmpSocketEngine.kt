@@ -10,6 +10,7 @@ import dev.enthusiastdev.netinspector.core.model.diagnostics.PingProbeResult
 import dev.enthusiastdev.netinspector.core.model.diagnostics.PingTier
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import java.io.FileDescriptor
 import java.io.IOException
 import java.net.Inet4Address
 import java.net.InetSocketAddress
@@ -52,7 +53,7 @@ class IcmpSocketEngine
             withContext(Dispatchers.IO) {
                 val fd =
                     try {
-                        Os.socket(OsConstants.AF_INET, OsConstants.SOCK_DGRAM, OsConstants.IPPROTO_ICMP)
+                        openSocket(timeoutMs, ttl)
                     } catch (e: ErrnoException) {
                         return@withContext PingProbeResult.Error(
                             sequence,
@@ -60,16 +61,54 @@ class IcmpSocketEngine
                             "socket() failed: errno ${e.errno}",
                         )
                     }
-
                 try {
-                    Os.setsockoptInt(fd, OsConstants.IPPROTO_IP, OsConstants.IP_TTL, ttl)
-                    Os.setsockoptTimeval(
-                        fd,
-                        OsConstants.SOL_SOCKET,
-                        OsConstants.SO_RCVTIMEO,
-                        StructTimeval.fromMillis(timeoutMs.toLong()),
-                    )
+                    probeOnSocket(fd, address, sequence, payloadSize)
+                } finally {
+                    closeSocket(fd)
+                }
+            }
 
+        /**
+         * Opens and configures a socket without sending anything - split out of [probe] so a
+         * caller making many probes in quick succession (the LAN throughput test's burst) pays
+         * the `socket()`/`setsockopt()` cost once rather than per packet. The caller owns the
+         * returned descriptor and must [closeSocket] it.
+         */
+        @Throws(ErrnoException::class)
+        fun openSocket(
+            timeoutMs: Int = 1_000,
+            ttl: Int = 64,
+        ): FileDescriptor {
+            val fd = Os.socket(OsConstants.AF_INET, OsConstants.SOCK_DGRAM, OsConstants.IPPROTO_ICMP)
+            try {
+                Os.setsockoptInt(fd, OsConstants.IPPROTO_IP, OsConstants.IP_TTL, ttl)
+                Os.setsockoptTimeval(
+                    fd,
+                    OsConstants.SOL_SOCKET,
+                    OsConstants.SO_RCVTIMEO,
+                    StructTimeval.fromMillis(timeoutMs.toLong()),
+                )
+            } catch (e: ErrnoException) {
+                runCatching { Os.close(fd) }
+                throw e
+            }
+            return fd
+        }
+
+        fun closeSocket(fd: FileDescriptor) {
+            runCatching { Os.close(fd) }
+        }
+
+        /** One echo request/reply on an already-open [fd] (see [openSocket]) - the per-packet
+         * half of what [probe] used to do inline. */
+        suspend fun probeOnSocket(
+            fd: FileDescriptor,
+            address: Inet4Address,
+            sequence: Int,
+            payloadSize: Int = 32,
+        ): PingProbeResult =
+            withContext(Dispatchers.IO) {
+                try {
                     val payload = ByteArray(payloadSize) { it.toByte() }
                     val identifier = Process.myPid() and 0xFFFF
                     val request = IcmpPacket.buildEchoRequest(identifier, sequence, payload)
@@ -91,8 +130,6 @@ class IcmpSocketEngine
                     }
                 } catch (e: IOException) {
                     PingProbeResult.Error(sequence, PingTier.ICMP_SOCKET, e.message ?: "I/O error")
-                } finally {
-                    runCatching { Os.close(fd) }
                 }
             }
 
