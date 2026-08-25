@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Marks the top of main as the current release candidate: builds a signed release APK from
 # it, moves a floating `release-candidate` tag to that commit, and - for any device serials
-# given - installs it fresh for manual device-matrix testing (docs/design.md §12).
+# given - installs it fresh for manual device-matrix testing (docs/testing.md §6).
 #
 # This is deliberately separate from docs/releasing.md's actual release flow: tagging
 # release-candidate never publishes anything and is meant to be moved repeatedly as main

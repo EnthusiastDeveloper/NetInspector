@@ -43,12 +43,6 @@ private const val LABEL_OFFSET_DP = 5f
  * [networkMapRingSpacingPx]. */
 private const val MIN_RING_SPACING_FACTOR = 5f
 
-/** Zooming out below 1x is what makes an oversized map usable: the default view is spaced for
- * legibility rather than for fitting, so "show me everything at once" has to be a gesture the
- * user can reach. */
-private const val MIN_SCALE = 0.3f
-private const val MAX_SCALE = 4f
-
 // Filled discs at full opacity turn a dense map into a wall of solid color where overlapping
 // nodes are indistinguishable. A translucent fill with a firmer outline keeps each node's own
 // edge visible where two of them touch, and lets the spoke lines read through.
@@ -91,8 +85,7 @@ fun NetworkMapGraph(
     onNodeClick: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    var scale by remember { mutableStateOf(1f) }
-    var offset by remember { mutableStateOf(Offset.Zero) }
+    var viewport by remember { mutableStateOf(NetworkMapViewport()) }
     var containerSize by remember { mutableStateOf(IntSize.Zero) }
     val density = LocalDensity.current
     val contentRadiusPx =
@@ -107,24 +100,17 @@ fun NetworkMapGraph(
                 .onSizeChanged { containerSize = it }
                 .pointerInput(contentRadiusPx) {
                     detectTransformGestures { _, pan, zoom, _ ->
-                        val newScale = (scale * zoom).coerceIn(MIN_SCALE, MAX_SCALE)
-                        // Panning is bounded by how far the drawing actually extends past the
-                        // viewport, so an oversized map can be dragged around while one that
-                        // already fits stays put.
-                        val maxOffsetX =
-                            (contentRadiusPx * newScale - containerSize.width / 2f).coerceAtLeast(0f)
-                        val maxOffsetY =
-                            (contentRadiusPx * newScale - containerSize.height / 2f).coerceAtLeast(0f)
-                        offset =
-                            Offset(
-                                x = (offset.x + pan.x).coerceIn(-maxOffsetX, maxOffsetX),
-                                y = (offset.y + pan.y).coerceIn(-maxOffsetY, maxOffsetY),
-                            )
-                        scale = newScale
+                        viewport = viewport.transformedBy(pan, zoom, contentRadiusPx, containerSize)
                     }
                 },
     ) {
-        NetworkMapCanvas(hub = hub, spokes = spokes, onNodeClick = onNodeClick, scale = scale, offset = offset)
+        NetworkMapCanvas(
+            hub = hub,
+            spokes = spokes,
+            onNodeClick = onNodeClick,
+            scale = viewport.scale,
+            offset = viewport.offset,
+        )
     }
 }
 

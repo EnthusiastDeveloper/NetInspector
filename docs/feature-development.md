@@ -26,8 +26,8 @@ A feature starts from a direct request, or from an item in one of the ranked bac
 (`docs/improvement-ideas.md`, `docs/device-identification-ideas.md`, `docs/open-items.md`).
 Either way, place it in the architecture first: which stage of the pipeline does it belong
 to (see `docs/design.md` §8.2), does it touch a fixed decision recorded in `docs/adr/`, does
-it change a testing matrix row (§12). Restate scope and flag open questions before writing
-code.
+it change a row in `docs/testing.md`'s device matrix or corner-case checklist. Restate scope
+and flag open questions before writing code.
 
 ### 2. Design
 
@@ -57,13 +57,16 @@ Write the code. Keep changes scoped to what the plan called for.
 
 ### 4. Test coverage
 
-Unit tests land with the code that needs them, not after. `docs/design.md` §12 lists what
+Unit tests land with the code that needs them, not after. `docs/testing.md` lists what
 belongs in JVM unit tests versus instrumented tests versus the manual device matrix -
 golden-file parser tests are called out there as the highest-value tests in the project.
-§12's "Boundary and negative-path coverage" list is a checklist, not just prose: if the
+Its "Boundary and negative-path coverage" list is a checklist, not just prose: if the
 diff touches a clamped/bounded parameter, a throttle or quota gate, or an async action with
 a minimum-duration UI affordance, the boundary or the non-happy-path branch needs a test of
-its own, not just the typical-case path.
+its own, not just the typical-case path. If the diff touches a gesture-capable control
+(a `pointerInput` handler, a pull-to-refresh), check `docs/testing.md` §4 for whether its
+math is already extracted and tested the way `AxisMapper`/`AxisViewport` are - if not, that
+extraction is part of the same change, not a follow-up.
 
 **Changing code that existing tests already cover updates those tests, not just the code.**
 A test left asserting stale behaviour is worse than no test - it passes while lying about
@@ -82,51 +85,30 @@ Runs `ktlintCheck detekt test assembleDebug` - the same steps, same order, as
 
 ### 6. UI validation
 
-Split exactly the way `docs/design.md` §12's device matrix splits it, because the emulator
-has no Wi-Fi radio (ADR `C-13`):
+The full process - the scriptable layout sweep, the gesture pass, the corner-case
+checklist, and the state-survival checks - lives in `docs/testing.md` §7. Quick summary,
+split the way the device matrix splits it because the emulator has no Wi-Fi radio (ADR
+`C-13`):
 
-- **Layout** (window size classes, fold posture, rotation) needs no radio and is fully
-  scriptable:
-
-  ```bash
-  # Boot a layout AVD (NetInspector_Resizable or NetInspector_Fold76) and get its serial
-  serial=$(./scripts/ui-matrix.sh boot NetInspector_Resizable)
-  ./scripts/ui-matrix.sh install "$serial" app/build/outputs/apk/debug/app-debug.apk
-  # Navigate to the screen under test, then, for that one screen:
-  ./scripts/ui-matrix.sh sweep "$serial" /tmp/ui-matrix wifi-screen
-  ./scripts/ui-matrix.sh kill "$serial"
-  ```
-
-  `sweep` captures one screenshot per rotation (0/90/180/270), per width size class
-  (compact/medium/expanded, computed from the device's actual density), and - on a
-  foldable-capable target - per posture (closed/half-opened/opened), then restores every
-  override. Run it once per screen **family** the change touches - every screen reachable
-  from the one the diff edits, not only the specific sub-view the plan called out - review
-  the resulting screenshots, repeat for the next screen. This replaces tapping through each
-  combination live over adb.
-
-  Sweep by blast radius, not by diff lines: three bugs shipped in a Wi-Fi screen change that
-  never touched the code they lived in, because that code sat in the same screen family but
-  outside the specific sub-view the plan named, so it was never navigated to during
-  validation. A change to any file under a screen's package puts the whole screen back in
-  scope for this step.
-
-  Reviewing the screenshots is also where a missing affordance gets caught, not just a
-  layout mistake - check the screen actually exposes, visibly, every capability
-  `docs/design.md` claims for it. A gesture-only action (pull-to-refresh, a hidden swipe)
-  with no visible control is a discoverability bug even when it works and even when nothing
-  overflows.
-
-- **Anything radio-dependent** (scanning, RSSI, ping, real host data) needs a real device.
-  **Ask which physical device to use before touching one**, unless the request already
-  named it - `adb devices -l` lists what's attached, but a listed device can already be in
-  use by another agent or the user themselves, and wireless-ADB endpoints drift between
-  sessions. Never assume a remembered address is still free.
-
-  A rotation check belongs here too: an emulator's programmatic rotate can recreate the
-  Activity differently than a real device's sensor-driven rotation does, so state that
-  should survive rotation (see any screen-level `remember` versus `rememberSaveable`) needs
-  one real rotate-and-back on physical hardware, not just the emulator sweep above.
+- **Layout** needs no radio and is fully scriptable via `scripts/ui-matrix.sh sweep`,
+  run once per screen **family** the diff touches (every screen reachable from the one
+  edited, not only the specific sub-view the plan called out - see `docs/testing.md` §7 for
+  why blast radius matters more than diff lines here). Reviewing the screenshots is also
+  where a missing affordance gets caught: check the screen actually exposes, visibly, every
+  capability `docs/design.md` claims for it - a gesture-only action with no visible control
+  is a discoverability bug even when it works.
+- **The gesture pass** (pinch-zoom, pan, tap, pull-to-refresh - `docs/testing.md` §4's
+  table) and **anything radio-dependent** (scanning, RSSI, ping, real host data,
+  `docs/testing.md` §5's corner-case checklist) both need a real device. **Ask which
+  physical device to use before touching one**, unless the request already named it -
+  `adb devices -l` lists what's attached, but a listed device can already be in use by
+  another agent or the user themselves, and wireless-ADB endpoints drift between sessions.
+  Never assume a remembered address is still free.
+- **State survival** is two separate checks, not one: rotation (an emulator's programmatic
+  rotate can recreate the Activity differently than a real device's sensor-driven rotation
+  does, so this needs one real rotate-and-back on physical hardware) and process death (a
+  different guarantee - see `docs/testing.md` §7 for how to check it and why
+  `stateIn(WhileSubscribed)` alone doesn't cover it).
 
 ### 7. Bug-fix cycles
 

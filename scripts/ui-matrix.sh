@@ -4,10 +4,11 @@
 # in a plain folder tree for a human or Claude to review afterward - no live tap-by-tap
 # navigation needed for the orientation/size/posture axis itself.
 #
-# Background: design.md §12's device matrix splits testing in two: physical devices for
-# anything radio-dependent (C-13 - emulators have no Wi-Fi), and layout (window size
-# classes, §11.2 fold posture) on either. This script only ever touches the layout axis;
-# it never drives Wi-Fi scanning, ping, or anything else feature-specific.
+# Background: docs/testing.md's device matrix (§6) splits testing in two: physical devices
+# for anything radio-dependent (C-13 - emulators have no Wi-Fi), and layout (window size
+# classes, design.md §11.2 fold posture) on either. This script only ever touches the
+# layout axis; it never drives Wi-Fi scanning, ping, gestures, or anything else
+# feature-specific - see docs/testing.md §4 and §7 for the gesture pass this doesn't cover.
 #
 # Usage:
 #   scripts/ui-matrix.sh devices

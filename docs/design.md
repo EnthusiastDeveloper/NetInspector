@@ -1003,81 +1003,14 @@ requires explicit acknowledgement. Stored in DataStore. Not skippable, not repea
 
 ## 12. Testing strategy
 
-**JVM unit tests** (`:core:model`, `:core:common`, parsers):
-
-- Frequency ↔ channel conversion across all three bands and both special cases.
-- Channel span computation for every width constant including 80+80 and 320 MHz.
-- Overlap and interference scoring, including the linear-power conversion.
-- Security type set → display label, covering WPA2/WPA3 transition and OWE.
-- Subnet math: prefix enumeration, network/broadcast, /31 and /32 edge cases.
-- **Golden-file parser tests** for ping and traceroute output from both toybox and
-  iputils, and for SSDP and NetBIOS responses. These are the highest-value tests in the
-  project - the parsers are where silent inaccuracy hides.
-- ICMP checksum and packet construction against known-good byte vectors.
-- **A ViewModel action handler that gates a UI-visible state flag** (a refresh spinner, a
-  disabled button, a countdown): every outcome branch the underlying call can return needs
-  its own test, not just the happy path. `WifiViewModel.onRefresh` shipped a bug where the
-  spinner flickered without animating specifically on the throttled/failed branches, and
-  those branches had never been tested at all (`WifiViewModelTest`).
-- **The governor or gate a bounded resource sits behind** (a throttle, a quota, a rate
-  limiter) needs direct tests of its own, not just indirect coverage through whatever calls
-  it. `ScanGovernor` is design §6.1's throttle and had none - `ScanGovernorTest` now covers
-  the quota arithmetic, the reserved-token carve-out for user-initiated refreshes, and the
-  specific property that made the above `onRefresh` bug possible: a throttled
-  `requestScan` returns the moment it decides to throttle, never after waiting out the
-  retry window.
-
-**Boundary and negative-path coverage.** A feature that clamps, throttles, or bounds
-something needs the boundary itself under test, not just typical mid-range values - the
-crash and the stuck-spinner bug both fixed alongside this section came from exactly this
-gap. Three recurring shapes in this codebase:
-
-- **A clamped/bounded interactive parameter** - anything with a `MAX_`/`MIN_` constant,
-  such as the channel graph's `MAX_AXIS_ZOOM`. Test at the bound, not only in the middle of
-  the range, and test whatever *consumes* the bounded value downstream, not only the
-  function that does the clamping - `AxisViewport`'s zoom-ceiling test already covered the
-  clamp itself, but nothing tested that `AxisMapper.xPx` stays consumable by the drawing
-  code once a curve sits outside a zoomed-in viewport, which is exactly where the crash was
-  (`AxisMapperTest`, `ChannelOccupancyGraphRenderTest`).
-- **A throttle, quota, or cooldown gate.** Test the denied path with the same care as the
-  granted one, and confirm what the *caller* can assume about it - in particular, whether a
-  denial can return before any real time has passed. A caller that assumes a gate always
-  takes time to say no will misbehave the moment it doesn't (`ScanGovernorTest`).
-- **An async action with a minimum-duration UI affordance** (a spinner sized to "how long
-  this usually takes", not to the actual result). Test every outcome the underlying call can
-  return, since the fast, unhappy outcomes are exactly where a hardcoded duration assumption
-  breaks (`WifiViewModelTest`).
-
-**Instrumented tests**: `ACCESS_FINE_LOCATION` permission state machine (granted, denied,
-permanently denied), Room migrations,
-vendor lookup correctness and performance - including longest-prefix precedence, where a
-36-bit entry must win over a 24-bit entry covering the same address -
-`NetworkCallback` lifecycle. **Compose `Canvas`/`DrawScope` rendering logic** belongs here
-too, not only in the manual screenshot sweep below: a pure-math unit test on the values fed
-into a draw call (an `AxisMapper`, a viewport transform) cannot prove the draw call itself
-survives those values, since `DrawScope` extension functions need a real composition to
-run. `ChannelOccupancyGraphRenderTest` renders the graph directly rather than only
-screenshotting it, specifically so a crash - not just a layout mistake - gets caught by a
-test rather than by a user's phone.
-
-**Manual device matrix** - physical devices only, since the emulator cannot scan Wi-Fi at
-all (C-13). The primary targets are the two owned Android 15 devices; the third row is
-optional but is the only way to catch OEM divergence (C-14) before it bites.
-
-| Device class | API | Specifically tests |
-|---|---|---|
-| Primary device | 35 | Reference behaviour, FGS typing, 6 GHz if available, both spikes |
-| Secondary device | 35 | Cross-checks the spikes; catches per-device kernel differences |
-| Resizable emulator | 33-35 | **Layout only**: window size classes, book and tabletop posture. No radio, so no scanning, sweeping or diagnostics |
-| Third-party OEM *(optional)* | 33-34 | The API 33 floor itself, vendor Wi-Fi stack, aggressive background limits |
-| Physical foldable *(one session)* | any | Real hinge dimensions and aspect ratio against the emulator-developed layouts |
-
-The two owned devices are the deployment targets, so they define "working". The resizable
-emulator is the exception to C-13: layout needs no Wi-Fi radio, so it is a fully valid
-test surface for everything in §11.2 and nothing else. The optional
-third exists purely to validate that the API 33 floor is real rather than theoretical - if
-the app is never installed below 35, consider raising `minSdk` and deleting the last
-version branch (§6.2).
+The full test plan - JVM unit tests, boundary/negative-path coverage, instrumented tests,
+the UI interaction and gesture matrix, the per-capability corner-case checklist, the
+manual device matrix, and the UI validation process - lives in
+[`docs/testing.md`](testing.md), not here, so there is one source of truth for both
+functional and UI validation. Read it before writing tests for a change or planning a
+validation pass; the sections above (§6, §8, §9, §11.3) remain the source for what
+*correct* behavior looks like for each capability, which `docs/testing.md` cross-references
+rather than repeats.
 
 **Benchmark suite (dev-facing, non-blocking)** - improvement-ideas.md #32. §8.2's active
 sweep is parallel and timing-sensitive enough (64/32-way concurrency-limited passes, a
