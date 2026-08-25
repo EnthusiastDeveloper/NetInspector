@@ -387,14 +387,33 @@ networking focus.
 ---
 
 ## 31. Speed test integration
-Simple throughput test correlated against RSSI/channel.
+**Status:** Implemented, rescoped
 
-**Requirements:**
-- A transfer endpoint (self-hosted, since using a third-party speed-test API cuts against
-  the app's no-accounts/no-third-party-service stance)
-- Throughput measurement + calculation
-- Correlation UI against `WifiScanRepository` data
-- New tool screen
+Built as a **LAN-only throughput test**, not an internet speed test. The original framing
+below called for a transfer endpoint - self-hosted, to avoid a third-party speed-test API -
+but a self-hosted endpoint is still infrastructure this project doesn't operate and the
+app's user doesn't have, which cuts against the same no-third-party-service positioning just
+as much as a commercial API would. See
+[ADR-0009](adr/0009-lan-throughput-icmp-burst-estimate.md) for the full reasoning and what
+was built instead: throughput to a host already on the user's own LAN (the gateway, or any
+discovered device), estimated from a burst of concurrent ICMP echo probes - no server
+component anywhere, reusing the same unprivileged ICMP socket mechanism `PingRepository`
+already relies on (design §9.1).
+
+**What shipped:**
+- LAN throughput test tool screen (`ui/screens/tools/throughput`), reachable from the Tools
+  grid and, pre-filled, from a "LAN throughput" button on the Devices detail screen alongside
+  Ping/Traceroute/Scan ports
+- Free-text host/IP field plus a dropdown of known devices from the current sweep
+  (`LanDiscoveryRepository.hosts`)
+- `LanThroughputRepository` (`:data:diagnostics`) - concurrent ICMP echo burst, round-trip
+  Mbps estimate, packet loss, peak sample
+- Correlation card: RSSI, channel, channel width and the count of other visible APs sharing
+  that channel, captured from `ConnectionRepository`/`WifiScanRepository` at test start and
+  end
+- Copy throughout (tool label, on-screen disclaimer, ADR) explicitly signals "local network
+  only, not your internet connection" - never bare "Speed test"
+- Not built: a bufferbloat-style idle-vs-loaded latency score - that's #30, a separate item
 
 ---
 

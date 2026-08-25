@@ -11,8 +11,9 @@ accounts, no telemetry, no analytics.
   flags a known access point whose security, standard, or channel changes between scans.
 - **LAN discovery** - enumerates hosts on the connected subnet and identifies them via
   mDNS, SSDP and vendor OUI lookup, with a confidence label on each guess.
-- **Diagnostics** - ping, traceroute, reverse DNS, and port scanning, launchable directly
-  from a discovered host's detail screen.
+- **Diagnostics** - ping, traceroute, reverse DNS, port scanning, and a LAN throughput
+  test (local network only, not an internet speed test), launchable directly from a
+  discovered host's detail screen.
 - **History & export** - scan and diagnostic runs are persisted locally and can be
   exported to CSV/JSON.
 - **Automatic background scanning** - opt-in periodic Wi-Fi scans so history builds up
