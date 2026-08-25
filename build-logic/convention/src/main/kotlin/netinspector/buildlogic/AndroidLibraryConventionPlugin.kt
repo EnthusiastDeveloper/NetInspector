@@ -26,6 +26,10 @@ class AndroidLibraryConventionPlugin : Plugin<Project> {
 
             enforceModuleBoundaries()
             configureStaticAnalysis()
+            configureBenchmarks(
+                baseTestTaskName = "testDebugUnitTest",
+                otherTestTaskNamesToExclude = listOf("testReleaseUnitTest"),
+            )
         }
     }
 }

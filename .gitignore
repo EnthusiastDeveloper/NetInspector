@@ -15,3 +15,7 @@ keystore.properties
 *.keystore
 
 .DS_Store
+
+# improvement-ideas.md #32 - freshly generated on every scripts/run-benchmarks.sh run;
+# benchmarks/baseline.csv is the only benchmark result committed.
+benchmarks/current.csv

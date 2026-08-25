@@ -34,6 +34,7 @@ change of mind - write a new ADR that supersedes it and link both directions.
 | [0006](0006-priority-order-accuracy-battery-compatibility-speed.md) | Priority order: accuracy > battery > device compatibility > implementation speed |
 | [0007](0007-adaptive-layout-from-day-one.md) | Window size classes and fold posture built in from day one |
 | [0008](0008-reference-network-baseline.md) | Reference network baseline: 192.168.x.0/24 |
+| [0009](0009-hand-rolled-benchmark-harness.md) | Hand-rolled wall-clock benchmark harness, not JMH or kotlinx-benchmark |
 
 ## Platform constraints
 

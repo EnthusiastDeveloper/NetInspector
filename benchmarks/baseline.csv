@@ -1,0 +1,8 @@
+module,benchmark,iterations,min_ms,median_ms,p95_ms,max_ms
+:core:common,IcmpPacket.buildEchoRequest.32b,20,0.004220,0.004476,0.005900,0.018815
+:core:common,IcmpPacket.parseEchoReply.32b,20,0.000537,0.000607,0.000830,0.000978
+:core:common,IcmpPacket.internetChecksum.32b,20,0.001038,0.001091,0.001319,0.002427
+:core:model,HostMerge.mergeObservation.sweepOf254,10,1.013413,1.119591,1.310770,1.410185
+:core:model,Host.primaryHostname.allSourcesPopulated,20,0.000618,0.000744,0.000939,0.002250
+:core:model,HostMerge.finalizeSweep.hosts254,20,0.081774,0.085397,0.116584,0.258212
+:data:lan,HostSweeper.sweep.reference24,10,12.372369,13.038485,14.352694,14.758590
