@@ -322,6 +322,46 @@ existing tool ViewModels; no new business logic required.
 
 ---
 
+## 20. Bottom navigation label wraps mid-word at the current six-destination width
+
+**Status: confirmed bug, not started.**
+
+Found running `docs/testing.md`'s new corner-case checklist against a physical device
+(Galaxy S21 Ultra, 2026-08-25). With six bottom-nav destinations (Home, Connection, Wi-Fi,
+Devices, Tools, Settings), the "Connection" and "Settings" labels wrap mid-word
+("Connecti"/"on", "Setting"/"s") in the default portrait compact layout - not just at an
+unusual font scale. It reproduces at the system default font scale and gets visibly worse
+at a large font scale (1.3x), confirmed via `adb shell settings put system font_scale 1.3`.
+Present in both dark and light theme, so it's a layout/sizing issue, not a color-contrast
+one.
+
+**Action**: shorten the two longest labels (e.g. "Conn." is a poor fix; consider whether
+`NavigationSuiteScaffold` has a two-line label mode, or whether six destinations at
+compact width needs `maxLines`/`softWrap` tuning, or a shorter label string) and re-verify
+with `scripts/ui-matrix.sh sweep` plus a real-device large-font-scale check before closing.
+
+---
+
+## 21. HTTP inspector leaks a raw exception message for TLS failures
+
+**Status: confirmed bug, not started.**
+
+Found in the same pass as item 20. Inspecting an HTTPS URL whose certificate isn't
+trusted (reproduced against a LAN device's own self-signed HTTPS port) surfaces the raw
+`java.security.cert.CertPathValidatorException: Trust anchor for certification path not
+found.` string, both live on the HTTP inspector screen and persisted verbatim into
+Diagnostic history. Every other tool in the app (Ping's TCP-RTT fallback, DNS's
+NXDOMAIN/malformed-response split) follows `design.md` §11.3's "degraded modes are named"
+convention with a human-readable label instead of a raw stack-trace-style string; HTTP
+inspector is the one tool that doesn't.
+
+**Action**: catch `CertPathValidatorException` (and likely `SSLHandshakeException`
+generally) in the HTTP inspector's request path and map it to a named degraded-mode
+message (e.g. "Certificate not trusted") consistent with how the other tools present
+failure, per `docs/testing.md` §5's HTTP inspector row.
+
+---
+
 ## Not an open item: MAC address / OUI vendor lookup for LAN hosts
 
 Recorded here only to head off it being re-raised as a gap. This is a permanent,
