@@ -387,7 +387,7 @@ networking focus.
 ---
 
 ## 31. Speed test integration
-**Status:** Implemented, rescoped
+**Status:** Implemented, rescoped (PR #21, open for review)
 
 Built as a **LAN-only throughput test**, not an internet speed test. The original framing
 below called for a transfer endpoint - self-hosted, to avoid a third-party speed-test API -
