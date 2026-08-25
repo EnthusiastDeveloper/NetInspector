@@ -12,6 +12,8 @@ import dev.enthusiastdev.netinspector.data.diagnostics.icmp.DefaultPingRepositor
 import dev.enthusiastdev.netinspector.data.diagnostics.icmp.PingRepository
 import dev.enthusiastdev.netinspector.data.diagnostics.portscan.DefaultPortScannerRepository
 import dev.enthusiastdev.netinspector.data.diagnostics.portscan.PortScannerRepository
+import dev.enthusiastdev.netinspector.data.diagnostics.throughput.DefaultLanThroughputRepository
+import dev.enthusiastdev.netinspector.data.diagnostics.throughput.LanThroughputRepository
 import dev.enthusiastdev.netinspector.data.diagnostics.traceroute.DefaultTracerouteRepository
 import dev.enthusiastdev.netinspector.data.diagnostics.traceroute.TracerouteRepository
 import dev.enthusiastdev.netinspector.data.diagnostics.whois.DefaultWhoisRepository
@@ -50,4 +52,8 @@ abstract class DiagnosticsModule {
     @Binds
     @Singleton
     abstract fun bindWakeOnLanRepository(impl: DefaultWakeOnLanRepository): WakeOnLanRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindLanThroughputRepository(impl: DefaultLanThroughputRepository): LanThroughputRepository
 }

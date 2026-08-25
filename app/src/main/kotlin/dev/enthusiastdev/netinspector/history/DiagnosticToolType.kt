@@ -10,4 +10,5 @@ enum class DiagnosticToolType {
     DNS_LOOKUP,
     HTTP_INSPECTOR,
     WHOIS,
+    LAN_THROUGHPUT,
 }

@@ -772,6 +772,19 @@ trips IDS on managed networks and can destabilise cheap consumer routers.
 - **Signal meter** - live RSSI from the `NetworkCallback` stream (§5.1) with a rolling
   60-second chart, dBm and derived quality percentage, plus link speed. No scan budget
   consumed, so this can run continuously.
+- **LAN throughput test** (improvement-ideas.md #31, rescoped - see
+  [ADR-0009](adr/0009-lan-throughput-icmp-burst-estimate.md)) - a *local-network-only* link
+  speed estimate, explicitly not an internet speed test: several concurrent workers pipeline
+  near-MTU ICMP echo probes (tier 1's socket, §9.1) against a chosen LAN host for a fixed
+  window; the observed round-trip byte rate is reported as an estimated Mbps figure with
+  packet loss and a peak sample. Reachable from the Tools grid and, pre-filled, from the
+  Devices detail screen alongside Ping/Traceroute/Scan ports. The result is captured
+  alongside a `WifiScanRepository`/`ConnectionRepository` snapshot - RSSI, channel, channel
+  width, and how many other visible APs share that channel - so a low number can be read
+  against a likely cause rather than reported as a bare score; this correlation is the
+  differentiator the original backlog item wanted. No transfer-endpoint fallback: a device
+  where unprivileged ICMP sockets aren't supported reports "not supported" rather than
+  substituting a TCP-connect number that would silently under-report.
 
 ---
 
@@ -867,11 +880,11 @@ Bottom navigation with four destinations, plus detail routes:
 | **Connection** | Current network dashboard: SSID/BSSID, band/channel/width/standard, RSSI gauge, link speeds, IPv4 and IPv6 addresses, gateway, DNS servers, internet-validated and captive-portal state |
 | **Wi-Fi** | AP list (sortable by RSSI/SSID/channel, groupable by SSID, filterable by band/security), channel graph tabs, channel recommendation card, AP detail route |
 | **Devices** | LAN host list with progressive population and a scan-progress indicator, host detail route |
-| **Tools** | Grid of the nine diagnostic tools, each its own route |
+| **Tools** | Grid of the diagnostic and utility tools, each its own route |
 
-Compose Navigation with type-safe routes. Deep link from a host row into the ping or port
-scanner tool pre-filled with that address - the single most useful piece of cross-screen
-plumbing in the app.
+Compose Navigation with type-safe routes. Deep link from a host row into the ping,
+traceroute, port scanner or LAN throughput tool pre-filled with that address - the single
+most useful piece of cross-screen plumbing in the app.
 
 ### 11.2 Adaptive layout
 

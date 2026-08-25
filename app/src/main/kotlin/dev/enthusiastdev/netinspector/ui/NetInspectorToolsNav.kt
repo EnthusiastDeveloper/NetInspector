@@ -14,6 +14,7 @@ import dev.enthusiastdev.netinspector.ui.navigation.PortScannerToolRoute
 import dev.enthusiastdev.netinspector.ui.navigation.ScanHistoryToolRoute
 import dev.enthusiastdev.netinspector.ui.navigation.SignalMeterToolRoute
 import dev.enthusiastdev.netinspector.ui.navigation.SubnetCalculatorToolRoute
+import dev.enthusiastdev.netinspector.ui.navigation.ThroughputToolRoute
 import dev.enthusiastdev.netinspector.ui.navigation.ToolsHomeRoute
 import dev.enthusiastdev.netinspector.ui.navigation.ToolsRoute
 import dev.enthusiastdev.netinspector.ui.navigation.TracerouteToolRoute
@@ -31,6 +32,7 @@ import dev.enthusiastdev.netinspector.ui.screens.tools.ping.PingRoute
 import dev.enthusiastdev.netinspector.ui.screens.tools.portscanner.PortScannerRoute
 import dev.enthusiastdev.netinspector.ui.screens.tools.signalmeter.SignalMeterRoute
 import dev.enthusiastdev.netinspector.ui.screens.tools.subnetcalc.SubnetCalculatorRoute
+import dev.enthusiastdev.netinspector.ui.screens.tools.throughput.ThroughputRoute
 import dev.enthusiastdev.netinspector.ui.screens.tools.traceroute.TracerouteRoute
 import dev.enthusiastdev.netinspector.ui.screens.tools.whois.WhoisRoute
 import dev.enthusiastdev.netinspector.ui.screens.tools.wifichanges.WifiChangesRoute
@@ -48,6 +50,7 @@ internal fun NavGraphBuilder.toolsGraph(navController: NavHostController) {
         composable<TracerouteToolRoute> { ToolPage(Tool.TRACEROUTE, navController) { TracerouteRoute() } }
         composable<DnsToolRoute> { ToolPage(Tool.DNS, navController) { DnsRoute() } }
         composable<PortScannerToolRoute> { ToolPage(Tool.PORT_SCANNER, navController) { PortScannerRoute() } }
+        composable<ThroughputToolRoute> { ToolPage(Tool.LAN_THROUGHPUT, navController) { ThroughputRoute() } }
         composable<SignalMeterToolRoute> { ToolPage(Tool.SIGNAL_METER, navController) { SignalMeterRoute() } }
         composable<SubnetCalculatorToolRoute> {
             ToolPage(Tool.SUBNET_CALCULATOR, navController) { SubnetCalculatorRoute() }
@@ -96,6 +99,7 @@ private fun NavHostController.navigateToTool(tool: Tool) {
         Tool.TRACEROUTE -> navigate(TracerouteToolRoute())
         Tool.DNS -> navigate(DnsToolRoute)
         Tool.PORT_SCANNER -> navigate(PortScannerToolRoute())
+        Tool.LAN_THROUGHPUT -> navigate(ThroughputToolRoute())
         Tool.WAKE_ON_LAN -> navigate(WakeOnLanToolRoute)
         Tool.WHOIS -> navigate(WhoisToolRoute)
         Tool.HTTP_INSPECTOR -> navigate(HttpInspectorToolRoute)

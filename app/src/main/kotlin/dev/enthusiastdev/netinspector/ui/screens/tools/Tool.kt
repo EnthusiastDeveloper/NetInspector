@@ -6,6 +6,7 @@ import androidx.compose.material.icons.filled.Compare
 import androidx.compose.material.icons.filled.Dns
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Http
+import androidx.compose.material.icons.filled.NetworkCheck
 import androidx.compose.material.icons.filled.NetworkPing
 import androidx.compose.material.icons.filled.Public
 import androidx.compose.material.icons.filled.Radar
@@ -43,6 +44,11 @@ enum class Tool(
     TRACEROUTE("Traceroute", Icons.Filled.Router, ToolCategory.DIAGNOSTICS),
     DNS("DNS lookup", Icons.Filled.Dns, ToolCategory.DIAGNOSTICS),
     PORT_SCANNER("Port scanner", Icons.Filled.Radar, ToolCategory.DIAGNOSTICS),
+
+    // "LAN throughput test," never bare "Speed test" - docs/improvement-ideas.md #31's rescope
+    // exists specifically to avoid reading as an internet speed-test app (see the tool screen's
+    // own explanatory copy and docs/adr/0009-lan-throughput-icmp-burst-estimate.md).
+    LAN_THROUGHPUT("LAN throughput test", Icons.Filled.NetworkCheck, ToolCategory.DIAGNOSTICS),
     HTTP_INSPECTOR("HTTP headers", Icons.Filled.Http, ToolCategory.DIAGNOSTICS),
     WHOIS("WHOIS", Icons.Filled.Public, ToolCategory.DIAGNOSTICS),
     SUBNET_CALCULATOR("Subnet calculator", Icons.Filled.Calculate, ToolCategory.UTILITIES),
