@@ -41,6 +41,13 @@ interface AppSettingsRepository {
     // "crash report available" prompt should show.
     val lastAcknowledgedCrashReport: Flow<String>
 
+    // improvement-ideas.md #36 - app-wide text/UI scale applied via a CompositionLocalProvider
+    // at the app root (MainActivity), independent of the system accessibility font-size
+    // setting. Callers are expected to clamp to [MIN_UI_FONT_SCALE, MAX_UI_FONT_SCALE] before
+    // writing - see SettingsViewModel.setUiFontScale - the same division of responsibility as
+    // setRssiAlertThresholdDbm/setScanHistoryRetentionDays below.
+    val uiFontScale: Flow<Float>
+
     suspend fun setThemeMode(mode: ThemeMode)
 
     suspend fun setRssiDisplayUnit(unit: RssiDisplayUnit)
@@ -61,10 +68,25 @@ interface AppSettingsRepository {
 
     suspend fun setLastAcknowledgedCrashReport(filename: String)
 
+    suspend fun setUiFontScale(scale: Float)
+
     companion object {
         /** A widely used "weak signal" cutoff - offered as the threshold field's starting
          * value once a user opts into RSSI-drop alerts, not a value enforced on them. */
         const val DEFAULT_RSSI_ALERT_THRESHOLD_DBM = -75
+
+        /** improvement-ideas.md #36. `NetworkMapLayout.kt`'s `nodeScaleFor` shrinks map nodes
+         * down to `MIN_NODE_SCALE` (0.5) before that screen's own radial-packing logic keeps
+         * them tap-able at high spoke counts - that floor exists for a purpose-built per-screen
+         * scale, not a general text scale applied uniformly with no per-screen compensation.
+         * [MIN_UI_FONT_SCALE] stays well clear of it so every screen's fixed-height rows,
+         * buttons and list items - already tuned for [DEFAULT_UI_FONT_SCALE] - keep working
+         * with no such logic of their own. [MAX_UI_FONT_SCALE] mirrors the top of the range
+         * Android's own accessibility font-size slider offers before layouts generally need
+         * dedicated large-text handling. */
+        const val MIN_UI_FONT_SCALE = 0.85f
+        const val MAX_UI_FONT_SCALE = 1.3f
+        const val DEFAULT_UI_FONT_SCALE = 1.0f
     }
 }
 
@@ -101,6 +123,12 @@ class DefaultAppSettingsRepository
 
         override val lastAcknowledgedCrashReport: Flow<String> =
             dataStore.data.map { it.lastAcknowledgedCrashReport }
+
+        override val uiFontScale: Flow<Float> =
+            dataStore.data.map {
+                it.uiFontScale.takeIf { scale -> scale != 0f }
+                    ?: AppSettingsRepository.DEFAULT_UI_FONT_SCALE
+            }
 
         override suspend fun setThemeMode(mode: ThemeMode) {
             dataStore.updateData { it.copy { themeMode = mode.name } }
@@ -148,6 +176,10 @@ class DefaultAppSettingsRepository
 
         override suspend fun setLastAcknowledgedCrashReport(filename: String) {
             dataStore.updateData { it.copy { lastAcknowledgedCrashReport = filename } }
+        }
+
+        override suspend fun setUiFontScale(scale: Float) {
+            dataStore.updateData { it.copy { uiFontScale = scale } }
         }
     }
 

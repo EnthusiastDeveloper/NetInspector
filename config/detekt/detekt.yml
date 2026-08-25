@@ -7,6 +7,8 @@ complexity:
   TooManyFunctions:
     thresholdInClasses: 20 # SettingsViewModel is a flat aggregation of one setter per independent
       # setting - it only grows as more settings are added, not a sign it needs splitting up
+    thresholdInInterfaces: 20 # AppSettingsRepository is the same flat one-getter-plus-setter-per-
+      # setting shape as SettingsViewModel above, for the same reason
 
 style:
   MagicNumber:

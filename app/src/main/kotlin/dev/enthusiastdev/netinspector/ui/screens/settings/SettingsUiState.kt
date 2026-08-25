@@ -22,4 +22,5 @@ data class SettingsUiState(
     val autoScanEnabled: Boolean = false,
     val autoScanIntervalMinutes: Int = AutoScanSettingsRepository.DEFAULT_INTERVAL_MINUTES,
     val alertOnLanHostChanges: Boolean = false,
+    val uiFontScale: Float = AppSettingsRepository.DEFAULT_UI_FONT_SCALE,
 )
