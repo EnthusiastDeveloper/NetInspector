@@ -862,7 +862,7 @@ what earn the dataset choice day to day.
 > tab-separated layout.
 
 DataStore (Proto) holds preferences: scan cadence, sweep concurrency and timeouts, port
-presets, theme, units, and the one-time scanning acknowledgement flag.
+presets, theme, units, UI text/scale, and the one-time scanning acknowledgement flag.
 
 Export: scan sessions and diagnostic runs export to CSV and JSON via `ACTION_CREATE_DOCUMENT`.
 No storage permissions needed.
@@ -998,6 +998,37 @@ Given the accuracy priority, the UI has explicit conventions:
 Before the first LAN sweep, a one-time dialog states plainly that active host discovery
 and port scanning should only be run against networks the user owns or administers, and
 requires explicit acknowledgement. Stored in DataStore. Not skippable, not repeated.
+
+### 11.5 UI text/scale
+
+improvement-ideas.md #36 - surfaced after simulating several screen densities with `wm
+density` during Phase 4 verification, where a smaller density read noticeably better for
+this app's information-dense screens (Devices list, network map) than the default. Rather
+than only being reachable through the system's own accessibility font-size setting (which
+applies to every app, not just this one), a first-party slider on the Settings screen
+scales the app on its own, stored via `AppSettingsRepository.uiFontScale` the same
+DataStore-backed way `themeMode` is.
+
+Applied once, at the app root (`MainActivity`, wrapping `NetInspectorApp()`): a
+`CompositionLocalProvider(LocalDensity provides ...)` multiplies the persisted scale onto
+whatever `fontScale` is already in effect, so it composes with (rather than replaces) the
+system accessibility setting, and every screen picks it up with no per-screen code. Only
+`fontScale` is touched, not `density` - this scales text and the many layouts whose sizing
+follows text metrics, without changing raw dp measurements app-wide.
+
+Clamped to `[0.85, 1.3]` (`AppSettingsRepository.MIN_UI_FONT_SCALE` /
+`MAX_UI_FONT_SCALE`), default `1.0`. `NetworkMapLayout.kt`'s `nodeScaleFor` shrinks map
+nodes to as low as `MIN_NODE_SCALE` (0.5) before that screen's own radial-packing logic
+keeps them tap-able at high spoke counts - a floor that exists for a purpose-built
+per-screen scale with dedicated compensating logic behind it, not a general scale applied
+uniformly with none. The chosen range stays well clear of it, and the upper bound mirrors
+roughly where Android's own accessibility font-size slider sits before layouts generally
+need dedicated large-text handling of their own.
+
+The Settings screen's slider drags a local preview value and only commits (persists, and
+therefore rescales the whole app) on release, rather than writing to DataStore on every
+drag tick; a preview card re-densitied to the in-drag value tracks the drag in real time
+regardless.
 
 ---
 

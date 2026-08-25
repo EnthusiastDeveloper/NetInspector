@@ -21,7 +21,9 @@ accounts, no telemetry, no analytics.
   known one vanishes or reappears. Devices you mark "known" (a laptop that sleeps, a
   phone that leaves and returns home) are excluded from vanish/reappear alerts.
 - **Adaptive UI** - built for phones, tablets and foldables from the start: window size
-  classes, fold-aware layout, and UI state preserved across rotation.
+  classes, fold-aware layout, and UI state preserved across rotation. A Settings screen
+  slider also scales text and UI sizing app-wide, independent of the system's own
+  accessibility font-size setting.
 - **Troubleshooting** - opt-in local crash reports and on-demand debug-bundle export for
   filing bug reports without ADB, both local-only until you choose to share them. See
   [docs/troubleshooting.md](docs/troubleshooting.md).
