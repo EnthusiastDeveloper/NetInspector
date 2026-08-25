@@ -45,6 +45,7 @@ import dev.enthusiastdev.netinspector.ui.navigation.DevicesRoute
 import dev.enthusiastdev.netinspector.ui.navigation.PingToolRoute
 import dev.enthusiastdev.netinspector.ui.navigation.PortScannerToolRoute
 import dev.enthusiastdev.netinspector.ui.navigation.SettingsRoute
+import dev.enthusiastdev.netinspector.ui.navigation.ThroughputToolRoute
 import dev.enthusiastdev.netinspector.ui.navigation.ToolsRoute
 import dev.enthusiastdev.netinspector.ui.navigation.TracerouteToolRoute
 import dev.enthusiastdev.netinspector.ui.navigation.WifiRoute
@@ -159,6 +160,7 @@ private fun AppNavHost(navController: NavHostController) {
                 onPingHost = { target -> navController.navigateToToolDeepLink(PingToolRoute(target)) },
                 onTracerouteHost = { target -> navController.navigateToToolDeepLink(TracerouteToolRoute(target)) },
                 onPortScanHost = { target -> navController.navigateToToolDeepLink(PortScannerToolRoute(target)) },
+                onThroughputHost = { target -> navController.navigateToToolDeepLink(ThroughputToolRoute(target)) },
             )
         }
         toolsGraph(navController)
@@ -231,6 +233,7 @@ private fun DevicesDestination(
     onPingHost: (String) -> Unit,
     onTracerouteHost: (String) -> Unit,
     onPortScanHost: (String) -> Unit,
+    onThroughputHost: (String) -> Unit,
 ) {
     val devicesViewModel: DevicesViewModel = hiltViewModel()
     val devicesUiState by devicesViewModel.uiState.collectAsState()
@@ -244,6 +247,7 @@ private fun DevicesDestination(
         onPingHost = onPingHost,
         onTracerouteHost = onTracerouteHost,
         onPortScanHost = onPortScanHost,
+        onThroughputHost = onThroughputHost,
         onSortOrderChange = devicesViewModel::setSortOrder,
         onToggleConfidenceFilter = devicesViewModel::toggleConfidenceFilter,
         onSetNickname = devicesViewModel::setNickname,

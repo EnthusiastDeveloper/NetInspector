@@ -66,6 +66,7 @@ private fun String.toolLabel(): String =
         DiagnosticToolType.DNS_LOOKUP -> "DNS lookup"
         DiagnosticToolType.HTTP_INSPECTOR -> "HTTP headers"
         DiagnosticToolType.WHOIS -> "WHOIS"
+        DiagnosticToolType.LAN_THROUGHPUT -> "LAN throughput test"
         null -> this
     }
 
@@ -78,6 +79,7 @@ private fun ToolResultSection(run: DiagnosticRunEntity) {
         DiagnosticToolType.DNS_LOOKUP -> DnsResultCard(run.resultJson)
         DiagnosticToolType.HTTP_INSPECTOR -> HttpInspectorResultCard(run.resultJson)
         DiagnosticToolType.WHOIS -> WhoisResultCard(run.resultJson)
+        DiagnosticToolType.LAN_THROUGHPUT -> ThroughputResultCard(run.resultJson)
         null -> {}
     }
 }

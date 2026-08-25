@@ -1,0 +1,7 @@
+package dev.enthusiastdev.netinspector.ui.navigation
+
+import kotlinx.serialization.Serializable
+
+@Serializable data class ThroughputToolRoute(
+    val target: String? = null,
+)

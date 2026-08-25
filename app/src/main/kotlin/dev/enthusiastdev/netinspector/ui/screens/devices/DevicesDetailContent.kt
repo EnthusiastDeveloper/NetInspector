@@ -50,6 +50,7 @@ internal fun DevicesDetailPane(
     onPingHost: (String) -> Unit,
     onTracerouteHost: (String) -> Unit,
     onPortScanHost: (String) -> Unit,
+    onThroughputHost: (String) -> Unit,
     onSetNickname: (String, String) -> Unit,
     onSetKnownDevice: (String, Boolean) -> Unit,
     modifier: Modifier = Modifier,
@@ -65,7 +66,16 @@ internal fun DevicesDetailPane(
         }
         return
     }
-    DevicesDetailContent(host, onPingHost, onTracerouteHost, onPortScanHost, onSetNickname, onSetKnownDevice, modifier)
+    DevicesDetailContent(
+        host,
+        onPingHost,
+        onTracerouteHost,
+        onPortScanHost,
+        onThroughputHost,
+        onSetNickname,
+        onSetKnownDevice,
+        modifier,
+    )
 }
 
 @Composable
@@ -74,6 +84,7 @@ internal fun DevicesDetailContent(
     onPingHost: (String) -> Unit,
     onTracerouteHost: (String) -> Unit,
     onPortScanHost: (String) -> Unit,
+    onThroughputHost: (String) -> Unit,
     onSetNickname: (String, String) -> Unit,
     onSetKnownDevice: (String, Boolean) -> Unit,
     modifier: Modifier = Modifier,
@@ -84,7 +95,15 @@ internal fun DevicesDetailContent(
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         item {
-            DevicesDetailHeader(host, onPingHost, onTracerouteHost, onPortScanHost, onSetNickname, onSetKnownDevice)
+            DevicesDetailHeader(
+                host,
+                onPingHost,
+                onTracerouteHost,
+                onPortScanHost,
+                onThroughputHost,
+                onSetNickname,
+                onSetKnownDevice,
+            )
         }
         host.deviceHint?.let { hint -> item { DevicesDetailHintCard(hint) } }
         item { DevicesDetailIdentificationCard(host) }
@@ -102,6 +121,7 @@ private fun DevicesDetailHeader(
     onPingHost: (String) -> Unit,
     onTracerouteHost: (String) -> Unit,
     onPortScanHost: (String) -> Unit,
+    onThroughputHost: (String) -> Unit,
     onSetNickname: (String, String) -> Unit,
     onSetKnownDevice: (String, Boolean) -> Unit,
 ) {
@@ -143,7 +163,13 @@ private fun DevicesDetailHeader(
             )
         }
         if (!host.isSelf) {
-            DevicesDetailActions(host.address.addressString, onPingHost, onTracerouteHost, onPortScanHost)
+            DevicesDetailActions(
+                host.address.addressString,
+                onPingHost,
+                onTracerouteHost,
+                onPortScanHost,
+                onThroughputHost,
+            )
         }
     }
     if (showNicknameEditor) {
@@ -168,6 +194,7 @@ private fun DevicesDetailActions(
     onPingHost: (String) -> Unit,
     onTracerouteHost: (String) -> Unit,
     onPortScanHost: (String) -> Unit,
+    onThroughputHost: (String) -> Unit,
 ) {
     FlowRow(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -181,6 +208,11 @@ private fun DevicesDetailActions(
         }
         OutlinedButton(onClick = { onPortScanHost(address) }) {
             Text("Scan ports")
+        }
+        // "LAN throughput," matching the tool's own label - see Tool.kt's LAN_THROUGHPUT entry
+        // for why this never says bare "Speed test."
+        OutlinedButton(onClick = { onThroughputHost(address) }) {
+            Text("LAN throughput")
         }
     }
 }
