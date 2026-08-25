@@ -84,8 +84,8 @@ swipe-to-dismiss, sliders, or drag-reorder anywhere in the codebase.
 | Channel occupancy graph | `core/designsystem/.../chart/ChannelOccupancyGraph.kt` | Pinch-zoom + pan (frequency axis), tap-to-highlight a curve | Zoom/pan clamp is extracted and tested (`AxisViewport` / `AxisViewportTest`). Tap-to-highlight (`hitTestCurve`, `ChannelOccupancyGraphDrawing.kt`) is a pure function with **zero test coverage**. |
 | Network map graph | `core/designsystem/.../graph/NetworkMapGraph.kt` | Pinch-zoom + pan, tap-to-select a node | Tap-to-select is extracted and tested (`hitTestNode` / `NetworkMapHitTestTest`). Zoom/pan clamp (`MIN_SCALE`/`MAX_SCALE`, the `maxOffsetX`/`maxOffsetY` pan bound) is inline in the composable's `detectTransformGestures` lambda, **not extracted, zero test coverage**. |
 | Wi-Fi screen refresh | `app/.../ui/screens/wifi/WifiScreen.kt` | Pull-to-refresh - two separate `PullToRefreshBox` instances, one per adaptive layout (compact single-pane, expanded two-pane) | The ViewModel branch it drives is covered (`WifiViewModelTest`'s `onRefresh` outcomes); the gesture itself, and specifically the second `PullToRefreshBox` instance, is manual-only. |
-| Every list screen | `DevicesScreen`, `WifiScreen`, the nine tool screens, both history screens | Scroll (`LazyColumn`/`LazyRow`) | Manual only - this is Compose's own scroll handling, not app logic, so no dedicated test is expected. |
-| Nine tool forms | `app/.../ui/screens/tools/*` | Text input, IME actions, button press | Manual only. |
+| Every list screen | `DashboardScreen`, `DevicesScreen`, `WifiScreen`, the tool screens, both history screens | Scroll (`LazyColumn`/`LazyRow`) | Manual only - this is Compose's own scroll handling, not app logic, so no dedicated test is expected. |
+| Tool forms | `app/.../ui/screens/tools/*` (currently 13, grouped Diagnostics/Utilities/History - check `ToolsScreen.kt`/`Tool.kt` for the current count rather than trusting a number here) | Text input, IME actions, button press | Manual only. |
 
 Both graphs deliberately have no `onDoubleTap` (documented in their own code comments: a
 registered `onDoubleTap` would delay every single tap by the double-tap timeout, which is
@@ -117,20 +117,24 @@ different guarantee than surviving a rotation), and the device rotated mid-run.
 
 | Capability | Screen(s) | Also check | Correct-behavior reference |
 |---|---|---|---|
+| Dashboard | Home | Every card's own empty state (no Wi-Fi, no devices, no active diagnostics) rendered together on first launch | design §11 |
 | Wi-Fi scan + channel graph | Wi-Fi | Throttled/denied refresh; scan mid-pinch-zoom | design §6.1 (throttle governor), §7 |
-| LAN discovery + network map | Devices | Discovery mid-progressive-population; host vanishes mid-scan | design §8.2 (three-stage pipeline), §8.3 (evidence merging) |
+| LAN discovery + network map, hygiene score | Devices | Discovery mid-progressive-population; host vanishes mid-scan | design §8.2 (three-stage pipeline), §8.3 (evidence merging) |
 | Background scanning | (none - runs headless) | Doze interruption, a scan window straddling a Doze entry | design §8.5 |
 | Ping | Tools → Ping | ICMP unavailable, falls back to TCP RTT | design §9.1, §9.2, §11.3 (degraded-mode labeling) |
 | Traceroute | Tools → Traceroute | A hop that never responds (timeout row), max hop count | design §9.3 |
-| DNS | Tools → DNS | NXDOMAIN, timeout, malformed response | design §9.4 |
+| DNS | Tools → DNS | NXDOMAIN (clean "no records"), a genuinely malformed wire response from a real-world resolver (distinct from NXDOMAIN - confirmed reproducible against `.invalid` TLDs on at least one ISP resolver) | design §9.4 |
 | Port scanner | Tools → Port Scanner | Zero open ports, every port open, scan cancelled mid-run | design §9.5, §11.4 (first-run acknowledgement gate) |
+| LAN throughput test | Tools → LAN throughput test | Target with no responder (degrades to a low-throughput/high-loss result rather than hanging or erroring - confirm this reads as a result, not a false "it works"); host picked from the pre-populated dropdown vs. typed manually | design §9.6 if present, otherwise flag as undocumented (this tool landed after the design doc's tool list was last updated) |
 | Wake-on-LAN | Tools → WoL | Malformed MAC input, send failure | design §9.6 |
 | Subnet calculator | Tools → Subnet Calculator | /31 and /32 edge cases, invalid CIDR input | design §9.6 |
-| HTTP inspector | Tools → HTTP Inspector | Non-HTTP response, connection refused, redirect chain | design §9.6 |
+| HTTP inspector | Tools → HTTP Inspector | Non-HTTP response, connection refused, redirect chain, a self-signed/untrusted TLS certificate (confirmed reproducible against a LAN device's own HTTPS port) | design §9.6 |
 | Signal meter | Tools → Signal Meter | RSSI stream interruption (Wi-Fi disconnects mid-read) | design §5.1 |
 | Permissions | Any radio-dependent screen | Granted → denied → permanently-denied transitions, mid-scan revocation | design §4.1 |
 | First-run acknowledgement | Devices (before first LAN sweep) | Dismiss without acknowledging, rotate while the dialog is open | design §11.4 |
-| Scan history / export | Tools → Scan History, Diagnostic History | Empty history, export with zero/partial permissions | design §10 |
+| Scan history / export | Tools → Wi-Fi history, Diagnostic history | Empty history, export with zero/partial permissions | design §10 |
+| Wi-Fi changes diff | Tools → Wi-Fi changes | No scans yet to compare, only one scan ever recorded | design §10 |
+| Settings / appearance | Settings | Every theme option (System/Light/Dark/AMOLED) rendered on at least one data-heavy screen, not just Settings itself | design §11 |
 
 ## 6. Manual device matrix
 
