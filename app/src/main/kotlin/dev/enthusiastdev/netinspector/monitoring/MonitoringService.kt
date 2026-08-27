@@ -28,6 +28,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.launch
+import timber.log.Timber
 import javax.inject.Inject
 
 /** design §8 / C-09 / C-10 - the one optional, explicitly user-started continuous-monitoring
@@ -74,7 +75,23 @@ class MonitoringService : Service() {
             stopSelf()
             return START_NOT_STICKY
         }
-        startForegroundWithPlaceholder()
+        try {
+            startForegroundWithPlaceholder()
+        } catch (e: IllegalStateException) {
+            // ForegroundServiceStartNotAllowedException (an IllegalStateException): an OEM or a
+            // newer platform decided this start was not from an allowed state. Nothing to
+            // recover here - stop quietly rather than crash. isRunning never flips, so the
+            // toggle simply stays off.
+            Timber.w(e, "Foreground start refused, monitoring not started")
+            stopSelf()
+            return START_NOT_STICKY
+        } catch (e: SecurityException) {
+            // A foreground-service permission was revoked after install (Android can auto-reset
+            // unused permissions). Same graceful bail-out.
+            Timber.w(e, "Missing foreground-service permission, monitoring not started")
+            stopSelf()
+            return START_NOT_STICKY
+        }
         observeConnection()
         _isRunning.value = true
         return START_STICKY

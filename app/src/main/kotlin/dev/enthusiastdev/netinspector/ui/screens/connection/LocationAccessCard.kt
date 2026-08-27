@@ -17,6 +17,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.app.ActivityCompat
 import dev.enthusiastdev.netinspector.core.designsystem.component.InfoCard
+import dev.enthusiastdev.netinspector.core.designsystem.util.findActivity
 
 /**
  * Rationale + request flow for [LocationAccessState.PERMISSION_NEEDED] /
@@ -35,7 +36,10 @@ internal fun LocationAccessCard(
     if (locationAccess == LocationAccessState.GRANTED) return
 
     val context = LocalContext.current
-    val activity = context as Activity
+    // findActivity() rather than `context as Activity` so this keeps working if the card is
+    // ever hosted in a dialog/sheet, where LocalContext is a ContextThemeWrapper (see
+    // NotificationAccessButton, where that cast crashed).
+    val activity = context.findActivity()
     var hasRequestedPermission by rememberSaveable { mutableStateOf(false) }
 
     val permissionLauncher =

@@ -277,7 +277,24 @@ Both checks are re-evaluated on `ON_RESUME`, since granting via the system Setti
 dashboard and the Wi-Fi screen each run this flow independently (separate cards, separate
 `ON_RESUME` checks) even though they end up checking the same permission - a grant on one
 screen unblocks the other the next time its own check runs, but there's no cross-screen
-signal that forces an immediate refresh.
+signal that forces an immediate refresh. That same `ON_RESUME` re-check is what makes the
+flow survive Android auto-resetting an unused runtime permission: the capability state
+recomputes on the next resume, the gating card/toggle reappears, and the request runs
+again. No permission is assumed to still be held just because it was granted once.
+
+Two implementation traps in this flow, both fixed:
+
+- The request buttons need the host `Activity` (for `shouldShowRequestPermissionRationale`
+  and the app-settings intent). `LocalContext.current as Activity` works in the page body
+  but throws `ClassCastException` inside a `Dialog`/`ModalBottomSheet`/`Popup`, where
+  `LocalContext` is that window's `ContextThemeWrapper` - the notification-access button
+  lives in a bottom sheet and crashed the app on a fresh install. Use
+  `Context.findActivity()` (walks `baseContext`) instead of casting.
+- Starting the monitoring foreground service can still fail below the permission gate
+  (OEM background-start limits, a foreground-service permission reset after install).
+  `MonitoringController.start()` and `MonitoringService.onStartCommand` catch
+  `IllegalStateException`/`SecurityException` and bail out quietly rather than crash;
+  `MonitoringService.isRunning` stays the source of truth, so the toggle just stays off.
 
 ---
 
