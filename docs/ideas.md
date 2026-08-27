@@ -483,7 +483,9 @@ Real throughput numbers against a companion `iperf3` server elsewhere on the LAN
 
 ---
 
-### 35. Adjustable UI/font scale
+### 36. Adjustable UI/font scale
+**Status:** Implemented (PR #19, open for review)
+
 A settings slider that scales text and UI element sizing app-wide, independent of the
 system's own accessibility font-size setting, surfaced after simulating several screen
 densities during Phase 4 verification (`wm density`), where the smaller-density renders read
@@ -504,7 +506,7 @@ a first-party in-app slider is a cheap, self-contained way to offer the same ben
 
 ---
 
-### 36. F-Droid listing
+### 37. F-Droid listing
 Matches the app's existing no-telemetry/no-accounts positioning and Obtainium support;
 mostly a packaging/process task, not new code.
 
