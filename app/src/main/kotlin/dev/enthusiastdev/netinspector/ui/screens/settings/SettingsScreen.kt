@@ -30,6 +30,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
@@ -352,12 +353,15 @@ internal fun AlertToggleRow(
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
         // labelLarge, not bodyMedium - matches the "Theme"/"Default preset for new scans"
         // style other sections use for a control's own name, so it reads as a label for the
         // switch next to it rather than a continuation of whatever description text precedes it.
-        Text(label, style = MaterialTheme.typography.labelLarge)
+        // weight(1f) so a long label (e.g. the Devices "Known device ..." row) wraps in the
+        // space left of the switch instead of running under it on a narrow screen.
+        Text(label, style = MaterialTheme.typography.labelLarge, modifier = Modifier.weight(1f))
         Switch(checked = checked, onCheckedChange = onCheckedChange)
     }
 }
