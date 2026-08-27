@@ -4,7 +4,7 @@ import dev.enthusiastdev.netinspector.core.common.benchmark.Benchmark
 import org.junit.Test
 
 /**
- * improvement-ideas.md #32 - the LAN sweep pipeline's parsing logic: every ICMP probe in
+ * ideas.md #32 - the LAN sweep pipeline's parsing logic: every ICMP probe in
  * design §8.2 passes 1-2 builds one request and parses one reply, at up to 64-way concurrency
  * (`HostSweeper.PASS1_CONCURRENCY`), so this framing code runs on the hot path of the sweep
  * far more often than any other parser in the app. A regression here (e.g. an accidental

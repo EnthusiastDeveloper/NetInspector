@@ -14,7 +14,7 @@ import java.time.Instant
 import java.time.ZoneOffset
 
 /**
- * improvement-ideas.md #32 - benchmarks [HostSweeper]'s three-pass scheduling (design §8.2
+ * ideas.md #32 - benchmarks [HostSweeper]'s three-pass scheduling (design §8.2
  * Stage B): the concurrency-limited fan-out across passes, not probe latency itself, which
  * cannot be benchmarked on the JVM at all - [IcmpSweepProbe] needs `android.system.Os`
  * (design C-07), unavailable outside a real device. [IcmpSweepProbe] and [TcpSweepProbe] are

@@ -105,7 +105,7 @@ private fun DashboardContent(
     }
 }
 
-/** improvement-ideas.md #21 - "auto-detect the crash on the next app start and suggest to
+/** ideas.md #21 - "auto-detect the crash on the next app start and suggest to
  * report it." Follows the same dismissible-InfoCard shape as the Connection tab's
  * MonitoringCard: an X in the corner clears the prompt without exporting, an inline action
  * does the real work. Dismissing never deletes the underlying report - it's still reachable

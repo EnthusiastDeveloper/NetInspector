@@ -1,7 +1,7 @@
 package dev.enthusiastdev.netinspector.core.model.lan
 
 /**
- * docs/improvement-ideas.md #1 - a single glanceable "is this okay?" read, aggregated from
+ * docs/ideas.md #1 - a single glanceable "is this okay?" read, aggregated from
  * [PortRiskSeverity] tiers over a host's (or a whole network's) open ports rather than making
  * the user parse a raw port list. [value] starts at 100 (a host or network with nothing
  * [portRiskSeverity] flags) and loses a fixed number of points per [findings] entry, floored at

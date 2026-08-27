@@ -77,6 +77,6 @@ The crash handler, debug-bundle builder, redaction, and log ring buffer live und
 / [`log/`](../core/common/src/main/kotlin/dev/enthusiastdev/netinspector/core/common/log/LogRingBuffer.kt).
 Both features share the same redaction pass and the same `ShareFileLauncher` (a thin
 wrapper around `FileProvider` + `Intent.ACTION_SEND`) rather than duplicating
-share-sheet plumbing. See improvement-ideas.md items
-[#21](improvement-ideas.md#21-opt-in-local-crash-reporting) and
-[#22](improvement-ideas.md#22-in-app-debug-bundle-export) for the original scoping.
+share-sheet plumbing. See ideas.md items
+[#21](ideas.md#21-opt-in-local-crash-reporting) and
+[#22](ideas.md#22-in-app-debug-bundle-export) for the original scoping.

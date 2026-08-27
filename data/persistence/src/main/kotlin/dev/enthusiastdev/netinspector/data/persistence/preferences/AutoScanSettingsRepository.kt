@@ -7,7 +7,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import javax.inject.Inject
 
-/** improvement-ideas.md #23/#24 - read by `PeriodicScanWorker` (`:app`) as well as the
+/** ideas.md #23/#24 - read by `PeriodicScanWorker` (`:app`) as well as the
  * Settings screen, same reason [RetentionSettingsRepository] is its own focused repository
  * rather than folded into [AppSettingsRepository]. */
 interface AutoScanSettingsRepository {

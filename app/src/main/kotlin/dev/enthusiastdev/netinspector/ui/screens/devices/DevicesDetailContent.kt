@@ -151,7 +151,7 @@ private fun DevicesDetailHeader(
                 },
         )
         ConfidenceLabel(host.confidence)
-        // improvement-ideas.md #24 - "this host is expected to come and go" (sleep, roaming
+        // ideas.md #24 - "this host is expected to come and go" (sleep, roaming
         // off the LAN and back), so the periodic background sweep's vanish/reappear alerts
         // skip it. Meaningless for the always-present self entry, same gate as the diagnostic
         // actions below.
@@ -217,7 +217,7 @@ private fun DevicesDetailActions(
     }
 }
 
-/** docs/device-identification-ideas.md D - overrides every automated naming signal with a
+/** docs/ideas.md D - overrides every automated naming signal with a
  * plain user-entered label; saving a blank value clears it (`SavedHostRepository.setNickname`),
  * so there's no separate "remove" action to offer here. */
 @Composable

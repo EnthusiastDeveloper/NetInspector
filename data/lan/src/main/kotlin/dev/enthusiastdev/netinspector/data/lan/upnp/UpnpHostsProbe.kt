@@ -13,7 +13,7 @@ import java.time.Clock
 import javax.inject.Inject
 
 /**
- * docs/device-identification-ideas.md C1 - once [dev.enthusiastdev.netinspector.data.lan.ssdp
+ * docs/ideas.md C1 - once [dev.enthusiastdev.netinspector.data.lan.ssdp
  * .SsdpProbe] finds a router advertising `urn:schemas-upnp-org:service:Hosts:1` (or a later
  * revision) in its UPnP device description, this SOAP-queries that service for
  * `GetHostNumberOfEntries` then `GetGenericHostEntry` per index - the router's own DHCP/ARP

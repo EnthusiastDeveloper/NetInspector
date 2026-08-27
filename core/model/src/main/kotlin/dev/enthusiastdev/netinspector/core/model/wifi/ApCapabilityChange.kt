@@ -1,6 +1,6 @@
 package dev.enthusiastdev.netinspector.core.model.wifi
 
-/** improvement-ideas.md #11 - the capability fields a persisted `known_ap` row snapshots, before
+/** ideas.md #11 - the capability fields a persisted `known_ap` row snapshots, before
  * or after a change. [primaryChannel] rather than center-frequency/width - it's the human-
  * recognizable number shown on the AP detail screen. */
 data class ApCapabilitySnapshot(
@@ -9,7 +9,7 @@ data class ApCapabilitySnapshot(
     val primaryChannel: Int,
 )
 
-/** improvement-ideas.md #11 - the `KnownApEntity`-persisted counterpart to
+/** ideas.md #11 - the `KnownApEntity`-persisted counterpart to
  * [ScanSessionDiff.kt][dev.enthusiastdev.netinspector.core.model.wifi.ApChange]'s per-session
  * diff: same equality-only comparison on security/standard/channel, applied to one BSSID's
  * frozen before/after capability snapshot across scans rather than two whole sessions. The

@@ -41,7 +41,7 @@ fun summarizeThroughput(
 }
 
 /**
- * design §9.x / improvement-ideas.md #31 - the correlation differentiator: how many other
+ * design §9.x / ideas.md #31 - the correlation differentiator: how many other
  * currently-visible access points share (part of) the connected network's channel, sourced from
  * `WifiScanRepository`'s scan state rather than the `NetworkCallback` RSSI stream alone (design
  * §5.1's RSSI stream has no notion of *other* APs). Two spans overlap when their frequency

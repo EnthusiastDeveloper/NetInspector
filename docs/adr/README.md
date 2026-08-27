@@ -39,9 +39,9 @@ change of mind - write a new ADR that supersedes it and link both directions.
 
 ## Platform constraints
 
-See [`../design.md`](../design.md) for the subsystems these constrain, and
-[`../open-items.md`](../open-items.md) for constraints still awaiting a second-device
-confirmation.
+See [`../design.md`](../design.md) for the subsystems these constrain. Constraints still
+awaiting a second-device confirmation are tracked as GitHub issues (e.g. the physical
+foldable verification session, issue #22), not in this repo's docs.
 
 | ID | Constraint |
 |---|---|

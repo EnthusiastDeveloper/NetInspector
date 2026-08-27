@@ -8,7 +8,7 @@ import dev.enthusiastdev.netinspector.data.persistence.host.SavedHostDao
 import java.time.Clock
 import javax.inject.Inject
 
-/** improvement-ideas.md #24 - all the I/O around `diffLanPresence` (`:core:model`, the pure
+/** ideas.md #24 - all the I/O around `diffLanPresence` (`:core:model`, the pure
  * decision logic): read prior state, read the user's "known device" flags
  * (`SavedHostRepository`/`SavedHostDao` - same module, so this is an intra-module dependency,
  * not the cross-`:data:*`-module kind design §2.1 forbids), diff, persist the new state, hand

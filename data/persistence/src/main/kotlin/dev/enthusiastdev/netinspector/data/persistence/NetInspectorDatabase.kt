@@ -20,9 +20,9 @@ import dev.enthusiastdev.netinspector.data.persistence.wol.SavedWolTargetDao
 /** design §10 - schema version 5, `exportSchema = true` (wired in `build.gradle.kts`'s `room {}`
  * block since Phase 0). Version 1 shipped with only [SavedWolTarget] (Phase 7); version 2
  * (Phase 8) added scan history, known APs and diagnostic run history; version 3 added
- * [SavedHostEntity] (docs/device-identification-ideas.md D); version 4
- * (improvement-ideas.md #24) adds [KnownLanHostEntity] and an `isKnownDevice` column on
- * [SavedHostEntity]; version 5 (improvement-ideas.md #11) adds seven nullable capability-
+ * [SavedHostEntity] (docs/ideas.md D); version 4
+ * (ideas.md #24) adds [KnownLanHostEntity] and an `isKnownDevice` column on
+ * [SavedHostEntity]; version 5 (ideas.md #11) adds seven nullable capability-
  * tracking columns to [KnownApEntity] - see `NetInspectorDatabaseMigrations.kt` for all four
  * migrations, each purely additive. */
 @Database(

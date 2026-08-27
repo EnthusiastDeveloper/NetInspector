@@ -11,7 +11,7 @@ import java.time.format.DateTimeFormatter
 import javax.inject.Inject
 import javax.inject.Singleton
 
-/** improvement-ideas.md #21 - crash reports live in `filesDir` (durable across restarts,
+/** ideas.md #21 - crash reports live in `filesDir` (durable across restarts,
  * unlike the debug bundle's `cacheDir` zips which are transient/regenerable). */
 @Singleton
 class CrashReportStore

@@ -15,7 +15,7 @@ internal const val DEFAULT_RING_CAPACITY = 6
  * needing a third or fourth ring compresses that budget without this - a real sweep of 30+
  * hosts (an ordinary home network's device count today) packed enough nodes at fixed size to
  * make labels fully illegible and unreadable at the map's default zoom, not just "a bit
- * tight" (see docs/device-identification-ideas.md's driving bug report). Shrinking
+ * tight" (see docs/ideas.md's driving bug report). Shrinking
  * proportionally to `sqrt(capacity / count)` rather than linearly keeps a moderately busy
  * network (say 25 hosts) close to full size while still meaningfully de-crowding a much
  * larger one, and [MIN_NODE_SCALE] keeps even a very large sweep's nodes tap-able rather than

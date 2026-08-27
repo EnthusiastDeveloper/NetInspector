@@ -9,7 +9,7 @@ import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 import javax.inject.Singleton
 
-/** improvement-ideas.md #23 - thin `WorkManager` wrapper for [PeriodicScanWorker], called from
+/** ideas.md #23 - thin `WorkManager` wrapper for [PeriodicScanWorker], called from
  * `SettingsViewModel` whenever the auto-scan toggle or interval changes (unlike
  * `RetentionCleanupWorker`'s unconditional every-app-start schedule in
  * `NetInspectorApplication` - this is an opt-in, off-by-default feature, and `WorkManager`'s

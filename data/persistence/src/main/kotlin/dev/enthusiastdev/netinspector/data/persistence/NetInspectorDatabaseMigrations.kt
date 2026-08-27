@@ -44,7 +44,7 @@ val MIGRATION_1_2 =
         }
     }
 
-/** design §10/docs/device-identification-ideas.md D - version 3 adds one table for manual
+/** design §10/docs/ideas.md D - version 3 adds one table for manual
  * per-host nicknames, purely additive like 1→2. SQL copied verbatim from the KSP-generated
  * `schemas/.../3.json` `createSql` entry, same convention as [MIGRATION_1_2]. */
 val MIGRATION_2_3 =
@@ -57,7 +57,7 @@ val MIGRATION_2_3 =
         }
     }
 
-/** design §10/improvement-ideas.md #24 - version 4 adds one table for periodic-sweep presence
+/** design §10/ideas.md #24 - version 4 adds one table for periodic-sweep presence
  * tracking, and one column on the existing `saved_host` table for the "known device" flag.
  * `known_lan_host`'s `CREATE TABLE` is copied verbatim from the KSP-generated
  * `schemas/.../4.json`, same convention as [MIGRATION_2_3]; the `saved_host` change is an
@@ -78,7 +78,7 @@ val MIGRATION_3_4 =
         }
     }
 
-/** design §10/improvement-ideas.md #11 - version 5 adds seven nullable capability-tracking
+/** design §10/ideas.md #11 - version 5 adds seven nullable capability-tracking
  * columns to the existing `known_ap` table, all `ALTER TABLE ADD COLUMN` like [MIGRATION_3_4]'s
  * `isKnownDevice` case - unlike that one, none of these need a `DEFAULT`, since `NULL` is the
  * correct value for a row with no captured capability baseline yet (see `KnownApEntity`'s doc

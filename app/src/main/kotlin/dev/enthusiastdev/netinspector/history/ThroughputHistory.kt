@@ -13,7 +13,7 @@ data class ThroughputResultDto(
     val durationMs: Long,
 )
 
-/** improvement-ideas.md #31's correlation differentiator, snapshotted at test start and end -
+/** ideas.md #31's correlation differentiator, snapshotted at test start and end -
  * `null` fields mean the app wasn't connected to Wi-Fi (e.g. running over a different transport)
  * rather than an omitted measurement. */
 @Serializable

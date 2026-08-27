@@ -18,7 +18,7 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.stateIn
 import javax.inject.Inject
 
-/** improvement-ideas.md #6 - no new repository methods: [ScanHistoryRepository.recentSessions]
+/** ideas.md #6 - no new repository methods: [ScanHistoryRepository.recentSessions]
  * already gives the picker everything it needs, and [ScanHistoryRepository.observationsForSession]
  * called once per side is all the diff needs (design §2.2 - a use case would be noise here,
  * this is one repository's data reshaped for one pure function, not logic spanning two). */

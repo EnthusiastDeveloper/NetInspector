@@ -7,7 +7,7 @@ data class LogEntry(
     val message: String,
 )
 
-/** improvement-ideas.md #22 - a bounded, thread-safe (Timber can log from any thread) sink
+/** ideas.md #22 - a bounded, thread-safe (Timber can log from any thread) sink
  * fed by every planted `Timber.Tree`, kept in memory only for on-demand debug-bundle export.
  * Oldest entry is evicted on overflow, so capacity - not app log volume - bounds its size. */
 class LogRingBuffer(

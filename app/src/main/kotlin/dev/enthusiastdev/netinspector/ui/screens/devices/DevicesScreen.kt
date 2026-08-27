@@ -251,7 +251,7 @@ private fun DevicesListPane(
                     (listState.firstVisibleItemIndex > 0 || listState.firstVisibleItemScrollOffset > thresholdPx)
             }
         }
-    // docs/improvement-ideas.md #1 - meaningless (always "100, Excellent") until at least one
+    // docs/ideas.md #1 - meaningless (always "100, Excellent") until at least one
     // host has been through the extended port probe, same gate DevicesDetailCards uses per-host,
     // so this doesn't misrepresent a network nobody has scanned ports on yet. Computed over the
     // unfiltered host list - see DevicesNetworkHygieneCard.

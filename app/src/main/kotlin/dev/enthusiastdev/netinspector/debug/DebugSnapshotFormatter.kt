@@ -7,7 +7,7 @@ import dev.enthusiastdev.netinspector.core.model.lan.primaryHostname
 import dev.enthusiastdev.netinspector.core.model.wifi.AccessPoint
 import java.time.Instant
 
-/** improvement-ideas.md #22 - "bundle recent logs plus current scan/diagnostic state,"
+/** ideas.md #22 - "bundle recent logs plus current scan/diagnostic state,"
  * deliberately scoped to *live* state (this sweep's hosts, the current connection, the latest
  * Wi-Fi scan) rather than persisted session history - pulling in full history would blur this
  * with idea #20 (PDF/shareable report generation), a separate backlog item. Output is plain

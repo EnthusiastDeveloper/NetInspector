@@ -90,7 +90,7 @@ internal fun HygieneRating.label(): String =
         HygieneRating.CRITICAL -> "Critical"
     }
 
-/** docs/improvement-ideas.md #1 - the caption under a hygiene score badge, naming what the
+/** docs/ideas.md #1 - the caption under a hygiene score badge, naming what the
  * score's basis actually is rather than leaving the number to speak for itself. */
 internal fun HygieneScore.findingsSummary(): String =
     when (findings.size) {

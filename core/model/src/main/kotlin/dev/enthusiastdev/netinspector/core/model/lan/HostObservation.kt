@@ -19,7 +19,7 @@ data class HostObservation(
     val openPorts: List<OpenPort> = emptyList(),
     val deviceHint: DeviceHint? = null,
     val icmpReplyTtl: Int? = null,
-    /** docs/device-identification-ideas.md A3 - only ever set by [dev.enthusiastdev.netinspector
+    /** docs/ideas.md A3 - only ever set by [dev.enthusiastdev.netinspector
      * .data.lan.netbios.NetBiosProbe], from the NBSTAT response's STATISTICS field (RFC 1002
      * §4.2.18) rather than the ARP table blocked by C-01. `null` for every other source. */
     val macAddress: String? = null,

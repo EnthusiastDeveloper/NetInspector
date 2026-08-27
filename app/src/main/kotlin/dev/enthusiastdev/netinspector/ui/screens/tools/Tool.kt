@@ -45,7 +45,7 @@ enum class Tool(
     DNS("DNS lookup", Icons.Filled.Dns, ToolCategory.DIAGNOSTICS),
     PORT_SCANNER("Port scanner", Icons.Filled.Radar, ToolCategory.DIAGNOSTICS),
 
-    // "LAN throughput test," never bare "Speed test" - docs/improvement-ideas.md #31's rescope
+    // "LAN throughput test," never bare "Speed test" - docs/ideas.md #31's rescope
     // exists specifically to avoid reading as an internet speed-test app (see the tool screen's
     // own explanatory copy and docs/adr/0009-lan-throughput-icmp-burst-estimate.md).
     LAN_THROUGHPUT("LAN throughput test", Icons.Filled.NetworkCheck, ToolCategory.DIAGNOSTICS),

@@ -17,7 +17,7 @@ import javax.inject.Inject
  * design §8.2 Stage A - a NetBIOS Name Service node-status (NBSTAT) query (RFC 1002 §4.2.18)
  * sent to the subnet's broadcast address on UDP 137. Extracts the first non-group
  * ("unique") name entry with the workstation-service suffix as the host's NetBIOS name, plus
- * (docs/device-identification-ideas.md A3) the responding adapter's real MAC address from the
+ * (docs/ideas.md A3) the responding adapter's real MAC address from the
  * STATISTICS field that follows the name array - the one case where an unrooted app can learn
  * another host's MAC without the ARP table blocked by C-01, since it arrives in this
  * application-layer payload rather than the kernel's neighbor table.
@@ -118,7 +118,7 @@ class NetBiosProbe
          * adapter's real MAC address. `internal` rather than `private` so [NetBiosProbeTest] can
          * exercise this RFC-1002 byte-offset math directly against a synthetic packet, since
          * there's no NetBIOS/SMB responder on hand in every environment this runs in to verify
-         * it against a real one (docs/device-identification-ideas.md A3). */
+         * it against a real one (docs/ideas.md A3). */
         internal fun parseNbstatResponse(
             buffer: ByteArray,
             length: Int,

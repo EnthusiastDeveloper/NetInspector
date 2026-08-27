@@ -5,7 +5,7 @@ import android.content.Intent
 import androidx.core.content.FileProvider
 import java.io.File
 
-/** improvement-ideas.md #21/#22 - the literal shared infrastructure between crash-report
+/** ideas.md #21/#22 - the literal shared infrastructure between crash-report
  * export and debug-bundle export: both hand a local file to the standard Android share sheet
  * so the user picks the destination themselves (email, Drive, chat app, ...). Nothing here
  * ever transmits anything on its own. */

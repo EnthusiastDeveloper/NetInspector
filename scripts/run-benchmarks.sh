@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Runs the LAN sweep pipeline's benchmark suite (docs/improvement-ideas.md #32) and writes
+# Runs the LAN sweep pipeline's benchmark suite (docs/ideas.md #32) and writes
 # the combined results to benchmarks/current.csv. Used by contributors iterating on the
 # sweep pipeline and by .github/workflows/ci.yml's non-blocking `benchmark` job - see
 # docs/adr/0009-hand-rolled-benchmark-harness.md for why this suite is never part of

@@ -8,7 +8,7 @@ import java.time.Clock
  * RFC 1002 §4.2.18 byte-offset math is fiddly and there's no guarantee a NetBIOS/SMB
  * responder is reachable in every environment this test runs in, so this builds a synthetic
  * NBSTAT response by hand rather than relying on a live one - see [NetBiosProbe]'s own doc
- * comment and docs/device-identification-ideas.md A3.
+ * comment and docs/ideas.md A3.
  */
 class NetBiosProbeTest {
     private val probe = NetBiosProbe(Clock.systemUTC())

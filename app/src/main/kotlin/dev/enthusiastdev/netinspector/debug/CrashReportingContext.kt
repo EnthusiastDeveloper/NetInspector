@@ -10,7 +10,7 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 import javax.inject.Singleton
 
-/** improvement-ideas.md #21 - [dev.enthusiastdev.netinspector.debug.CrashHandler] runs on the
+/** ideas.md #21 - [dev.enthusiastdev.netinspector.debug.CrashHandler] runs on the
  * crashing thread and can't suspend to read a `Flow`, so this collects the two things it needs
  * into `@Volatile` fields for the lifetime of the process, using the app-wide [ApplicationScope]
  * rather than anything tied to a screen's lifecycle. */

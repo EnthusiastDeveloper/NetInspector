@@ -5,7 +5,7 @@ import dev.enthusiastdev.netinspector.core.common.log.LogRingBuffer
 import timber.log.Timber
 import javax.inject.Inject
 
-/** improvement-ideas.md #22 - unlike [dev.enthusiastdev.netinspector.ReleaseTree] (which drops
+/** ideas.md #22 - unlike [dev.enthusiastdev.netinspector.ReleaseTree] (which drops
  * VERBOSE/DEBUG/INFO in release builds to keep logcat quiet), this tree captures every priority
  * in both build types: the ring buffer exists for on-demand debug-bundle export, not for
  * logcat noise control. */

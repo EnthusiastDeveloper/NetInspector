@@ -49,7 +49,7 @@ class MonitoringService : Service() {
     private val serviceScope = CoroutineScope(SupervisorJob())
     private var collectJob: Job? = null
 
-    /** improvement-ideas.md #5 - the previous emission, so [connectionAlertsFor] can tell a
+    /** ideas.md #5 - the previous emission, so [connectionAlertsFor] can tell a
      * fresh disconnect/reconnect/threshold-crossing apart from an already-settled state. Reset
      * implicitly every service (re)start, same lifetime as [collectJob]. */
     private var previousSnapshot: ConnectionSnapshot? = null
@@ -179,7 +179,7 @@ class MonitoringService : Service() {
             .build()
     }
 
-    /** improvement-ideas.md #5 - a disconnect/reconnect/weak-signal alert, distinct from
+    /** ideas.md #5 - a disconnect/reconnect/weak-signal alert, distinct from
      * [buildNotification]'s ongoing status notification: dismissible rather than
      * [NotificationCompat.Builder.setOngoing], and alerts every time rather than
      * [NotificationCompat.Builder.setOnlyAlertOnce], since each one represents a discrete event

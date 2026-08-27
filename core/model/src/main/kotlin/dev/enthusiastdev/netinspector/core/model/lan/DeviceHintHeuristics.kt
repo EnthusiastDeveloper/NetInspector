@@ -6,7 +6,7 @@ package dev.enthusiastdev.netinspector.core.model.lan
  * `:core:model:wifi` (design §7). Every candidate is built independently and the most certain
  * one wins outright ([Certainty]'s declaration order doubles as rank, lowest ordinal = most
  * certain, same as `HostMerge.preferredHint`) - `snmpSysDescr`/`tlsCertificateCommonName`
- * (docs/device-identification-ideas.md B1/B3) are self-reported, [Certainty.CONFIRMED] like
+ * (docs/ideas.md B1/B3) are self-reported, [Certainty.CONFIRMED] like
  * A1/A2's UPnP/mDNS fields; a port signature (design's own examples - 62078 is Apple-only
  * usbmuxd, 5555 is ADB) is [Certainty.LIKELY], a coarser signal than either; the TTL fingerprint
  * is the weakest, [Certainty.POSSIBLE]. A tie between two [Certainty.CONFIRMED] candidates goes
@@ -92,7 +92,7 @@ private const val TTL_UNIX_FAMILY = 64
 private const val TTL_WINDOWS_FAMILY = 128
 private const val TTL_NETWORK_EQUIPMENT = 255
 
-/** docs/device-identification-ideas.md A1 - SSDP/UPnP's LOCATION-XML `manufacturer`/
+/** docs/ideas.md A1 - SSDP/UPnP's LOCATION-XML `manufacturer`/
  * `modelName` are the device's own declared identity, not an inference, so this is
  * [Certainty.CONFIRMED] - stronger evidence than a port signature or TTL guess. */
 fun upnpDeviceHint(
@@ -107,7 +107,7 @@ fun upnpDeviceHint(
     )
 }
 
-/** docs/device-identification-ideas.md B1 - SNMP `sysDescr` (OID 1.3.6.1.2.1.1.1.0) is a
+/** docs/ideas.md B1 - SNMP `sysDescr` (OID 1.3.6.1.2.1.1.1.0) is a
  * device's own self-reported firmware/model string, [Certainty.CONFIRMED] exactly like A1/A2's
  * manufacturer/model fields. */
 fun snmpDeviceHint(sysDescr: String?): DeviceHint? {
@@ -115,7 +115,7 @@ fun snmpDeviceHint(sysDescr: String?): DeviceHint? {
     return DeviceHint(label = label, basis = "SNMP sysDescr → $label", certainty = Certainty.CONFIRMED)
 }
 
-/** docs/device-identification-ideas.md B3 - a self-signed admin-UI certificate's CN commonly
+/** docs/ideas.md B3 - a self-signed admin-UI certificate's CN commonly
  * carries the product name outright; [Certainty.CONFIRMED], the same tier as SNMP's
  * self-reported `sysDescr` above. */
 fun tlsCertificateDeviceHint(commonName: String?): DeviceHint? {
@@ -123,7 +123,7 @@ fun tlsCertificateDeviceHint(commonName: String?): DeviceHint? {
     return DeviceHint(label = label, basis = "TLS certificate CN → $label", certainty = Certainty.CONFIRMED)
 }
 
-/** docs/device-identification-ideas.md A2 - two tiers from one mDNS record: an explicit model
+/** docs/ideas.md A2 - two tiers from one mDNS record: an explicit model
  * string in a well-known TXT key ([Certainty.CONFIRMED], self-reported exactly like A1's UPnP
  * fields) if present, else a generic label purely from the service type ([Certainty.LIKELY],
  * the same tier as [portSignatureHint] - advertising `_airplay._tcp` is as strong a signal as

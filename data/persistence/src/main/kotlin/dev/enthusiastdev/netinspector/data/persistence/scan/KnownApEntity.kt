@@ -6,7 +6,7 @@ import androidx.room.PrimaryKey
 /** design §10 - stable per-BSSID record, indefinite retention (never swept by the periodic
  * cleanup worker, unlike [ScanSessionEntity]/[ScanObservationEntity]).
  *
- * improvement-ideas.md #11 - [security]/[standard]/[primaryChannel] are the AP's capabilities
+ * ideas.md #11 - [security]/[standard]/[primaryChannel] are the AP's capabilities
  * as of the latest scan; [previousSecurity]/[previousStandard]/[previousPrimaryChannel] are a
  * frozen snapshot of what they were immediately before the last notable change (only updated
  * when [dev.enthusiastdev.netinspector.core.model.wifi.diffApCapabilities] finds one), with

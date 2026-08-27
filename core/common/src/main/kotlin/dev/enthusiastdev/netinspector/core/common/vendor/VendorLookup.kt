@@ -12,7 +12,7 @@ package dev.enthusiastdev.netinspector.core.common.vendor
  *
  * Lives in `:core:common` (rather than `:data:wifi`, where it originated) so both `:data:wifi`
  * (BSSIDs from Wi-Fi scan results) and `:data:lan` (MAC addresses recovered from NetBIOS NBSTAT
- * responses, docs/device-identification-ideas.md A3) can use the same table: a data module may
+ * responses, docs/ideas.md A3) can use the same table: a data module may
  * depend on `:core:model`/`:core:common` only, never on another data module (design §2.1), so
  * this needed to live somewhere both already reach. That also ruled out an Android `Context`/
  * `AssetManager` for loading the table (`:core:common` has no `android.*` imports by design,

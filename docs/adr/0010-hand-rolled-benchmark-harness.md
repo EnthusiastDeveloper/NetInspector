@@ -4,7 +4,7 @@ Status: Accepted
 
 ## Context
 
-improvement-ideas.md #32 asks for a benchmark/perf suite for the LAN sweep pipeline's pure
+ideas.md #32 asks for a benchmark/perf suite for the LAN sweep pipeline's pure
 logic (parsing, scoring, precedence) and its timing-sensitive scheduling of parallel host
 discovery (`HostSweeper`'s three-pass, concurrency-limited fan-out, design §8.2 Stage B).
 The requirement names JMH "or a lightweight Kotlin equivalent" and leaves the choice open.
@@ -54,7 +54,7 @@ side-effect-free, so this risk is mostly theoretical here). This harness is expl
 trying to match JMH's statistical rigor - see `benchmarks/baseline.csv` and
 `scripts/compare-benchmarks.sh`'s generous default 50% regression threshold, sized for "catch
 an accidental O(n²) or a 10x slowdown," not "detect a 5% regression reliably." That bar is
-what improvement-ideas.md #32 actually asks for: a regression-catching net for dev-facing
+what ideas.md #32 actually asks for: a regression-catching net for dev-facing
 tooling, not a publishable performance study. If the project later needs finer-grained,
 statistically rigorous microbenchmarks, revisit JMH/kotlinx-benchmark then rather than paying
 their setup cost now for a need this harness already covers.

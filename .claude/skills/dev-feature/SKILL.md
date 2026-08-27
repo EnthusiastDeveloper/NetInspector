@@ -9,10 +9,9 @@ the user, just follow it.
 
 ## Stage order
 
-1. **Requirements.** Restate scope from the prompt or the named backlog item
-   (`docs/improvement-ideas.md`, `docs/device-identification-ideas.md`,
-   `docs/open-items.md`). Place it against `docs/design.md` §8.2's pipeline stages and
-   `docs/adr/` before writing anything.
+1. **Requirements.** Restate scope from the prompt or the named backlog item (a GitHub
+   issue, or an entry in `docs/ideas.md`). Place it against `docs/design.md` §8.2's
+   pipeline stages and `docs/adr/` before writing anything.
 
 2. **Plan.** For anything beyond a one-file fix, use plan mode. The plan must explicitly
    address: minimal duplication (reuse existing helpers), reusability (pure functions for
@@ -23,18 +22,22 @@ the user, just follow it.
 
 3. **Implement**, scoped to the plan.
 
-4. **Tests.** Land unit tests with the code, per design.md §12's split between JVM unit
-   tests, instrumented tests, and the manual device matrix. Check the diff against §12's
+4. **Tests.** Land unit tests with the code, per `docs/testing.md`'s split between JVM unit
+   tests, instrumented tests, and the manual device matrix. Check the diff against its
    "Boundary and negative-path coverage" list: a clamped/bounded parameter, a throttle or
    quota gate, or an async action with a minimum-duration UI affordance each need the
-   boundary or non-happy-path branch under test, not just the typical case. If the change
-   modifies behavior an existing test already covers, update that test as part of the same
-   change - a test that still asserts the old behavior is worse than no test at all.
+   boundary or non-happy-path branch under test, not just the typical case. If the diff
+   touches a gesture-capable control (a `pointerInput` handler, a pull-to-refresh), check
+   `docs/testing.md` §4 for whether its math is already extracted and tested the way
+   `AxisMapper`/`AxisViewport` are - if not, that extraction is part of the same change. If
+   the change modifies behavior an existing test already covers, update that test as part of
+   the same change - a test that still asserts the old behavior is worse than no test at
+   all.
 
 5. **Build gate.** Run `./scripts/verify.sh`. Do not proceed past a failure - fix it, don't
    route around it (no skipping ktlint/detekt rules, no `--no-verify`).
 
-6. **UI validation.**
+6. **UI validation.** Full process in `docs/testing.md` §7 - this is a summary.
    - Layout (rotation, window size class, fold posture) needs no radio (ADR `C-13`) and is
      fully scripted: `./scripts/ui-matrix.sh boot <NetInspector_Resizable|NetInspector_Fold76>`,
      install the debug APK, navigate to each screen in the **family** the diff touches - not
@@ -46,15 +49,25 @@ the user, just follow it.
      screenshots, also confirm every capability design.md claims for that screen has a
      visible affordance, not just correct layout - a gesture-only action with no visible
      control is a discoverability bug even when nothing overflows.
-   - Anything radio-dependent (scanning, RSSI, ping, real hosts) needs a real device.
-     **Before touching one, ask the user which device to use via AskUserQuestion, unless
+   - If the diff touches a control in `docs/testing.md` §4's gesture table (either graph's
+     `pointerInput` handler, `WifiScreen`'s pull-to-refresh), run the gesture pass on the
+     real device below: exercise every gesture that control supports, plus §4's
+     "specifically check these" list (double-tap, a gesture interrupted mid-motion by
+     rotation, and so on) - not just enough taps to confirm the control responds.
+   - Anything radio-dependent (scanning, RSSI, ping, real hosts) needs a real device, and is
+     where `docs/testing.md` §5's corner-case checklist (empty/one/max results, permission
+     revoked mid-run, radio toggled mid-run, process killed mid-run) gets exercised.
+     **Before touching a device, ask the user which one to use via AskUserQuestion, unless
      the prompt already named it.** List `adb devices -l` output as the options. Do not
      assume a device from prior context (memory, an earlier message) is still free -
      another agent or the user may be using it right now, and wireless-ADB addresses drift
      between sessions anyway.
    - If the feature adds or changes screen-level Compose state, verify it survives an
-     actual rotation on the real device, not just the emulator sweep - see the rotation
-     note in `docs/feature-development.md` stage 6.
+     actual rotation on the real device, not just the emulator sweep, **and** verify it
+     survives process death (Developer Options "Don't keep activities," or backgrounding
+     long enough for the system to reclaim the process) - a separate guarantee from
+     rotation, not automatically covered by `stateIn(WhileSubscribed)`. See
+     `docs/testing.md` §7.
 
 7. **Bug-fix loop.** Back to steps 3-6 as needed; both `verify.sh` and `ui-matrix.sh sweep`
    are safe to re-run.

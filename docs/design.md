@@ -512,7 +512,7 @@ stays null for most hosts, so a future rooted or privileged build can populate i
 model change. The UI does not show an empty "MAC" row; it shows the identification signals it
 actually has.
 
-**One narrow, deliberate exception** (docs/device-identification-ideas.md A3): a host that
+**One narrow, deliberate exception** (docs/ideas.md A3): a host that
 answers a NetBIOS NBSTAT query includes its adapter's real MAC in the response's STATISTICS
 field (RFC 1002 §4.2.18) - an application-layer payload the app is already receiving
 legitimately, not the ARP table. `NetBiosProbe` extracts it and runs it through the OUI table
@@ -538,7 +538,7 @@ confirmed hosts only.
 |---|---|---|
 | mDNS | `NsdManager` browse, plus a meta-query for `_services._dns-sd._udp` to enumerate service types before browsing each | Hostnames, service types, device models (Apple, printers, Chromecast, NAS) |
 | SSDP | UDP M-SEARCH ×3 to `239.255.255.250:1900`, `ST: ssdp:all`, MX 2 | `SERVER`, `LOCATION`; fetching the LOCATION XML yields `friendlyName`, `manufacturer`, `modelName` |
-| UPnP IGD Hosts | SOAP `GetHostNumberOfEntries`/`GetGenericHostEntry` against a router advertising `urn:schemas-upnp-org:service:Hosts:1` in its SSDP device description (docs/device-identification-ideas.md C1) | Real MAC and hostname for every LAN host the router knows about, coverage permitting |
+| UPnP IGD Hosts | SOAP `GetHostNumberOfEntries`/`GetGenericHostEntry` against a router advertising `urn:schemas-upnp-org:service:Hosts:1` in its SSDP device description (docs/ideas.md C1) | Real MAC and hostname for every LAN host the router knows about, coverage permitting |
 | NetBIOS | UDP node-status query to the broadcast address on port 137 | Windows/Samba names and workgroup |
 | Known hosts | Gateway from `LinkProperties`, self from `linkAddresses` | Two guaranteed-correct entries |
 
@@ -584,10 +584,10 @@ false negatives on a congested network.
 - Reverse DNS via `DnsResolver`, async, never blocking the list.
 - Extended port probe over a ~30-port service set.
 - Banner grab: HTTP `Server` header and `<title>`, SSH version string.
-- **SNMP `sysDescr`/`sysName`** (docs/device-identification-ideas.md B1): a single GET-request
+- **SNMP `sysDescr`/`sysName`** (docs/ideas.md B1): a single GET-request
   to UDP 161, community `public`. A hit is `CONFIRMED` tier - the device's own self-reported
   firmware/model string, same as A1/A2's UPnP/mDNS fields.
-- **TLS certificate CN** (docs/device-identification-ideas.md B3): a handshake-only
+- **TLS certificate CN** (docs/ideas.md B3): a handshake-only
   (never-validated) `SSLSocket` client against 443/8443. A self-signed admin-UI certificate's
   CN frequently carries the product name outright; `CONFIRMED` tier like SNMP above, with SNMP
   winning a tie (its firmware string is usually more specific than a certificate's often
@@ -627,7 +627,7 @@ cancels every in-flight probe.
 
 ### 8.5 Periodic background scanning
 
-improvement-ideas.md #23/#24 - an opt-in `WorkManager` periodic job (`PeriodicScanWorker`,
+ideas.md #23/#24 - an opt-in `WorkManager` periodic job (`PeriodicScanWorker`,
 `:app`), off by default, that reuses this pipeline and §6.1's `ScanGovernor` rather than
 building a second scanning path. ADR C-10 governs it directly: a run can be skipped or
 delayed by Doze, and that is meant to be visible as a gap, never interpolated or retried.
@@ -651,7 +651,7 @@ background wake-up rather than two:
   a real vanish alert gets one "reappeared" alert. The very first run for a given network only
   ever records a baseline - never a flood of "new device" alerts for everything already there.
 - **Known device flag** - a per-host, user-set `isKnownDevice` column on `saved_host`
-  (docs/device-identification-ideas.md D's existing per-host table), toggled from the Devices
+  (docs/ideas.md D's existing per-host table), toggled from the Devices
   detail screen. A host so flagged never produces a vanish or reappear alert - the intended
   case is a laptop that sleeps or a phone that leaves and returns home, both of which are
   expected churn, not a signal worth alerting on. It does not suppress the initial "new
@@ -772,7 +772,7 @@ trips IDS on managed networks and can destabilise cheap consumer routers.
 - **Signal meter** - live RSSI from the `NetworkCallback` stream (§5.1) with a rolling
   60-second chart, dBm and derived quality percentage, plus link speed. No scan budget
   consumed, so this can run continuously.
-- **LAN throughput test** (improvement-ideas.md #31, rescoped - see
+- **LAN throughput test** (ideas.md #31, rescoped - see
   [ADR-0009](adr/0009-lan-throughput-icmp-burst-estimate.md)) - a *local-network-only* link
   speed estimate, explicitly not an internet speed test: several concurrent workers pipeline
   near-MTU ICMP echo probes (tier 1's socket, §9.1) against a chosen LAN host for a fixed
@@ -797,14 +797,14 @@ migrations.
 |---|---|---|
 | `scan_session` | One row per scan snapshot: timestamp, connected BSSID, location-free | 30 days, configurable |
 | `scan_observation` | AP observation joined to a session: BSSID, RSSI, channel, width | Cascade with session |
-| `known_ap` | Stable per-BSSID record: SSID, vendor, first/last seen, best RSSI, plus a current/previous security-standard-channel snapshot for improvement-ideas.md #11's capability-change detection | Indefinite |
+| `known_ap` | Stable per-BSSID record: SSID, vendor, first/last seen, best RSSI, plus a current/previous security-standard-channel snapshot for ideas.md #11's capability-change detection | Indefinite |
 | `saved_wol_target` | Manually-entered Wake-on-LAN target: label, MAC, broadcast address | Indefinite |
-| `saved_host` | Manual per-host nickname (docs/device-identification-ideas.md D) plus the `isKnownDevice` "known device" flag (improvement-ideas.md #24), keyed by MAC when known or a stable address+hostname combo otherwise | Indefinite |
-| `known_lan_host` | Periodic-sweep presence tracking per host identity for new/vanished/reappeared alerts (improvement-ideas.md #24, §8.5) | Same window as `scan_session` |
+| `saved_host` | Manual per-host nickname (docs/ideas.md D) plus the `isKnownDevice` "known device" flag (ideas.md #24), keyed by MAC when known or a stable address+hostname combo otherwise | Indefinite |
+| `known_lan_host` | Periodic-sweep presence tracking per host identity for new/vanished/reappeared alerts (ideas.md #24, §8.5) | Same window as `scan_session` |
 | `diagnostic_run` | Ping/traceroute/scan runs with parameters and serialised results | 90 days |
 | `oui` | Prepopulated MAC prefix → vendor, variable prefix length | Static, bundled |
 
-improvement-ideas.md #6 - the "Wi-Fi changes" tool (Tools grid, History group) is pure
+ideas.md #6 - the "Wi-Fi changes" tool (Tools grid, History group) is pure
 presentation over `scan_session`/`scan_observation`: no new table, no new repository method.
 A user picks two sessions; `diffScanSessions` (`:core:model`, pure, JVM-tested) keys both
 sides' observations by BSSID and reports added/removed/changed access points. A matched BSSID
@@ -814,7 +814,7 @@ ordinary scan-to-scan RSSI jitter would flag nearly every AP as changed and defe
 purpose. Each session's own timestamp is always shown (C-02's staleness guidance) - neither
 side is ever implied to be "current."
 
-improvement-ideas.md #11 - `known_ap`'s capability columns (§10's table above) track this
+ideas.md #11 - `known_ap`'s capability columns (§10's table above) track this
 automatically rather than requiring the user to pick sessions like #6 does. On every
 `upsertKnownAp` (`ScanHistoryRepository`), if the row already has a captured baseline, the
 incoming scan's security/standard/channel is compared against it with `diffApCapabilities`
@@ -1003,83 +1003,16 @@ requires explicit acknowledgement. Stored in DataStore. Not skippable, not repea
 
 ## 12. Testing strategy
 
-**JVM unit tests** (`:core:model`, `:core:common`, parsers):
+The full test plan - JVM unit tests, boundary/negative-path coverage, instrumented tests,
+the UI interaction and gesture matrix, the per-capability corner-case checklist, the
+manual device matrix, and the UI validation process - lives in
+[`docs/testing.md`](testing.md), not here, so there is one source of truth for both
+functional and UI validation. Read it before writing tests for a change or planning a
+validation pass; the sections above (§6, §8, §9, §11.3) remain the source for what
+*correct* behavior looks like for each capability, which `docs/testing.md` cross-references
+rather than repeats.
 
-- Frequency ↔ channel conversion across all three bands and both special cases.
-- Channel span computation for every width constant including 80+80 and 320 MHz.
-- Overlap and interference scoring, including the linear-power conversion.
-- Security type set → display label, covering WPA2/WPA3 transition and OWE.
-- Subnet math: prefix enumeration, network/broadcast, /31 and /32 edge cases.
-- **Golden-file parser tests** for ping and traceroute output from both toybox and
-  iputils, and for SSDP and NetBIOS responses. These are the highest-value tests in the
-  project - the parsers are where silent inaccuracy hides.
-- ICMP checksum and packet construction against known-good byte vectors.
-- **A ViewModel action handler that gates a UI-visible state flag** (a refresh spinner, a
-  disabled button, a countdown): every outcome branch the underlying call can return needs
-  its own test, not just the happy path. `WifiViewModel.onRefresh` shipped a bug where the
-  spinner flickered without animating specifically on the throttled/failed branches, and
-  those branches had never been tested at all (`WifiViewModelTest`).
-- **The governor or gate a bounded resource sits behind** (a throttle, a quota, a rate
-  limiter) needs direct tests of its own, not just indirect coverage through whatever calls
-  it. `ScanGovernor` is design §6.1's throttle and had none - `ScanGovernorTest` now covers
-  the quota arithmetic, the reserved-token carve-out for user-initiated refreshes, and the
-  specific property that made the above `onRefresh` bug possible: a throttled
-  `requestScan` returns the moment it decides to throttle, never after waiting out the
-  retry window.
-
-**Boundary and negative-path coverage.** A feature that clamps, throttles, or bounds
-something needs the boundary itself under test, not just typical mid-range values - the
-crash and the stuck-spinner bug both fixed alongside this section came from exactly this
-gap. Three recurring shapes in this codebase:
-
-- **A clamped/bounded interactive parameter** - anything with a `MAX_`/`MIN_` constant,
-  such as the channel graph's `MAX_AXIS_ZOOM`. Test at the bound, not only in the middle of
-  the range, and test whatever *consumes* the bounded value downstream, not only the
-  function that does the clamping - `AxisViewport`'s zoom-ceiling test already covered the
-  clamp itself, but nothing tested that `AxisMapper.xPx` stays consumable by the drawing
-  code once a curve sits outside a zoomed-in viewport, which is exactly where the crash was
-  (`AxisMapperTest`, `ChannelOccupancyGraphRenderTest`).
-- **A throttle, quota, or cooldown gate.** Test the denied path with the same care as the
-  granted one, and confirm what the *caller* can assume about it - in particular, whether a
-  denial can return before any real time has passed. A caller that assumes a gate always
-  takes time to say no will misbehave the moment it doesn't (`ScanGovernorTest`).
-- **An async action with a minimum-duration UI affordance** (a spinner sized to "how long
-  this usually takes", not to the actual result). Test every outcome the underlying call can
-  return, since the fast, unhappy outcomes are exactly where a hardcoded duration assumption
-  breaks (`WifiViewModelTest`).
-
-**Instrumented tests**: `ACCESS_FINE_LOCATION` permission state machine (granted, denied,
-permanently denied), Room migrations,
-vendor lookup correctness and performance - including longest-prefix precedence, where a
-36-bit entry must win over a 24-bit entry covering the same address -
-`NetworkCallback` lifecycle. **Compose `Canvas`/`DrawScope` rendering logic** belongs here
-too, not only in the manual screenshot sweep below: a pure-math unit test on the values fed
-into a draw call (an `AxisMapper`, a viewport transform) cannot prove the draw call itself
-survives those values, since `DrawScope` extension functions need a real composition to
-run. `ChannelOccupancyGraphRenderTest` renders the graph directly rather than only
-screenshotting it, specifically so a crash - not just a layout mistake - gets caught by a
-test rather than by a user's phone.
-
-**Manual device matrix** - physical devices only, since the emulator cannot scan Wi-Fi at
-all (C-13). The primary targets are the two owned Android 15 devices; the third row is
-optional but is the only way to catch OEM divergence (C-14) before it bites.
-
-| Device class | API | Specifically tests |
-|---|---|---|
-| Primary device | 35 | Reference behaviour, FGS typing, 6 GHz if available, both spikes |
-| Secondary device | 35 | Cross-checks the spikes; catches per-device kernel differences |
-| Resizable emulator | 33-35 | **Layout only**: window size classes, book and tabletop posture. No radio, so no scanning, sweeping or diagnostics |
-| Third-party OEM *(optional)* | 33-34 | The API 33 floor itself, vendor Wi-Fi stack, aggressive background limits |
-| Physical foldable *(one session)* | any | Real hinge dimensions and aspect ratio against the emulator-developed layouts |
-
-The two owned devices are the deployment targets, so they define "working". The resizable
-emulator is the exception to C-13: layout needs no Wi-Fi radio, so it is a fully valid
-test surface for everything in §11.2 and nothing else. The optional
-third exists purely to validate that the API 33 floor is real rather than theoretical - if
-the app is never installed below 35, consider raising `minSdk` and deleting the last
-version branch (§6.2).
-
-**Benchmark suite (dev-facing, non-blocking)** - improvement-ideas.md #32. §8.2's active
+**Benchmark suite (dev-facing, non-blocking)** - ideas.md #32. §8.2's active
 sweep is parallel and timing-sensitive enough (64/32-way concurrency-limited passes, a
 map-copy-per-observation merge in the hot path) that a regression there is easy to introduce
 and easy to miss in an ordinary unit test, which only checks correctness, not cost. A small
@@ -1102,7 +1035,7 @@ deterministic regardless. `scripts/run-benchmarks.sh` runs the suite and writes
 `benchmarks/baseline.csv` and prints a `::warning::` annotation for a >50% median regression,
 without ever failing the build (ADR-0010). CI wires this in as a separate,
 `continue-on-error: true` job in `.github/workflows/ci.yml` - informational only, exactly as
-improvement-ideas.md #32 asks for.
+ideas.md #32 asks for.
 
 ---
 

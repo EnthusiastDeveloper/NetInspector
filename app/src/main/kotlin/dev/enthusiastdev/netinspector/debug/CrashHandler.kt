@@ -9,7 +9,7 @@ import java.time.Instant
 import javax.inject.Inject
 import javax.inject.Singleton
 
-/** improvement-ideas.md #21 - installed in [dev.enthusiastdev.netinspector.NetInspectorApplication]
+/** ideas.md #21 - installed in [dev.enthusiastdev.netinspector.NetInspectorApplication]
  * via `Thread.setDefaultUncaughtExceptionHandler`. Purely additive: it always hands off to
  * whatever handler was previously installed, so the system crash dialog and process death
  * behave exactly as they would without this class - it only ever adds a local file write

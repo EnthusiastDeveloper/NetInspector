@@ -35,7 +35,7 @@ message AppPreferences {
   // restarts; the Settings screen offers the only way back once dismissed.
   bool monitoring_card_dismissed = 9;
 
-  // improvement-ideas.md #5 - lets the continuous-monitoring notification (MonitoringService)
+  // ideas.md #5 - lets the continuous-monitoring notification (MonitoringService)
   // actually alert on a weak signal / drop / reconnect instead of only displaying live state.
   // 0 is never a realistic Wi-Fi RSSI reading, so it doubles as "unset" the same way the
   // retention fields above use 0, substituted with a sane weak-signal default by the repository.
@@ -44,17 +44,17 @@ message AppPreferences {
   bool alert_on_disconnect = 12;
   bool alert_on_reconnect = 13;
 
-  // improvement-ideas.md #21 - opt-in local crash reporting, off by default. Proto3 bool
+  // ideas.md #21 - opt-in local crash reporting, off by default. Proto3 bool
   // already defaults to false, which is the correct "unset" value here.
   bool crash_reporting_enabled = 14;
 
-  // improvement-ideas.md #21 - filename of the most recently acknowledged crash report (the
+  // ideas.md #21 - filename of the most recently acknowledged crash report (the
   // user either exported it or dismissed the dashboard's prompt for it), so that prompt only
   // ever surfaces once per report rather than nagging on every app start. Proto3's empty-string
   // default already means "nothing acknowledged yet."
   string last_acknowledged_crash_report = 15;
 
-  // improvement-ideas.md #23/#24 - opt-in periodic background scanning: a WorkManager job that
+  // ideas.md #23/#24 - opt-in periodic background scanning: a WorkManager job that
   // records Wi-Fi scan history and, if alert_on_lan_host_changes is also set, runs a LAN sweep
   // and diffs it for new/vanished/reappeared devices. Off by default, same as every other
   // opt-in notification-adjacent setting in this file. 0 is never a valid interval, so it

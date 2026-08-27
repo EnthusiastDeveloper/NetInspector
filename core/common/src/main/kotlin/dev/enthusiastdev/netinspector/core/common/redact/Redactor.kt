@@ -1,6 +1,6 @@
 package dev.enthusiastdev.netinspector.core.common.redact
 
-// improvement-ideas.md #21/#22 - a debug export must not leak the user's home network layout
+// ideas.md #21/#22 - a debug export must not leak the user's home network layout
 // or Wi-Fi name. RFC1918 (10/8, 172.16/12, 192.168/16) plus link-local (169.254/16) and
 // loopback (127/8) - the ranges an active LAN sweep or connection snapshot can actually emit.
 private val LOCAL_IPV4 =
