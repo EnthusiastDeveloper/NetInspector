@@ -37,6 +37,7 @@ import dev.enthusiastdev.netinspector.core.model.lan.Host
 import dev.enthusiastdev.netinspector.core.model.lan.HostConfidence
 import dev.enthusiastdev.netinspector.core.model.lan.HygieneScore
 import dev.enthusiastdev.netinspector.core.model.lan.networkHygieneScore
+import dev.enthusiastdev.netinspector.ui.adaptive.listDetailPaneDirective
 import kotlinx.coroutines.launch
 
 @Composable
@@ -137,7 +138,7 @@ private fun DevicesContent(
     // (Activity recreation discards non-saveable Compose state, unlike ViewModel state).
     var viewMode by rememberSaveable { mutableStateOf(DevicesViewMode.LIST) }
 
-    val navigator = rememberListDetailPaneScaffoldNavigator<String>()
+    val navigator = rememberListDetailPaneScaffoldNavigator<String>(scaffoldDirective = listDetailPaneDirective())
     val coroutineScope = rememberCoroutineScope()
     BackHandler(enabled = navigator.canNavigateBack()) {
         coroutineScope.launch { navigator.navigateBack() }

@@ -29,6 +29,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import dev.enthusiastdev.netinspector.data.persistence.diagnostics.DiagnosticRunEntity
+import dev.enthusiastdev.netinspector.ui.adaptive.listDetailPaneDirective
 import kotlinx.coroutines.launch
 
 @Composable
@@ -63,7 +64,7 @@ fun DiagnosticHistoryScreen(
     onExportCsv: () -> Unit = {},
     onExportJson: () -> Unit = {},
 ) {
-    val navigator = rememberListDetailPaneScaffoldNavigator<Long>()
+    val navigator = rememberListDetailPaneScaffoldNavigator<Long>(scaffoldDirective = listDetailPaneDirective())
     val coroutineScope = rememberCoroutineScope()
     BackHandler(enabled = navigator.canNavigateBack()) {
         coroutineScope.launch { navigator.navigateBack() }

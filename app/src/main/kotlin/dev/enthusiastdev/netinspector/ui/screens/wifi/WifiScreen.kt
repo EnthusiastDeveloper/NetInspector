@@ -44,6 +44,7 @@ import dev.enthusiastdev.netinspector.core.designsystem.adaptive.rememberDeviceP
 import dev.enthusiastdev.netinspector.core.designsystem.adaptive.translatedTo
 import dev.enthusiastdev.netinspector.core.model.wifi.Band
 import dev.enthusiastdev.netinspector.core.model.wifi.InformationElementSummary
+import dev.enthusiastdev.netinspector.ui.adaptive.listDetailPaneDirective
 import kotlinx.coroutines.launch
 
 @Composable
@@ -114,7 +115,7 @@ private fun WifiContent(
         return
     }
 
-    val navigator = rememberListDetailPaneScaffoldNavigator<String>()
+    val navigator = rememberListDetailPaneScaffoldNavigator<String>(scaffoldDirective = listDetailPaneDirective())
     val coroutineScope = rememberCoroutineScope()
     BackHandler(enabled = navigator.canNavigateBack()) {
         coroutineScope.launch { navigator.navigateBack() }

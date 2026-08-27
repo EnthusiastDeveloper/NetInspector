@@ -935,9 +935,13 @@ Implementation notes:
   Letting the labels wrap to two lines instead both looked broken and cost a row of
   content height.
 - **`ListDetailPaneScaffold`** for the two screens that are genuinely list-detail: the AP
-  list → AP detail, and the host list → host detail. On expanded width both panes show at
-  once; on compact it degrades to the standard push navigation with correct back
-  behaviour. This is the single biggest usability win and the main reason to do this early.
+  list → AP detail, and the host list → host detail. Two panes show at once only on a real
+  tablet or an unfolded foldable (`sw >= 600dp`); everywhere else, including a phone held in
+  landscape, it stays a single full-width pane with push navigation. The stock directive
+  splits on any "expanded" *current* width, which on a landscape phone just leaves the list
+  at half width with an empty pane beside it - `listDetailPaneDirective()` gates on the
+  shortest-width qualifier instead. This is the single biggest usability win and the main
+  reason to do this early.
   The pane selection is part of the tab's saved state, so `restoreState` on a bottom-nav
   tab switch would bring back a stale host detail. Reaching the Devices tab from the nav
   bar (or the dashboard shortcut) raises a one-shot flag on its back-stack entry that

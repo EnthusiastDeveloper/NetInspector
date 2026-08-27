@@ -34,6 +34,7 @@ import dev.enthusiastdev.netinspector.core.designsystem.component.InfoCard
 import dev.enthusiastdev.netinspector.core.designsystem.component.InfoRow
 import dev.enthusiastdev.netinspector.data.persistence.scan.KnownApEntity
 import dev.enthusiastdev.netinspector.data.persistence.scan.RssiHistoryPoint
+import dev.enthusiastdev.netinspector.ui.adaptive.listDetailPaneDirective
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.launch
 
@@ -71,7 +72,7 @@ fun ScanHistoryScreen(
     onExportCsv: () -> Unit = {},
     onExportJson: () -> Unit = {},
 ) {
-    val navigator = rememberListDetailPaneScaffoldNavigator<String>()
+    val navigator = rememberListDetailPaneScaffoldNavigator<String>(scaffoldDirective = listDetailPaneDirective())
     val coroutineScope = rememberCoroutineScope()
     BackHandler(enabled = navigator.canNavigateBack()) {
         coroutineScope.launch { navigator.navigateBack() }
