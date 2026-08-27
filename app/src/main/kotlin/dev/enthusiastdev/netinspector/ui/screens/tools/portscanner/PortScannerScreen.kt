@@ -3,6 +3,8 @@ package dev.enthusiastdev.netinspector.ui.screens.tools.portscanner
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.FlowRowScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -24,6 +26,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import dev.enthusiastdev.netinspector.core.model.diagnostics.PortScanFinding
@@ -142,37 +145,66 @@ private fun PortScannerForm(
     }
 }
 
+/** Two chips per row, each stretched to half the width, so the four presets stay on two even
+ * lines instead of overflowing the screen or being squashed together on a narrow window or at a
+ * high UI scale. */
 @Composable
 private fun PortPresetChips(
     uiState: PortScannerUiState,
     onSelectionChange: (PortSelection) -> Unit,
 ) {
-    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        FilterChip(
+    FlowRow(
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+        maxItemsInEachRow = 2,
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        PresetChip(
             selected = uiState.selection.kind == PortScanPresetKind.COMMON,
+            label = "Common",
             onClick = { onSelectionChange(PortSelection.Common) },
-            label = { Text("Common") },
         )
-        FilterChip(
+        PresetChip(
             selected = uiState.selection.kind == PortScanPresetKind.WELL_KNOWN,
+            label = "1-1024",
             onClick = { onSelectionChange(PortSelection.WellKnown) },
-            label = { Text("1-1024") },
         )
-        FilterChip(
+        PresetChip(
             selected = uiState.selection.kind == PortScanPresetKind.ALL,
+            label = "All",
             onClick = { onSelectionChange(PortSelection.All) },
-            label = { Text("All") },
         )
-        FilterChip(
+        PresetChip(
             selected = uiState.selection.kind == PortScanPresetKind.CUSTOM,
+            label = "Custom",
             onClick = {
                 val start = uiState.customStart.toIntOrNull() ?: 1
                 val end = uiState.customEnd.toIntOrNull() ?: 1024
                 onSelectionChange(PortSelection.Custom(start, end))
             },
-            label = { Text("Custom") },
         )
     }
+}
+
+@Composable
+private fun FlowRowScope.PresetChip(
+    selected: Boolean,
+    label: String,
+    onClick: () -> Unit,
+) {
+    FilterChip(
+        selected = selected,
+        onClick = onClick,
+        label = {
+            Text(
+                label,
+                textAlign = TextAlign.Center,
+                maxLines = 1,
+                modifier = Modifier.fillMaxWidth(),
+            )
+        },
+        modifier = Modifier.weight(1f),
+    )
 }
 
 @Composable
