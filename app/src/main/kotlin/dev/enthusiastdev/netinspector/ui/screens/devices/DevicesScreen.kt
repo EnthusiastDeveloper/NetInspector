@@ -12,11 +12,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.SegmentedButton
-import androidx.compose.material3.SegmentedButtonDefaults
-import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi
 import androidx.compose.material3.adaptive.layout.AnimatedPane
@@ -24,7 +20,6 @@ import androidx.compose.material3.adaptive.layout.ListDetailPaneScaffoldRole
 import androidx.compose.material3.adaptive.navigation.NavigableListDetailPaneScaffold
 import androidx.compose.material3.adaptive.navigation.rememberListDetailPaneScaffoldNavigator
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -33,7 +28,6 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -41,6 +35,7 @@ import dev.enthusiastdev.netinspector.R
 import dev.enthusiastdev.netinspector.core.designsystem.graph.NetworkMapGraph
 import dev.enthusiastdev.netinspector.core.model.lan.Host
 import dev.enthusiastdev.netinspector.core.model.lan.HostConfidence
+import dev.enthusiastdev.netinspector.core.model.lan.HygieneScore
 import dev.enthusiastdev.netinspector.core.model.lan.networkHygieneScore
 import kotlinx.coroutines.launch
 
@@ -227,11 +222,6 @@ private fun DevicesContentDialogs(
     }
 }
 
-/** Past this much scroll the controls block folds into its compact row. Small enough that the
- * fold happens as soon as the user is clearly reading the list, big enough that a stray pixel of
- * overscroll doesn't set it off. */
-private val COLLAPSE_THRESHOLD = 16.dp
-
 /** The header/controls block is fixed-height at the top; the body below it fills whatever
  * space remains. Map mode needs that - a `LazyColumn` sized to its content (the original shape
  * of this pane) left the map stuck at whatever fixed height it asked for, wasting the rest of
@@ -248,22 +238,11 @@ private fun DevicesListPane(
     onToggleConfidenceFilter: (HostConfidence) -> Unit,
 ) {
     val listState = rememberLazyListState()
-    val coroutineScope = rememberCoroutineScope()
     var showHygieneDetails by remember { mutableStateOf(false) }
-    val thresholdPx = with(LocalDensity.current) { COLLAPSE_THRESHOLD.roundToPx() }
-    // Map mode has no list to scroll, so its controls never collapse - there is no gesture that
-    // would bring them back.
-    val isCollapsed by
-        remember(viewMode, thresholdPx) {
-            derivedStateOf {
-                viewMode == DevicesViewMode.LIST &&
-                    (listState.firstVisibleItemIndex > 0 || listState.firstVisibleItemScrollOffset > thresholdPx)
-            }
-        }
     // docs/ideas.md #1 - meaningless (always "100, Excellent") until at least one
     // host has been through the extended port probe, same gate DevicesDetailCards uses per-host,
     // so this doesn't misrepresent a network nobody has scanned ports on yet. Computed over the
-    // unfiltered host list - see DevicesNetworkHygieneCard.
+    // unfiltered host list - see HygieneBadge.
     val hygiene =
         remember(state.allHosts) {
             state.allHosts.takeIf { hosts -> hosts.any { it.openPorts.isNotEmpty() } }?.let(::networkHygieneScore)
@@ -272,24 +251,14 @@ private fun DevicesListPane(
     Column(modifier = Modifier.fillMaxSize()) {
         DevicesPaneHeader(
             state = state,
-            isCollapsed = isCollapsed,
-            controlsState =
-                DevicesControlsState(
-                    viewMode = viewMode,
-                    sortOrder = state.sortOrder,
-                    confidenceFilter = state.confidenceFilter,
-                    hygiene = hygiene,
-                ),
-            controlsActions =
-                DevicesControlsActions(
-                    onViewModeChange = onViewModeChange,
-                    onSortOrderChange = onSortOrderChange,
-                    onToggleConfidence = onToggleConfidenceFilter,
-                    onShowHygieneDetails = { showHygieneDetails = true },
-                    onExpandRequested = { coroutineScope.launch { listState.animateScrollToItem(0) } },
-                ),
+            viewMode = viewMode,
+            hygiene = hygiene,
             onScan = onScan,
             onCancel = onCancel,
+            onShowHygieneDetails = { showHygieneDetails = true },
+            onViewModeChange = onViewModeChange,
+            onSortOrderChange = onSortOrderChange,
+            onToggleConfidenceFilter = onToggleConfidenceFilter,
         )
         DevicesBody(state, viewMode, listState, onHostClick)
     }
@@ -306,16 +275,19 @@ private fun DevicesListPane(
     }
 }
 
-/** Title, scan controls and the collapsible controls block - the fixed part of the pane, above
- * whichever body [DevicesBody] renders. */
+/** Screen title, the device-count / hygiene / scan summary row, and the compact toolbar - the
+ * fixed part of the pane, above whichever body [DevicesBody] renders. */
 @Composable
 private fun DevicesPaneHeader(
     state: DevicesUiState.Content,
-    isCollapsed: Boolean,
-    controlsState: DevicesControlsState,
-    controlsActions: DevicesControlsActions,
+    viewMode: DevicesViewMode,
+    hygiene: HygieneScore?,
     onScan: () -> Unit,
     onCancel: () -> Unit,
+    onShowHygieneDetails: () -> Unit,
+    onViewModeChange: (DevicesViewMode) -> Unit,
+    onSortOrderChange: (DevicesSortOrder) -> Unit,
+    onToggleConfidenceFilter: (HostConfidence) -> Unit,
 ) {
     Column(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
@@ -327,14 +299,23 @@ private fun DevicesPaneHeader(
             textAlign = TextAlign.Center,
             modifier = Modifier.fillMaxWidth(),
         )
-        DevicesHeader(
+        DevicesSummaryRow(
             hostCount = state.hosts.size,
+            hygiene = hygiene,
             progress = state.progress,
             isConnected = state.isConnected,
             onScan = onScan,
             onCancel = onCancel,
+            onHygieneClick = onShowHygieneDetails,
         )
-        DevicesControls(isCollapsed = isCollapsed, state = controlsState, actions = controlsActions)
+        DevicesToolbar(
+            viewMode = viewMode,
+            sortOrder = state.sortOrder,
+            confidenceFilter = state.confidenceFilter,
+            onViewModeChange = onViewModeChange,
+            onSortOrderChange = onSortOrderChange,
+            onToggleConfidence = onToggleConfidenceFilter,
+        )
     }
 }
 
@@ -374,32 +355,13 @@ private fun ColumnScope.DevicesBody(
 
 /** An empty list after a sweep that *did* find hosts means the confidence filter hid them all -
  * saying "no devices found" there would be plainly wrong, and leaves the user with no hint that
- * the filter chips are the way out. */
+ * the toolbar's filter menu is the way out. */
 private fun emptyListMessage(state: DevicesUiState.Content): String =
     if (state.allHosts.isEmpty()) {
         "No devices found yet. Tap Scan to discover hosts on this network."
     } else {
         "${state.allHosts.size} devices found, but none match the current filters."
     }
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-internal fun DevicesViewModeToggle(
-    viewMode: DevicesViewMode,
-    onViewModeChange: (DevicesViewMode) -> Unit,
-) {
-    SingleChoiceSegmentedButtonRow {
-        DevicesViewMode.entries.forEachIndexed { index, mode ->
-            SegmentedButton(
-                selected = mode == viewMode,
-                onClick = { onViewModeChange(mode) },
-                shape = SegmentedButtonDefaults.itemShape(index = index, count = DevicesViewMode.entries.size),
-            ) {
-                Text(if (mode == DevicesViewMode.LIST) "List" else "Map")
-            }
-        }
-    }
-}
 
 /** design idea #10 - "framed honestly as a logical map, not physical topology": the caption
  * under the graph says so explicitly rather than leaving a hub-and-spoke drawing to imply real

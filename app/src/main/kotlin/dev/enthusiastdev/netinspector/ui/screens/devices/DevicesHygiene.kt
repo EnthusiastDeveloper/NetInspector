@@ -7,16 +7,17 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -26,73 +27,67 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import dev.enthusiastdev.netinspector.core.designsystem.component.ScoreBadge
+import dev.enthusiastdev.netinspector.core.designsystem.component.ScoreChip
 import dev.enthusiastdev.netinspector.core.model.lan.HygieneFinding
 import dev.enthusiastdev.netinspector.core.model.lan.HygieneScore
 import dev.enthusiastdev.netinspector.core.model.lan.allFlaggedPorts
 import dev.enthusiastdev.netinspector.core.model.lan.portRisk
 
 /**
- * docs/ideas.md #1 - the network-wide read, sitting beside the list controls as a
- * second column rather than as a full-width block above them.
+ * docs/ideas.md #1 - the network-wide read, compressed to a tap-through badge that
+ * rides in [DevicesSummaryRow] next to the device count.
  *
- * Only the score, its rating and a one-line summary are shown here; the remediation checklist
- * moved behind a tap into [NetworkHygieneDetailsDialog]. Inline, that checklist could run to a
- * dozen rows and push the device list itself off the bottom of the screen - which made the
- * "what's on my network" screen mostly not about the devices.
+ * It used to be a full card in a second column beside the list controls (score, rating, summary,
+ * "tap for what to fix"). All of that detail now lives one tap away in
+ * [NetworkHygieneDetailsDialog]; the badge itself carries just the coloured [ScoreChip], the
+ * rating word and a chevron. The chevron plus the [Surface] `onClick` ripple and button role are
+ * what mark it as tappable rather than a static readout.
  *
- * It is scored over *every* discovered host, not just the ones the confidence filter is
- * currently showing. Scoring the filtered list meant turning all three filter chips off - a
- * legitimate thing to do while narrowing a search - silently took the card away with them, since
- * an empty host list has no open ports to gate it on. Network hygiene is a property of the
- * network, not of the current view of it, so the filters no longer change it.
+ * It is still scored over *every* discovered host, not just the ones the confidence filter is
+ * currently showing (see [networkHygieneScore]) - network hygiene is a property of the network,
+ * not of the current view of it.
  */
 @Composable
-internal fun DevicesNetworkHygieneCard(
+internal fun HygieneBadge(
     score: HygieneScore,
-    onShowDetails: () -> Unit,
+    onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Card(
-        onClick = onShowDetails,
-        modifier = modifier,
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+    val description =
+        "Network hygiene ${score.value}, ${score.rating.label()}. ${score.findingsSummary()}. Tap for details."
+    Surface(
+        onClick = onClick,
+        shape = MaterialTheme.shapes.small,
+        color = MaterialTheme.colorScheme.surfaceVariant,
+        modifier = modifier.semantics { contentDescription = description },
     ) {
-        Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            HygieneCardTitleRow()
-            ScoreBadge(score = score.value, label = score.rating.label())
-            Text(
-                text = score.findingsSummary(),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+        Row(
+            modifier = Modifier.heightIn(min = 36.dp).padding(start = 4.dp, end = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            ScoreChip(score = score.value)
+            Text(text = score.rating.label(), style = MaterialTheme.typography.labelLarge)
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(18.dp),
             )
-            if (score.findings.isNotEmpty()) {
-                Text(
-                    text = "Tap for what to fix",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.primary,
-                )
-            }
         }
     }
 }
 
-@Composable
-private fun HygieneCardTitleRow() {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(text = "Network hygiene", style = MaterialTheme.typography.titleSmall)
-        HygieneScoreInfoButton()
-    }
-}
-
-/** The full checklist, on demand. [onHostClick] (docs/ideas.md #3) lets each
- * remediation row jump straight to the host it's about, reusing the same host-address navigation
- * [DevicesScreen] already uses for the list/detail pane. */
+/** The full checklist, on demand - the score, its summary and the per-host remediation rows
+ * that the compact [HygieneBadge] leaves out. [onHostClick] (docs/ideas.md #3) lets
+ * each remediation row jump straight to the host it's about, reusing the same host-address
+ * navigation [DevicesScreen] already uses for the list/detail pane. The methodology explainer
+ * (docs/ideas.md #2) hangs off the title here now that the badge has no room for its
+ * own info button. */
 @Composable
 internal fun NetworkHygieneDetailsDialog(
     score: HygieneScore,
@@ -101,7 +96,16 @@ internal fun NetworkHygieneDetailsDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Network hygiene") },
+        title = {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text("Network hygiene")
+                HygieneScoreInfoButton()
+            }
+        },
         text = {
             Column(
                 modifier = Modifier.verticalScroll(rememberScrollState()),
