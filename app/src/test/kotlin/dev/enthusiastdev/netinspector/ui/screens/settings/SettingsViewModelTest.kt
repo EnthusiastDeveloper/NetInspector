@@ -19,7 +19,7 @@ import org.junit.After
 import org.junit.Before
 import org.junit.Test
 
-/** improvement-ideas.md #36 - `setUiFontScale`'s clamp is the boundary that matters here: a
+/** docs/ideas.md #36 - `setUiFontScale`'s clamp is the boundary that matters here: a
  * value outside `[MIN_UI_FONT_SCALE, MAX_UI_FONT_SCALE]` reaching the repository would flow
  * straight into MainActivity's app-root `CompositionLocalProvider` and rescale (or illegibly
  * shrink) every screen at once, with no per-screen safeguard to catch it. */

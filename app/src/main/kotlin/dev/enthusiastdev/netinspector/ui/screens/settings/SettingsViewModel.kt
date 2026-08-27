@@ -197,7 +197,7 @@ class SettingsViewModel
             viewModelScope.launch { autoScanSettingsRepository.setAlertOnLanHostChanges(enabled) }
         }
 
-        /** improvement-ideas.md #36 - the slider's own `valueRange` already keeps in-drag values
+        /** docs/ideas.md #36 - the slider's own `valueRange` already keeps in-drag values
          * within bounds, but the write path is clamped too, same reasoning as
          * [setRssiAlertThresholdDbm]: a bad value written some other way (e.g. a future restore
          * of an out-of-range backup) must not carry through into the composition-wide fontScale

@@ -204,7 +204,7 @@ private fun ThemeMode.label(): String =
         ThemeMode.AMOLED -> "AMOLED"
     }
 
-/** improvement-ideas.md #36. The slider drags a local [previewScale] rather than writing to
+/** docs/ideas.md #36. The slider drags a local [previewScale] rather than writing to
  * [AppSettingsRepository] on every drag tick - that would mean a DataStore write per pixel of
  * drag, and would only reflect back into this composable after a full write/read/recompose
  * round trip through [SettingsViewModel]. `onValueChangeFinished` is where the drag's final

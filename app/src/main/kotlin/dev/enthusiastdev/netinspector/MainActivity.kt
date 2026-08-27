@@ -37,7 +37,7 @@ class MainActivity : ComponentActivity() {
                 }
             val trueBlack = settingsState.themeMode == ThemeMode.AMOLED
             NetInspectorTheme(darkTheme = darkTheme, trueBlack = trueBlack) {
-                // improvement-ideas.md #36 - app-wide text/UI scale, applied once here so every
+                // docs/ideas.md #36 - app-wide text/UI scale, applied once here so every
                 // screen picks it up with no per-screen changes. Multiplies onto the current
                 // fontScale rather than replacing it, so this stays additive with (not a
                 // replacement for) the system's own accessibility font-size setting.

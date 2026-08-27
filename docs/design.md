@@ -1039,7 +1039,7 @@ requires explicit acknowledgement. Stored in DataStore. Not skippable, not repea
 
 ### 11.5 UI text/scale
 
-improvement-ideas.md #36 - surfaced after simulating several screen densities with `wm
+docs/ideas.md #36 - surfaced after simulating several screen densities with `wm
 density` during Phase 4 verification, where a smaller density read noticeably better for
 this app's information-dense screens (Devices list, network map) than the default. Rather
 than only being reachable through the system's own accessibility font-size setting (which

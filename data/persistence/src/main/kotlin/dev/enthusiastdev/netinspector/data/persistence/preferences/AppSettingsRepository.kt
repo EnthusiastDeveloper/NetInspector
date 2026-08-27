@@ -41,7 +41,7 @@ interface AppSettingsRepository {
     // "crash report available" prompt should show.
     val lastAcknowledgedCrashReport: Flow<String>
 
-    // improvement-ideas.md #36 - app-wide text/UI scale applied via a CompositionLocalProvider
+    // docs/ideas.md #36 - app-wide text/UI scale applied via a CompositionLocalProvider
     // at the app root (MainActivity), independent of the system accessibility font-size
     // setting. Callers are expected to clamp to [MIN_UI_FONT_SCALE, MAX_UI_FONT_SCALE] before
     // writing - see SettingsViewModel.setUiFontScale - the same division of responsibility as
@@ -75,7 +75,7 @@ interface AppSettingsRepository {
          * value once a user opts into RSSI-drop alerts, not a value enforced on them. */
         const val DEFAULT_RSSI_ALERT_THRESHOLD_DBM = -75
 
-        /** improvement-ideas.md #36. `NetworkMapLayout.kt`'s `nodeScaleFor` shrinks map nodes
+        /** docs/ideas.md #36. `NetworkMapLayout.kt`'s `nodeScaleFor` shrinks map nodes
          * down to `MIN_NODE_SCALE` (0.5) before that screen's own radial-packing logic keeps
          * them tap-able at high spoke counts - that floor exists for a purpose-built per-screen
          * scale, not a general text scale applied uniformly with no per-screen compensation.

@@ -63,7 +63,7 @@ message AppPreferences {
   int32 auto_scan_interval_minutes = 17;
   bool alert_on_lan_host_changes = 18;
 
-  // improvement-ideas.md #36 - app-wide text/UI scale, independent of the system
+  // ideas.md #36 - app-wide text/UI scale, independent of the system
   // accessibility font-size setting. Proto3 float defaults to 0, which is never a valid
   // scale factor, so it doubles as "unset" the same way rssi_alert_threshold_dbm above does.
   float ui_font_scale = 19;
