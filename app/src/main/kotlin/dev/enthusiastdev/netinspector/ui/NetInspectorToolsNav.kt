@@ -1,11 +1,11 @@
 package dev.enthusiastdev.netinspector.ui
 
 import androidx.compose.runtime.Composable
-import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.navigation
+import dev.enthusiastdev.netinspector.ui.navigation.DevicesRoute
 import dev.enthusiastdev.netinspector.ui.navigation.DiagnosticHistoryToolRoute
 import dev.enthusiastdev.netinspector.ui.navigation.DnsToolRoute
 import dev.enthusiastdev.netinspector.ui.navigation.HttpInspectorToolRoute
@@ -76,19 +76,24 @@ private fun ToolPage(
 }
 
 /**
- * Deep-linking into another tab's nested graph needs the same popUpTo(start,
- * saveState)/launchSingleTop back-stack handling the bottom-nav tab switch above uses - a plain
- * `navigate()` here leaves [dev.enthusiastdev.netinspector.ui.navigation.DevicesRoute] *and* the
- * Tools graph both live on the back stack simultaneously, which then confuses the next bottom-nav
- * tab switch's own popUpTo/restoreState into landing back on the deep-linked tool instead of the
- * newly-tapped tab (reproduced on-device during Phase 6, the first deep link into a nested tab
- * graph - originally Ping-only, generalized once Traceroute and Port scanner grew the same
- * `target`-prefilled shape). `restoreState` is left off deliberately: this must always land on the
- * freshly-targeted host, never a previously saved run of that tool.
+ * Every caller of this is a "run this tool on this host" action inside the Devices detail pane
+ * (Ping / Traceroute / Port scanner / LAN throughput, each with the host address prefilled).
+ *
+ * It pops up to [DevicesRoute] rather than the graph start so that [DevicesRoute] stays on the
+ * back stack: the tool's up arrow and the system back gesture then return to the host detail
+ * the tool was launched from, which is what [ToolPageScaffold]'s contract promises and what a
+ * user expects. Popping to the graph start instead (an earlier attempt at stopping a stale
+ * Tools-graph entry from confusing the next bottom-nav tab switch) dropped [DevicesRoute] too,
+ * so back landed on the dashboard. The tab-switch confusion is already handled where it belongs,
+ * by `restoreState = route != ToolsRoute` in `navigateToTopLevel`.
+ *
+ * `saveState` on the popUpTo preserves the Devices list/detail state so the same host detail is
+ * showing on return. `restoreState` is left off here so a deep link always opens on the freshly
+ * targeted host, never a previously saved run of that tool.
  */
 internal fun NavHostController.navigateToToolDeepLink(route: Any) {
     navigate(route) {
-        popUpTo(graph.findStartDestination().id) { saveState = true }
+        popUpTo(DevicesRoute) { saveState = true }
         launchSingleTop = true
     }
 }
