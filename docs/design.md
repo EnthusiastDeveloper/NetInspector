@@ -909,11 +909,12 @@ Implementation notes:
 - **`NavigationSuiteScaffold`** switches between bottom bar and navigation rail
   automatically from the window size class. This is close to free and removes the most
   visible "phone app stretched sideways" tell. Two local adjustments sit on top of the
-  stock mapping: a short window (landscape phone) is forced to the rail regardless of
-  width, and the bottom bar drops to icons only when the widest destination label
-  ("Connection") no longer fits its slot on one line, which happens on a narrow screen or
-  at a high UI text scale (§11.5). Labels wrapping to two lines there both looked broken
-  and cost a row of content height.
+  stock mapping. A short window (landscape phone) is forced to the rail regardless of
+  width. And the bottom bar keeps its labels on one line by shrinking the label text just
+  enough for the widest one ("Connection") to fit its slot, falling back to icons only
+  when even that shrink would drop below ~80% of the normal size, which is where a narrow
+  screen combined with a high UI text scale (§11.5) lands. Letting the labels wrap to two
+  lines instead both looked broken and cost a row of content height.
 - **`ListDetailPaneScaffold`** for the two screens that are genuinely list-detail: the AP
   list → AP detail, and the host list → host detail. On expanded width both panes show at
   once; on compact it degrades to the standard push navigation with correct back

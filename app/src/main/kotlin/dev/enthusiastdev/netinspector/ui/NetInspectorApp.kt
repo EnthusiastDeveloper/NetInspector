@@ -28,6 +28,7 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -86,13 +87,19 @@ fun NetInspectorApp() {
             val layoutType = navigationSuiteLayoutType()
             // Only the bottom bar splits its width six ways and stacks the label under the icon,
             // so it is the one layout where a label can outgrow its slot. The rail and drawer
-            // give each label its own row and keep it. (bottomNavLabelsFit stays an
-            // unconditional call so it is not a composable invoked only on some recompositions.)
-            val labelsFit = bottomNavLabelsFit()
-            val labelled = layoutType != NavigationSuiteType.NavigationBar || labelsFit
+            // give each label its own row and always keep the stock style. (fittedBottomNavLabelStyle
+            // stays an unconditional call so it is never a composable invoked only on some
+            // recompositions.)
+            val fittedLabelStyle = fittedBottomNavLabelStyle()
+            val labelStyle =
+                if (layoutType == NavigationSuiteType.NavigationBar) {
+                    fittedLabelStyle
+                } else {
+                    MaterialTheme.typography.labelMedium
+                }
 
             NavigationSuiteScaffold(
-                navigationSuiteItems = { navigationItems(navController, currentDestination, labelled) },
+                navigationSuiteItems = { navigationItems(navController, currentDestination, labelStyle) },
                 layoutType = layoutType,
             ) {
                 AppNavHost(navController)
@@ -125,34 +132,45 @@ private fun navigationSuiteLayoutType(): NavigationSuiteType {
 
 /**
  * The six destination labels ("Connection" is the long one) wrap to two lines in the bottom bar
- * once the UI scale is high enough, or on a narrow screen, which both looks broken and steals
- * vertical space from content. When even one label no longer fits its slot on a single line the
- * whole bar drops to icons only, keeping the row one line tall and every item consistent.
+ * on a narrow window or at a high UI text scale, which both looks broken and steals a row of
+ * content height. To keep every label on one line this shrinks the label text just enough for
+ * the widest one to fit its slot, and only when even that shrink would push the text below
+ * [MIN_BOTTOM_NAV_LABEL_SCALE] of its normal size does it give up and return `null`, meaning the
+ * bar should show icons alone. On a normal-width phone at 100% nothing is shrunk.
  */
 @Composable
-private fun bottomNavLabelsFit(): Boolean {
+private fun fittedBottomNavLabelStyle(): TextStyle? {
     val configuration = LocalConfiguration.current
     val density = LocalDensity.current
     val measurer = rememberTextMeasurer()
-    val style = MaterialTheme.typography.labelMedium
+    val baseStyle = MaterialTheme.typography.labelMedium
     val labels = topLevelDestinations.map { stringResource(it.labelRes) }
     return remember(configuration.screenWidthDp, density.density, density.fontScale, labels) {
         val slotWidthPx =
             with(density) { (configuration.screenWidthDp.dp / topLevelDestinations.size).toPx() }
         // NavigationBarItem keeps a little breathing room on each side of the label.
         val availablePx = slotWidthPx - with(density) { BOTTOM_NAV_LABEL_SLACK.toPx() }
-        labels.all { label ->
-            measurer.measure(label, style, softWrap = false, maxLines = 1).size.width <= availablePx
+        val widestPx =
+            labels.maxOf { measurer.measure(it, baseStyle, softWrap = false, maxLines = 1).size.width }
+        when {
+            widestPx <= availablePx -> baseStyle
+            availablePx / widestPx >= MIN_BOTTOM_NAV_LABEL_SCALE ->
+                baseStyle.copy(fontSize = baseStyle.fontSize * (availablePx / widestPx))
+            else -> null
         }
     }
 }
 
 private val BOTTOM_NAV_LABEL_SLACK = 8.dp
 
+/** Below this fraction of the normal label size the text is too small to bother with, so the
+ * bottom bar switches to icons only instead. */
+private const val MIN_BOTTOM_NAV_LABEL_SCALE = 0.8f
+
 private fun NavigationSuiteScope.navigationItems(
     navController: NavHostController,
     currentDestination: NavDestination?,
-    labelled: Boolean,
+    labelStyle: TextStyle?,
 ) {
     topLevelDestinations.forEach { destination ->
         item(
@@ -160,10 +178,8 @@ private fun NavigationSuiteScope.navigationItems(
             onClick = { navController.navigateToTopLevel(destination.route) },
             icon = { Icon(destination.icon, contentDescription = null) },
             label =
-                if (labelled) {
-                    { Text(stringResource(destination.labelRes), maxLines = 1, softWrap = false) }
-                } else {
-                    null
+                labelStyle?.let { style ->
+                    { Text(stringResource(destination.labelRes), style = style, maxLines = 1, softWrap = false) }
                 },
         )
     }
