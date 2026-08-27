@@ -24,6 +24,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -38,6 +39,27 @@ import dev.enthusiastdev.netinspector.core.model.lan.Host
 import dev.enthusiastdev.netinspector.core.model.lan.HostConfidence
 import dev.enthusiastdev.netinspector.core.model.lan.nicknameKey
 import dev.enthusiastdev.netinspector.ui.screens.settings.AlertToggleRow
+
+/**
+ * Arriving on the Devices tab from the bottom nav (or the dashboard shortcut) asks for the
+ * scan-results list, so this drops any host detail that `restoreState` just brought back with
+ * the rest of the tab's saved state. [collapseToList] walks the pane navigator back to the list
+ * pane. The "run this tool on this host" deep links keep their host detail on return and never
+ * raise [requested] - see `navigateToToolDeepLink`.
+ */
+@Composable
+internal fun ResetPaneSelectionEffect(
+    requested: Boolean,
+    onReset: () -> Unit,
+    collapseToList: suspend () -> Unit,
+) {
+    LaunchedEffect(requested) {
+        if (requested) {
+            collapseToList()
+            onReset()
+        }
+    }
+}
 
 /** design §3 Phase 6 - the Devices detail pane counterpart to [DevicesListPane]'s [HostCard]
  * rows. Looks up the host by address string each recomposition rather than capturing a [Host]

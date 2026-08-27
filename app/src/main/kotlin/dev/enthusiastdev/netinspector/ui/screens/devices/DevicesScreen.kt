@@ -47,6 +47,8 @@ import kotlinx.coroutines.launch
 @Composable
 fun DevicesScreen(
     uiState: DevicesUiState,
+    resetSelectionRequested: Boolean,
+    onSelectionReset: () -> Unit,
     onScan: () -> Unit,
     onCancel: () -> Unit,
     onAcknowledgeAndScan: () -> Unit,
@@ -67,6 +69,8 @@ fun DevicesScreen(
         is DevicesUiState.Content ->
             DevicesContent(
                 uiState,
+                resetSelectionRequested,
+                onSelectionReset,
                 onScan,
                 onCancel,
                 onAcknowledgeAndScan,
@@ -114,6 +118,8 @@ internal enum class DevicesViewMode { LIST, MAP }
 @Composable
 private fun DevicesContent(
     state: DevicesUiState.Content,
+    resetSelectionRequested: Boolean,
+    onSelectionReset: () -> Unit,
     onScan: () -> Unit,
     onCancel: () -> Unit,
     onAcknowledgeAndScan: () -> Unit,
@@ -140,6 +146,9 @@ private fun DevicesContent(
     val coroutineScope = rememberCoroutineScope()
     BackHandler(enabled = navigator.canNavigateBack()) {
         coroutineScope.launch { navigator.navigateBack() }
+    }
+    ResetPaneSelectionEffect(resetSelectionRequested, onSelectionReset) {
+        while (navigator.canNavigateBack()) navigator.navigateBack()
     }
 
     NavigableListDetailPaneScaffold(

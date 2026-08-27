@@ -921,6 +921,11 @@ Implementation notes:
   list → AP detail, and the host list → host detail. On expanded width both panes show at
   once; on compact it degrades to the standard push navigation with correct back
   behaviour. This is the single biggest usability win and the main reason to do this early.
+  The pane selection is part of the tab's saved state, so `restoreState` on a bottom-nav
+  tab switch would bring back a stale host detail. Reaching the Devices tab from the nav
+  bar (or the dashboard shortcut) raises a one-shot flag on its back-stack entry that
+  collapses the detail back to the list. The "run this tool on this host" deep links skip
+  that flag, since their up arrow is meant to return to exactly that detail.
 - **The channel graph is the standout beneficiary.** It is a frequency-axis chart squeezed
   into ~380 dp on a phone; in landscape it gets roughly triple the horizontal space, which
   is exactly the axis that carries information. The `Canvas` must derive label density and

@@ -198,7 +198,17 @@ private fun NavHostController.navigateToTopLevel(route: Any) {
         // stack instead of landing on ToolsHomeRoute.
         restoreState = route != ToolsRoute
     }
+    // Reaching the Devices tab this way should land on the scan-results list, not the host
+    // detail that happened to be open when the tab was last left (restoreState brings that
+    // detail back with the rest of the tab's state). The tool deep links that must return to
+    // that detail go through navigateToToolDeepLink instead and never raise this flag.
+    if (route == DevicesRoute) {
+        currentBackStackEntry?.savedStateHandle?.set(RESET_DEVICE_SELECTION_KEY, true)
+    }
 }
+
+/** SavedStateHandle key on the Devices back-stack entry - see [navigateToTopLevel]. */
+private const val RESET_DEVICE_SELECTION_KEY = "devices_reset_selection"
 
 @Composable
 private fun AppNavHost(navController: NavHostController) {
@@ -216,8 +226,14 @@ private fun AppNavHost(navController: NavHostController) {
         }
         composable<ConnectionRoute> { ConnectionDestination() }
         composable<WifiRoute> { WifiDestination() }
-        composable<DevicesRoute> {
+        composable<DevicesRoute> { backStackEntry ->
+            val resetSelectionRequested by
+                backStackEntry.savedStateHandle
+                    .getStateFlow(RESET_DEVICE_SELECTION_KEY, false)
+                    .collectAsState()
             DevicesDestination(
+                resetSelectionRequested = resetSelectionRequested,
+                onSelectionReset = { backStackEntry.savedStateHandle[RESET_DEVICE_SELECTION_KEY] = false },
                 onPingHost = { target -> navController.navigateToToolDeepLink(PingToolRoute(target)) },
                 onTracerouteHost = { target -> navController.navigateToToolDeepLink(TracerouteToolRoute(target)) },
                 onPortScanHost = { target -> navController.navigateToToolDeepLink(PortScannerToolRoute(target)) },
@@ -291,6 +307,8 @@ private fun WifiDestination() {
 
 @Composable
 private fun DevicesDestination(
+    resetSelectionRequested: Boolean,
+    onSelectionReset: () -> Unit,
     onPingHost: (String) -> Unit,
     onTracerouteHost: (String) -> Unit,
     onPortScanHost: (String) -> Unit,
@@ -300,6 +318,8 @@ private fun DevicesDestination(
     val devicesUiState by devicesViewModel.uiState.collectAsState()
     DevicesScreen(
         uiState = devicesUiState,
+        resetSelectionRequested = resetSelectionRequested,
+        onSelectionReset = onSelectionReset,
         onScan = devicesViewModel::onScanRequested,
         onCancel = devicesViewModel::cancelSweep,
         onAcknowledgeAndScan = devicesViewModel::acknowledgeAndStartSweep,
