@@ -9,10 +9,9 @@ the user, just follow it.
 
 ## Stage order
 
-1. **Requirements.** Restate scope from the prompt or the named backlog item
-   (`docs/improvement-ideas.md`, `docs/device-identification-ideas.md`,
-   `docs/open-items.md`). Place it against `docs/design.md` §8.2's pipeline stages and
-   `docs/adr/` before writing anything.
+1. **Requirements.** Restate scope from the prompt or the named backlog item (a GitHub
+   issue, or an entry in `docs/ideas.md`). Place it against `docs/design.md` §8.2's
+   pipeline stages and `docs/adr/` before writing anything.
 
 2. **Plan.** For anything beyond a one-file fix, use plan mode. The plan must explicitly
    address: minimal duplication (reuse existing helpers), reusability (pure functions for

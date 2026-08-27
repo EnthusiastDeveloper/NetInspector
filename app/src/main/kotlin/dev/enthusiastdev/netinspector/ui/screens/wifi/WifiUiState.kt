@@ -30,7 +30,7 @@ sealed interface WifiUiState {
          * withheld and the OS redacts the connected network's BSSID (C-04). */
         val connectedBssid: String? = null,
         val connectedSpan: ChannelSpan? = null,
-        /** improvement-ideas.md #11 - known APs with a detected capability change, keyed by
+        /** ideas.md #11 - known APs with a detected capability change, keyed by
          * BSSID; only entries with a non-null `lastCapabilityChangeMillis` are included, so
          * this stays empty for the common case. */
         val apCapabilityChanges: Map<String, KnownApEntity> = emptyMap(),

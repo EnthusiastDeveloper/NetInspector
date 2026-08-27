@@ -9,7 +9,7 @@ data class DeviceHint(
     val certainty: Certainty,
 )
 
-/** design §8.2/docs/device-identification-ideas.md A1 - a three-tier ladder, most confident
+/** design §8.2/docs/ideas.md A1 - a three-tier ladder, most confident
  * first. [CONFIRMED] is a device's own self-reported identity (UPnP `manufacturer`/`modelName`,
  * an mDNS TXT model string) rather than something inferred from indirect signals; it ranks
  * above [LIKELY]'s protocol/port inference and [POSSIBLE]'s coarse TTL guess. The enum's

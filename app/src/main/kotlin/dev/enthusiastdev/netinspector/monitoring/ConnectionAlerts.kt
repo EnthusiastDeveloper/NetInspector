@@ -2,7 +2,7 @@ package dev.enthusiastdev.netinspector.monitoring
 
 import dev.enthusiastdev.netinspector.core.model.connection.ConnectionSnapshot
 
-/** improvement-ideas.md #5 - the alert toggles + threshold read from `AppSettingsRepository`,
+/** ideas.md #5 - the alert toggles + threshold read from `AppSettingsRepository`,
  * bundled together since [connectionAlertsFor] needs all four to decide whether a
  * previous -> current transition warrants an alert. */
 data class ConnectionAlertSettings(
@@ -37,7 +37,7 @@ sealed interface ConnectionAlert {
     }
 }
 
-/** improvement-ideas.md #5's pure decision logic, kept separate from `MonitoringService` so
+/** ideas.md #5's pure decision logic, kept separate from `MonitoringService` so
  * it's unit-testable without Robolectric/an Android runtime. Only fires on the transition into
  * a state (disconnect, reconnect, or crossing below the threshold) rather than on every
  * subsequent reading while already in that state, since a service that re-alerted on every

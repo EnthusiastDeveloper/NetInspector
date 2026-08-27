@@ -66,7 +66,7 @@ private fun HostConfidence.sortOrder(): Int =
 /** design §11.3 - a confirmed hostname always wins; absent that, a [DeviceHint] is a real but
  * *inferred* signal, so it's only used as a stand-in for the name (never silently equated with
  * one) and callers must style it distinctly - see [Host.hasInferredDisplayName]. A manual
- * [Host.nickname] (docs/device-identification-ideas.md D) outranks all of that: it's the one
+ * [Host.nickname] (docs/ideas.md D) outranks all of that: it's the one
  * signal here that's authoritative rather than observed or guessed. */
 internal fun Host.displayName(): String =
     nickname ?: when {

@@ -228,7 +228,7 @@ private fun RetentionField(
     )
 }
 
-/** improvement-ideas.md #5 - the continuous-monitoring notification (`MonitoringService`) only
+/** ideas.md #5 - the continuous-monitoring notification (`MonitoringService`) only
  * ever displayed live state until now; these three toggles are what actually turn a
  * disconnect/reconnect/weak-signal reading into a distinct alert notification, each read
  * straight from `AppSettingsRepository` the same way [RetentionSection]'s fields are. */

@@ -59,7 +59,7 @@ fun finalizeSweep(
             }
         }.toMap()
 
-/** docs/device-identification-ideas.md A1 - probes fire across stages in no guaranteed order
+/** docs/ideas.md A1 - probes fire across stages in no guaranteed order
  * (Stage A's SSDP/mDNS hints can arrive before or after Stage C's port/TTL hint), so "last
  * observation wins" would let a coarse TTL guess overwrite a device's own self-reported
  * manufacturer/model just because it happened to resolve second. The more certain hint always

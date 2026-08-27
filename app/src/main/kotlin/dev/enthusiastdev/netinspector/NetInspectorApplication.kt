@@ -30,7 +30,7 @@ class NetInspectorApplication :
     override fun onCreate() {
         super.onCreate()
         Timber.plant(if (BuildConfig.DEBUG) Timber.DebugTree() else ReleaseTree())
-        // improvement-ideas.md #21/#22 - both read from Hilt-injected fields, so must come
+        // ideas.md #21/#22 - both read from Hilt-injected fields, so must come
         // after super.onCreate() has run field injection, same ordering constraint the
         // WorkManager.initialize() call below already documents.
         Timber.plant(ringBufferTree)

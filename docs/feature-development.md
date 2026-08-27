@@ -22,9 +22,9 @@ folder, so this has to be run once per clone):
 
 ### 1. Requirements
 
-A feature starts from a direct request, or from an item in one of the ranked backlog docs
-(`docs/improvement-ideas.md`, `docs/device-identification-ideas.md`, `docs/open-items.md`).
-Either way, place it in the architecture first: which stage of the pipeline does it belong
+A feature starts from a direct request, or from a backlog item: a GitHub issue for
+concrete, scoped work, or an entry in the ranked ideas backlog (`docs/ideas.md`) for a
+larger or less-scoped idea. Either way, place it in the architecture first: which stage of the pipeline does it belong
 to (see `docs/design.md` §8.2), does it touch a fixed decision recorded in `docs/adr/`, does
 it change a row in `docs/testing.md`'s device matrix or corner-case checklist. Restate scope
 and flag open questions before writing code.
@@ -124,7 +124,7 @@ touches - do not skip this because the change "is just code":
 |---|---|
 | Adds/changes a subsystem, probe, or pipeline stage | `docs/design.md` |
 | Makes or reveals a project-level decision, or hits a new Android platform constraint | New file in `docs/adr/` (copy `template.md`) |
-| Finishes a backlog item | Mark it done in `improvement-ideas.md` / `device-identification-ideas.md` / `open-items.md` |
+| Finishes a backlog item | Close the GitHub issue (or mark the `docs/ideas.md` entry `Implemented`, noting the PR) |
 | Changes install/sideload steps | `docs/installing.md` |
 | Changes what a crash report or debug bundle captures | `docs/troubleshooting.md` |
 | Changes the release process | `docs/releasing.md` |

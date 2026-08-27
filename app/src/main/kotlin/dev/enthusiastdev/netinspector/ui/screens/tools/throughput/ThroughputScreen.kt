@@ -93,7 +93,7 @@ private fun ThroughputForm(
 
     Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         // "measures throughput to a device on your local network, not your internet connection" -
-        // required copy (docs/improvement-ideas.md #31's rescope) so this never reads as a
+        // required copy (docs/ideas.md #31's rescope) so this never reads as a
         // speedtest.net-style internet speed test.
         Text(
             text = "Measures throughput to a device on your local network, not your internet connection.",

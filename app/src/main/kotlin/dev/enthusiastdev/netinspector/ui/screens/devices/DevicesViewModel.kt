@@ -47,7 +47,7 @@ class DevicesViewModel
             val isConnected: Boolean,
         )
 
-        /** docs/device-identification-ideas.md D - a nickname isn't part of the sweep pipeline
+        /** docs/ideas.md D - a nickname isn't part of the sweep pipeline
          * at all (no `HostObservation` ever produces one), so it's joined in here rather than
          * touching `mergeObservation`: every host from the live sweep gets overlaid with
          * whatever `SavedHostRepository` has for its `nicknameKey()`, or nothing if unset. */
@@ -130,7 +130,7 @@ class DevicesViewModel
             sweepJob?.cancel()
         }
 
-        /** docs/device-identification-ideas.md D - [key] is a `Host.nicknameKey()` computed by
+        /** docs/ideas.md D - [key] is a `Host.nicknameKey()` computed by
          * the caller (it already has the `Host` in hand from the detail screen); a blank
          * [nickname] clears the entry, see `SavedHostRepository.setNickname`. */
         fun setNickname(
@@ -140,7 +140,7 @@ class DevicesViewModel
             viewModelScope.launch { savedHostRepository.setNickname(key, nickname) }
         }
 
-        /** improvement-ideas.md #24 - marks/unmarks [key] as a "known device," suppressing the
+        /** ideas.md #24 - marks/unmarks [key] as a "known device," suppressing the
          * periodic background sweep's vanish/reappear alerts for it (`diffLanPresence`,
          * `:core:model`). */
         fun setKnownDevice(

@@ -4,7 +4,7 @@ Status: Accepted
 
 ## Context
 
-`docs/improvement-ideas.md` #31 originally scoped a "speed test integration": throughput
+`docs/ideas.md` #31 originally scoped a "speed test integration": throughput
 measurement correlated against RSSI/channel, using a self-hosted transfer endpoint as the
 data source. That framing has two problems against this app's own positioning:
 
@@ -36,7 +36,7 @@ number the way speedtest.net-style tools report one, and the UI says so: the too
 device on the local network rather than the internet connection, and its result is captured
 alongside a `WifiScanRepository`/`ConnectionRepository` snapshot (SSID, RSSI, channel,
 channel-width, count of other APs sharing the channel) so a low number can be read against
-*why* - the correlation improvement-ideas.md #31 actually wanted - rather than reported as an
+*why* - the correlation ideas.md #31 actually wanted - rather than reported as an
 unexplained score.
 
 No transfer-endpoint mechanism (self-hosted or otherwise) was built. There is correspondingly

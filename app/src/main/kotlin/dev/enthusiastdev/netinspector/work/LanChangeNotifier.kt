@@ -13,7 +13,7 @@ import dev.enthusiastdev.netinspector.core.model.lan.KnownHostRecord
 import dev.enthusiastdev.netinspector.core.model.lan.LanPresenceDiff
 import javax.inject.Inject
 
-/** improvement-ideas.md #24 - one consolidated notification per periodic sweep rather than one
+/** ideas.md #24 - one consolidated notification per periodic sweep rather than one
  * per host, same "distinct event, dismissible, alerts every time" framing
  * `MonitoringService`'s alert notification already uses for connection alerts. */
 class LanChangeNotifier

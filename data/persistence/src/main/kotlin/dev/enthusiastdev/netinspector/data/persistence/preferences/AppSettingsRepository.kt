@@ -13,7 +13,7 @@ import javax.inject.Inject
 
 /** design §10 - the settings screen's fields other than retention (see
  * [RetentionSettingsRepository]) and periodic background scanning (see
- * [AutoScanSettingsRepository], improvement-ideas.md #23/#24, design §8.5 - "scan cadence"
+ * [AutoScanSettingsRepository], ideas.md #23/#24, design §8.5 - "scan cadence"
  * from that same design line): theme, RSSI display unit, and the port scanner's default
  * preset. "Sweep concurrency/timeouts" from that design line is still deliberately not here -
  * the LAN sweep's three-pass timeout/concurrency values are tuned per-pass, not a single
@@ -24,19 +24,19 @@ interface AppSettingsRepository {
     val defaultPortSelection: Flow<PortSelection>
     val monitoringCardDismissed: Flow<Boolean>
 
-    // improvement-ideas.md #5 - opt-in, default off, matching this codebase's convention for
-    // other notification-adjacent settings (see docs/open-items.md #5): a user who just started
+    // ideas.md #5 - opt-in, default off, matching this codebase's convention for
+    // other notification-adjacent settings (see docs/ideas.md #24): a user who just started
     // continuous monitoring shouldn't be surprised by alerts they never asked for.
     val rssiAlertThresholdDbm: Flow<Int>
     val alertOnRssiDrop: Flow<Boolean>
     val alertOnDisconnect: Flow<Boolean>
     val alertOnReconnect: Flow<Boolean>
 
-    // improvement-ideas.md #21 - off by default; the crash handler reads this via
+    // ideas.md #21 - off by default; the crash handler reads this via
     // CrashReportingContext rather than this Flow directly, since crash time can't suspend.
     val crashReportingEnabled: Flow<Boolean>
 
-    // improvement-ideas.md #21 - empty string means "nothing acknowledged yet." Compared
+    // ideas.md #21 - empty string means "nothing acknowledged yet." Compared
     // against the latest crash report's filename to decide whether the dashboard's
     // "crash report available" prompt should show.
     val lastAcknowledgedCrashReport: Flow<String>

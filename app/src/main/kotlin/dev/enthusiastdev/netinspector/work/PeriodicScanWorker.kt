@@ -23,7 +23,7 @@ import timber.log.Timber
 import java.net.Inet4Address
 import java.time.Duration
 
-/** improvement-ideas.md #23/#24 - the opt-in periodic background job: records a
+/** ideas.md #23/#24 - the opt-in periodic background job: records a
  * throttle-respecting Wi-Fi scan (#23) and, if also enabled, runs a LAN sweep and diffs it for
  * new/vanished/reappeared devices (#24). `:app` is the only layer allowed to see both
  * `:data:wifi` and `:data:lan` (design §2.1), same as `DevicesViewModel`. Same shape as

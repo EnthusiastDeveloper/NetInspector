@@ -274,7 +274,7 @@ class HostMergeTest {
                 ),
             )
 
-        // docs/device-identification-ideas.md A1 - arrival order must not let a coarse TTL
+        // docs/ideas.md A1 - arrival order must not let a coarse TTL
         // guess clobber a device's own self-reported manufacturer/model.
         assertThat(afterTtlGuess.getValue(address).deviceHint?.label).isEqualTo("Synology DS220+")
     }

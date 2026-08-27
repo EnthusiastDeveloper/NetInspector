@@ -21,7 +21,7 @@ import dev.enthusiastdev.netinspector.ui.screens.connection.NotificationAccessBu
 import dev.enthusiastdev.netinspector.ui.screens.connection.NotificationAccessState
 import dev.enthusiastdev.netinspector.ui.screens.connection.currentNotificationAccessState
 
-/** improvement-ideas.md #23/#24 - background Wi-Fi scan history (#23) plus, nested under it,
+/** ideas.md #23/#24 - background Wi-Fi scan history (#23) plus, nested under it,
  * new/vanished/reappeared LAN device alerts (#24) - the nesting encodes #24's "depends on
  * #23's scheduling work" in the UI directly, since the LAN sweep only ever runs as part of
  * this same periodic job. Kept in its own file, not [SettingsScreen.kt], for the same reason

@@ -96,7 +96,7 @@ private fun WifiDetailHeader(
     }
 }
 
-/** improvement-ideas.md #11 - only rendered when [KnownApEntity.toCapabilityChangeDisplay]
+/** ideas.md #11 - only rendered when [KnownApEntity.toCapabilityChangeDisplay]
  * returns non-null, i.e. there's a complete before/after snapshot and it's actually notable. */
 @Composable
 private fun WifiDetailCapabilityChangeSection(knownAp: KnownApEntity) {

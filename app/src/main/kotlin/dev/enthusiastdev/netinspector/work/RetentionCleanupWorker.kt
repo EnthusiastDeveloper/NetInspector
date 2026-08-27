@@ -34,7 +34,7 @@ class RetentionCleanupWorker
             val diagnosticRetentionDays = retentionSettingsRepository.diagnosticHistoryRetentionDays.first()
             scanHistoryRepository.deleteSessionsOlderThan(scanRetentionDays)
             diagnosticRunRepository.deleteOlderThan(diagnosticRetentionDays)
-            // improvement-ideas.md #24 - same window as scan history: both are periodic-sweep
+            // ideas.md #24 - same window as scan history: both are periodic-sweep
             // byproducts, not something that needs its own retention knob.
             knownLanHostRepository.deleteOlderThan(scanRetentionDays)
             Timber.d(

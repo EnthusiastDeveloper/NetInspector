@@ -12,12 +12,12 @@ import javax.net.ssl.SSLSocket
 import javax.net.ssl.X509TrustManager
 
 /**
- * docs/device-identification-ideas.md B3 - a self-signed admin-UI TLS certificate on 443/8443
+ * docs/ideas.md B3 - a self-signed admin-UI TLS certificate on 443/8443
  * frequently sets its CN to the product name outright (`Synology Inc.`, `ubnt`, `RT-AX88U`).
  * This is a handshake-only client: it never validates the chain (self-signed certs would
  * always fail that anyway) and never sends application data - it exists purely to read what
  * the server already hands over unprompted during the TLS handshake itself, same "connect,
- * don't validate, just read the chain" pattern a standalone TLS inspector (improvement-ideas.md
+ * don't validate, just read the chain" pattern a standalone TLS inspector (ideas.md
  * #14) would also need.
  */
 class TlsCertificateProbe

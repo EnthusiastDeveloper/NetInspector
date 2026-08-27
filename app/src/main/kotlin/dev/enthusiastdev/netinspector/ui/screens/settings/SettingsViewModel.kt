@@ -51,7 +51,7 @@ class SettingsViewModel
         private val debugBundleBuilder: DebugBundleBuilder,
         @ApplicationContext private val context: Context,
     ) : ViewModel() {
-        // improvement-ideas.md #21 - a crash written since this screen was last visited is
+        // ideas.md #21 - a crash written since this screen was last visited is
         // filesystem state, not a Flow this ViewModel already observes, so it's re-checked on
         // resume via this trigger.
         private val crashReportAvailabilityTrigger = MutableStateFlow(0)
@@ -89,7 +89,7 @@ class SettingsViewModel
                 ::ConnectionAlertSettings,
             )
 
-        // improvement-ideas.md #23/#24 - same reason [alertSettings] is separate: past the
+        // ideas.md #23/#24 - same reason [alertSettings] is separate: past the
         // fixed-arity combine() overload count.
         private val autoScanSettings =
             combine(
@@ -168,7 +168,7 @@ class SettingsViewModel
             viewModelScope.launch { appSettingsRepository.setAlertOnReconnect(enabled) }
         }
 
-        /** improvement-ideas.md #23 - the write and the (re)schedule/cancel have to happen
+        /** ideas.md #23 - the write and the (re)schedule/cancel have to happen
          * together: `AutoScanScheduler` is the only thing that actually starts/stops
          * `PeriodicScanWorker`, the DataStore write alone wouldn't. */
         fun setAutoScanEnabled(enabled: Boolean) {

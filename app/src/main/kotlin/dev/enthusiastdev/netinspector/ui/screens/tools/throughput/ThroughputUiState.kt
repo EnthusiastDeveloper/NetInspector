@@ -9,7 +9,7 @@ data class HostOption(
     val label: String,
 )
 
-/** design §5.1/§7 correlation snapshot (improvement-ideas.md #31's differentiator), captured
+/** design §5.1/§7 correlation snapshot (ideas.md #31's differentiator), captured
  * once at test start and once at completion so a result can be read against *both* - a test
  * that starts on a strong signal and ends on a weak one (walking away from the AP mid-test)
  * should not be misread as "this network is always this fast." `null` fields mean the app

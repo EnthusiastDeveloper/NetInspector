@@ -6,7 +6,7 @@ import org.gradle.kotlin.dsl.getByName
 import org.gradle.kotlin.dsl.register
 
 /**
- * improvement-ideas.md #32 - a benchmark suite for the LAN sweep pipeline's pure logic
+ * ideas.md #32 - a benchmark suite for the LAN sweep pipeline's pure logic
  * (parsing, scoring, precedence, and the timing-sensitive scheduling of parallel host
  * discovery). Benchmarks live as ordinary classes in `src/test`, named `*Benchmark.kt`, so
  * they share a module's existing test classpath and doubles (mockk, fakes) rather than

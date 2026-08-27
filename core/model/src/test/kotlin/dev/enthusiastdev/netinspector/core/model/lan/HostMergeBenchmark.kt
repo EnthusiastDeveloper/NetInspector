@@ -9,7 +9,7 @@ import java.time.Instant
 private fun addr(host: String) = InetAddress.getByName(host) as Inet4Address
 
 /**
- * improvement-ideas.md #32 - [mergeObservation] is called once per probe result, streamed as
+ * ideas.md #32 - [mergeObservation] is called once per probe result, streamed as
  * the sweep runs (design §8.2), so its cost is paid `addresses probed` times per sweep, not
  * once. It also rebuilds the whole host map on every call (`current + (address to merged)`),
  * which is O(host count) - benchmarking the full stream of a /24 sweep's worth of

@@ -32,7 +32,7 @@ class DashboardViewModel
         private val crashReportStore: CrashReportStore,
         @ApplicationContext private val context: Context,
     ) : ViewModel() {
-        // improvement-ideas.md #21 - "auto-detect the crash on the next app start": a crash
+        // ideas.md #21 - "auto-detect the crash on the next app start": a crash
         // always kills the process, so a fresh DashboardViewModel is created on every process
         // start regardless of navigation state - reading the latest report once here, rather
         // than on a resume trigger like SettingsViewModel's checks, is exactly "next app start."

@@ -17,7 +17,7 @@ private val CHANGE_TIMESTAMP_FORMAT = DateTimeFormatter.ofPattern("MMM d, HH:mm"
 
 internal fun Instant.asClockTime(): String = CLOCK_FORMAT.format(this)
 
-/** improvement-ideas.md #11 - a capability change can be days old by the time it's viewed, so
+/** ideas.md #11 - a capability change can be days old by the time it's viewed, so
  * (unlike [asClockTime]) this carries a date, matching `HistoryFormatting.kt`'s
  * `ABSOLUTE_DATE_FORMAT` pattern. */
 internal fun Instant.asChangeTimestamp(): String = CHANGE_TIMESTAMP_FORMAT.format(this)
@@ -54,7 +54,7 @@ private fun SecurityType.label(): String =
 
 /** Parses a `known_ap`/`scan_observation` stored raw security string (comma-joined
  * [SecurityType] names, e.g. `ScanHistoryRepository`'s `upsertKnownAp`) back to its display
- * label - shared by `WifiChangesScreen`'s `ObservedAp` rendering and improvement-ideas.md #11's
+ * label - shared by `WifiChangesScreen`'s `ObservedAp` rendering and ideas.md #11's
  * capability-change card. */
 internal fun String.parsedSecurityLabel(): String =
     split(",")
@@ -68,7 +68,7 @@ internal fun String.parsedSecurityLabel(): String =
 internal fun String.parsedStandardLabel(): String =
     runCatching { WifiStandard.valueOf(this) }.getOrNull()?.label() ?: this
 
-/** improvement-ideas.md #11 - the before/after snapshot plus which fields actually changed,
+/** ideas.md #11 - the before/after snapshot plus which fields actually changed,
  * ready for [WifiDetailContent]'s capability-change card to render. */
 internal data class ApCapabilityChangeDisplay(
     val previous: ApCapabilitySnapshot,

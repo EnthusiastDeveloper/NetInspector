@@ -44,7 +44,7 @@ jobs:
       - name: Assemble debug
         run: ./gradlew assembleDebug --no-daemon
 
-  # improvement-ideas.md #32 - a separate job, not a step in `build` above: it must never
+  # ideas.md #32 - a separate job, not a step in `build` above: it must never
   # affect that job's pass/fail outcome (docs/adr/0010-hand-rolled-benchmark-harness.md), and
   # `continue-on-error: true` here keeps a benchmark-runner hiccup from blocking the merge
   # while still surfacing as a distinct, reviewable status.

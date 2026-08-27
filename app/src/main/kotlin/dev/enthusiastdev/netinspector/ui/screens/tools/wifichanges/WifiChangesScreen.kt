@@ -47,7 +47,7 @@ fun WifiChangesRoute(
 
 private enum class PickerSlot { BEFORE, AFTER }
 
-/** improvement-ideas.md #6 - one screen, not a picker destination plus a results destination:
+/** ideas.md #6 - one screen, not a picker destination plus a results destination:
  * both session picks are local state here, same reasoning `DevicesScreen`'s in-screen
  * navigator state uses instead of a second nav route for what's really one flow. */
 @Composable

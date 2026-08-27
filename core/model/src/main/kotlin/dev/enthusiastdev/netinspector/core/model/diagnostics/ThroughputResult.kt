@@ -1,7 +1,7 @@
 package dev.enthusiastdev.netinspector.core.model.diagnostics
 
 /**
- * docs/improvement-ideas.md #31 (rescoped) - LAN-only throughput test. There is no cooperating
+ * docs/ideas.md #31 (rescoped) - LAN-only throughput test. There is no cooperating
  * server on the target (the app has zero third-party or self-hosted service dependencies), so
  * this is a round-trip estimate from a burst of concurrent ICMP echo probes, not a one-directional
  * download/upload measurement the way an internet speed test reports one. [instantMbps] is the

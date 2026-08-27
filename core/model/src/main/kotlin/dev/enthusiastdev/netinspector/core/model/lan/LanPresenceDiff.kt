@@ -1,6 +1,6 @@
 package dev.enthusiastdev.netinspector.core.model.lan
 
-/** improvement-ideas.md #24 - one row of persisted state per LAN host identity ([key] is
+/** ideas.md #24 - one row of persisted state per LAN host identity ([key] is
  * [Host.nicknameKey]), tracked across periodic background sweeps rather than a single live
  * sweep's in-memory [HostConfidence]. */
 data class KnownHostRecord(
@@ -21,7 +21,7 @@ data class LanPresenceDiff(
     val updatedRecords: List<KnownHostRecord>,
 )
 
-/** improvement-ideas.md #24 - pure decision logic for the periodic background sweep's
+/** ideas.md #24 - pure decision logic for the periodic background sweep's
  * new/vanished/reappeared device alerts, kept free of Room/Android so it's JVM-unit-testable
  * (design's testability bar), same shape as [mergeObservation]/[finalizeSweep]. Only
  * [HostConfidence.CONFIRMED] hosts should be passed in [currentConfirmedHosts] - the caller
@@ -31,7 +31,7 @@ data class LanPresenceDiff(
  * sweep before dropping) but extended to two *periodic* sweeps: a single missed sweep is
  * tolerated as transient/DHCP churn before a "vanished" alert fires.
  *
- * A key in [knownDeviceKeys] (docs/improvement-ideas.md #24 - "known device" flag) never
+ * A key in [knownDeviceKeys] (docs/ideas.md #24 - "known device" flag) never
  * appears in [LanPresenceDiff.vanishedHosts] or [LanPresenceDiff.reappearedHosts] - it's still
  * tracked in [updatedRecords] so the flag can later be cleared without losing state.
  *

@@ -512,7 +512,7 @@ stays null for most hosts, so a future rooted or privileged build can populate i
 model change. The UI does not show an empty "MAC" row; it shows the identification signals it
 actually has.
 
-**One narrow, deliberate exception** (docs/device-identification-ideas.md A3): a host that
+**One narrow, deliberate exception** (docs/ideas.md A3): a host that
 answers a NetBIOS NBSTAT query includes its adapter's real MAC in the response's STATISTICS
 field (RFC 1002 §4.2.18) - an application-layer payload the app is already receiving
 legitimately, not the ARP table. `NetBiosProbe` extracts it and runs it through the OUI table
@@ -538,7 +538,7 @@ confirmed hosts only.
 |---|---|---|
 | mDNS | `NsdManager` browse, plus a meta-query for `_services._dns-sd._udp` to enumerate service types before browsing each | Hostnames, service types, device models (Apple, printers, Chromecast, NAS) |
 | SSDP | UDP M-SEARCH ×3 to `239.255.255.250:1900`, `ST: ssdp:all`, MX 2 | `SERVER`, `LOCATION`; fetching the LOCATION XML yields `friendlyName`, `manufacturer`, `modelName` |
-| UPnP IGD Hosts | SOAP `GetHostNumberOfEntries`/`GetGenericHostEntry` against a router advertising `urn:schemas-upnp-org:service:Hosts:1` in its SSDP device description (docs/device-identification-ideas.md C1) | Real MAC and hostname for every LAN host the router knows about, coverage permitting |
+| UPnP IGD Hosts | SOAP `GetHostNumberOfEntries`/`GetGenericHostEntry` against a router advertising `urn:schemas-upnp-org:service:Hosts:1` in its SSDP device description (docs/ideas.md C1) | Real MAC and hostname for every LAN host the router knows about, coverage permitting |
 | NetBIOS | UDP node-status query to the broadcast address on port 137 | Windows/Samba names and workgroup |
 | Known hosts | Gateway from `LinkProperties`, self from `linkAddresses` | Two guaranteed-correct entries |
 
@@ -584,10 +584,10 @@ false negatives on a congested network.
 - Reverse DNS via `DnsResolver`, async, never blocking the list.
 - Extended port probe over a ~30-port service set.
 - Banner grab: HTTP `Server` header and `<title>`, SSH version string.
-- **SNMP `sysDescr`/`sysName`** (docs/device-identification-ideas.md B1): a single GET-request
+- **SNMP `sysDescr`/`sysName`** (docs/ideas.md B1): a single GET-request
   to UDP 161, community `public`. A hit is `CONFIRMED` tier - the device's own self-reported
   firmware/model string, same as A1/A2's UPnP/mDNS fields.
-- **TLS certificate CN** (docs/device-identification-ideas.md B3): a handshake-only
+- **TLS certificate CN** (docs/ideas.md B3): a handshake-only
   (never-validated) `SSLSocket` client against 443/8443. A self-signed admin-UI certificate's
   CN frequently carries the product name outright; `CONFIRMED` tier like SNMP above, with SNMP
   winning a tie (its firmware string is usually more specific than a certificate's often
@@ -627,7 +627,7 @@ cancels every in-flight probe.
 
 ### 8.5 Periodic background scanning
 
-improvement-ideas.md #23/#24 - an opt-in `WorkManager` periodic job (`PeriodicScanWorker`,
+ideas.md #23/#24 - an opt-in `WorkManager` periodic job (`PeriodicScanWorker`,
 `:app`), off by default, that reuses this pipeline and §6.1's `ScanGovernor` rather than
 building a second scanning path. ADR C-10 governs it directly: a run can be skipped or
 delayed by Doze, and that is meant to be visible as a gap, never interpolated or retried.
@@ -651,7 +651,7 @@ background wake-up rather than two:
   a real vanish alert gets one "reappeared" alert. The very first run for a given network only
   ever records a baseline - never a flood of "new device" alerts for everything already there.
 - **Known device flag** - a per-host, user-set `isKnownDevice` column on `saved_host`
-  (docs/device-identification-ideas.md D's existing per-host table), toggled from the Devices
+  (docs/ideas.md D's existing per-host table), toggled from the Devices
   detail screen. A host so flagged never produces a vanish or reappear alert - the intended
   case is a laptop that sleeps or a phone that leaves and returns home, both of which are
   expected churn, not a signal worth alerting on. It does not suppress the initial "new
@@ -772,7 +772,7 @@ trips IDS on managed networks and can destabilise cheap consumer routers.
 - **Signal meter** - live RSSI from the `NetworkCallback` stream (§5.1) with a rolling
   60-second chart, dBm and derived quality percentage, plus link speed. No scan budget
   consumed, so this can run continuously.
-- **LAN throughput test** (improvement-ideas.md #31, rescoped - see
+- **LAN throughput test** (ideas.md #31, rescoped - see
   [ADR-0009](adr/0009-lan-throughput-icmp-burst-estimate.md)) - a *local-network-only* link
   speed estimate, explicitly not an internet speed test: several concurrent workers pipeline
   near-MTU ICMP echo probes (tier 1's socket, §9.1) against a chosen LAN host for a fixed
@@ -797,14 +797,14 @@ migrations.
 |---|---|---|
 | `scan_session` | One row per scan snapshot: timestamp, connected BSSID, location-free | 30 days, configurable |
 | `scan_observation` | AP observation joined to a session: BSSID, RSSI, channel, width | Cascade with session |
-| `known_ap` | Stable per-BSSID record: SSID, vendor, first/last seen, best RSSI, plus a current/previous security-standard-channel snapshot for improvement-ideas.md #11's capability-change detection | Indefinite |
+| `known_ap` | Stable per-BSSID record: SSID, vendor, first/last seen, best RSSI, plus a current/previous security-standard-channel snapshot for ideas.md #11's capability-change detection | Indefinite |
 | `saved_wol_target` | Manually-entered Wake-on-LAN target: label, MAC, broadcast address | Indefinite |
-| `saved_host` | Manual per-host nickname (docs/device-identification-ideas.md D) plus the `isKnownDevice` "known device" flag (improvement-ideas.md #24), keyed by MAC when known or a stable address+hostname combo otherwise | Indefinite |
-| `known_lan_host` | Periodic-sweep presence tracking per host identity for new/vanished/reappeared alerts (improvement-ideas.md #24, §8.5) | Same window as `scan_session` |
+| `saved_host` | Manual per-host nickname (docs/ideas.md D) plus the `isKnownDevice` "known device" flag (ideas.md #24), keyed by MAC when known or a stable address+hostname combo otherwise | Indefinite |
+| `known_lan_host` | Periodic-sweep presence tracking per host identity for new/vanished/reappeared alerts (ideas.md #24, §8.5) | Same window as `scan_session` |
 | `diagnostic_run` | Ping/traceroute/scan runs with parameters and serialised results | 90 days |
 | `oui` | Prepopulated MAC prefix → vendor, variable prefix length | Static, bundled |
 
-improvement-ideas.md #6 - the "Wi-Fi changes" tool (Tools grid, History group) is pure
+ideas.md #6 - the "Wi-Fi changes" tool (Tools grid, History group) is pure
 presentation over `scan_session`/`scan_observation`: no new table, no new repository method.
 A user picks two sessions; `diffScanSessions` (`:core:model`, pure, JVM-tested) keys both
 sides' observations by BSSID and reports added/removed/changed access points. A matched BSSID
@@ -814,7 +814,7 @@ ordinary scan-to-scan RSSI jitter would flag nearly every AP as changed and defe
 purpose. Each session's own timestamp is always shown (C-02's staleness guidance) - neither
 side is ever implied to be "current."
 
-improvement-ideas.md #11 - `known_ap`'s capability columns (§10's table above) track this
+ideas.md #11 - `known_ap`'s capability columns (§10's table above) track this
 automatically rather than requiring the user to pick sessions like #6 does. On every
 `upsertKnownAp` (`ScanHistoryRepository`), if the row already has a captured baseline, the
 incoming scan's security/standard/channel is compared against it with `diffApCapabilities`
@@ -1012,7 +1012,7 @@ validation pass; the sections above (§6, §8, §9, §11.3) remain the source fo
 *correct* behavior looks like for each capability, which `docs/testing.md` cross-references
 rather than repeats.
 
-**Benchmark suite (dev-facing, non-blocking)** - improvement-ideas.md #32. §8.2's active
+**Benchmark suite (dev-facing, non-blocking)** - ideas.md #32. §8.2's active
 sweep is parallel and timing-sensitive enough (64/32-way concurrency-limited passes, a
 map-copy-per-observation merge in the hot path) that a regression there is easy to introduce
 and easy to miss in an ordinary unit test, which only checks correctness, not cost. A small
@@ -1035,7 +1035,7 @@ deterministic regardless. `scripts/run-benchmarks.sh` runs the suite and writes
 `benchmarks/baseline.csv` and prints a `::warning::` annotation for a >50% median regression,
 without ever failing the build (ADR-0010). CI wires this in as a separate,
 `continue-on-error: true` job in `.github/workflows/ci.yml` - informational only, exactly as
-improvement-ideas.md #32 asks for.
+ideas.md #32 asks for.
 
 ---
 

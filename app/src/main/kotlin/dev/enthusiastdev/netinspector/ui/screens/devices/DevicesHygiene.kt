@@ -34,7 +34,7 @@ import dev.enthusiastdev.netinspector.core.model.lan.allFlaggedPorts
 import dev.enthusiastdev.netinspector.core.model.lan.portRisk
 
 /**
- * docs/improvement-ideas.md #1 - the network-wide read, sitting beside the list controls as a
+ * docs/ideas.md #1 - the network-wide read, sitting beside the list controls as a
  * second column rather than as a full-width block above them.
  *
  * Only the score, its rating and a one-line summary are shown here; the remediation checklist
@@ -90,7 +90,7 @@ private fun HygieneCardTitleRow() {
     }
 }
 
-/** The full checklist, on demand. [onHostClick] (docs/improvement-ideas.md #3) lets each
+/** The full checklist, on demand. [onHostClick] (docs/ideas.md #3) lets each
  * remediation row jump straight to the host it's about, reusing the same host-address navigation
  * [DevicesScreen] already uses for the list/detail pane. */
 @Composable
@@ -116,7 +116,7 @@ internal fun NetworkHygieneDetailsDialog(
     )
 }
 
-/** docs/improvement-ideas.md #2 - the score's methodology was otherwise opaque: a number and a
+/** docs/ideas.md #2 - the score's methodology was otherwise opaque: a number and a
  * rating with no visible explanation of what's being measured or why. Same tap-to-expand
  * pattern as `DevicesDetailCards.kt`'s "why no MAC address?" dialog, for the same "explain a
  * non-obvious value rather than leave it unexplained" reason. Shared by [DevicesNetworkHygieneCard]
@@ -166,7 +166,7 @@ private fun HygieneMethodology() {
     }
 }
 
-/** docs/improvement-ideas.md #3 - turns a `HygieneScore`'s findings into a "what to fix"
+/** docs/ideas.md #3 - turns a `HygieneScore`'s findings into a "what to fix"
  * checklist instead of leaving the user to infer action items from the score alone. When
  * [onHostClick] is given (the network-wide card), each row is prefixed with the offending
  * host's address and tappable through to that host's own detail pane, reusing the same

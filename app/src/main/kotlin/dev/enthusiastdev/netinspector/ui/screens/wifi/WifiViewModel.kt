@@ -67,7 +67,7 @@ class WifiViewModel
                 // Read only to tell the channel recommendation which AP is *this* device's, so it
                 // can be excluded from the interference it is being compared against.
                 connectionRepository.connectionSnapshot,
-                // improvement-ideas.md #11 - source of the AP detail screen's capability-change
+                // ideas.md #11 - source of the AP detail screen's capability-change
                 // card; filtered down to only the entries that actually have one, so the common
                 // case is an empty map.
                 scanHistoryRepository.knownAps(),

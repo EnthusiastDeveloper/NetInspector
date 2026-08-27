@@ -3,7 +3,7 @@ package dev.enthusiastdev.netinspector.data.lan.snmp
 import java.io.ByteArrayOutputStream
 
 /**
- * docs/device-identification-ideas.md B1 - the minimal BER/ASN.1 subset [SnmpProbe] needs:
+ * docs/ideas.md B1 - the minimal BER/ASN.1 subset [SnmpProbe] needs:
  * encoding one SNMPv2c GET-request PDU (RFC 1157/3416) with N object identifiers, and decoding
  * a GetResponse-PDU's variable-bindings back into an OID -> value map. This is not a
  * general-purpose ASN.1 codec, only the handful of tags an SNMP GET round-trip ever uses - the

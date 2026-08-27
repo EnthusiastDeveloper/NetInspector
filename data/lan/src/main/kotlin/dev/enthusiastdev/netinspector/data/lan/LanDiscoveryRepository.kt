@@ -48,7 +48,7 @@ interface LanDiscoveryRepository {
     ): SweepOutcome
 
     /**
-     * docs/improvement-ideas.md - folds a single [observation] made outside a [sweep] (the
+     * docs/ideas.md - folds a single [observation] made outside a [sweep] (the
      * Tools port scanner, which can target any host the user types, not just ones this sweep
      * already knows about) into the live host map with the same merge semantics a sweep's own
      * probes use. Unlike [sweep], this never touches [progress] or the multicast/Wi-Fi locks -

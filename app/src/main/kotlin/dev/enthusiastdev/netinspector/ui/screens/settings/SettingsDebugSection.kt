@@ -10,7 +10,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import dev.enthusiastdev.netinspector.core.designsystem.component.InfoCard
 
-/** improvement-ideas.md #21/#22 - opt-in local crash reporting plus an on-demand debug-bundle
+/** ideas.md #21/#22 - opt-in local crash reporting plus an on-demand debug-bundle
  * export, so a bug report no longer requires a live ADB session. Kept in its own file (rather
  * than alongside [SettingsScreen]'s other sections) to stay under detekt's per-file function
  * count threshold. */

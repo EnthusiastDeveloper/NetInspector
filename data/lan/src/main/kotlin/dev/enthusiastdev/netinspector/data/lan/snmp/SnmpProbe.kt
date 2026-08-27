@@ -9,7 +9,7 @@ import java.net.Inet4Address
 import javax.inject.Inject
 
 /**
- * docs/device-identification-ideas.md B1 - a single SNMP v2c GET-request for OID
+ * docs/ideas.md B1 - a single SNMP v2c GET-request for OID
  * `1.3.6.1.2.1.1.1.0` (`sysDescr`) and `1.3.6.1.2.1.1.5.0` (`sysName`), sent to UDP 161 with
  * the default read-only community string `public`. Printers, managed switches, UPSes, and NAS
  * boxes very often leave this enabled and return an exact model/firmware string plus an

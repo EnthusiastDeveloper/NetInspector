@@ -46,7 +46,7 @@ class SsdpProbe
                         socket.send(DatagramPacket(request, request.size, target))
                     }
                     val collected = collectResponses(socket, budgetMs)
-                    // docs/device-identification-ideas.md C1 - the router's Hosts-service SOAP
+                    // docs/ideas.md C1 - the router's Hosts-service SOAP
                     // round-trip runs after the receive loop closes, not inside it, so it never
                     // steals time from the socket's own receive budget and risks missing another
                     // responder's UDP reply while it's blocked doing HTTP.
@@ -187,7 +187,7 @@ class SsdpProbe
                 null
             }
 
-        /** docs/device-identification-ideas.md C1 - `controlURL` in the device description is
+        /** docs/ideas.md C1 - `controlURL` in the device description is
          * commonly relative (e.g. `/upnp/control/hosts1`); it's resolved against the `LOCATION`
          * URL's own base, same as a browser resolving a relative link. */
         private fun resolveControlUrl(
@@ -240,7 +240,7 @@ class SsdpProbe
                 }
             }
 
-            /** docs/device-identification-ideas.md C1 - `<service>` blocks aren't nested, so
+            /** docs/ideas.md C1 - `<service>` blocks aren't nested, so
              * tracking just the current one (reset at its own closing tag) is enough without
              * building a full element stack. The first service matching [HOSTS_SERVICE_PREFIX]
              * wins - in practice there's only ever one Hosts service per device description. */

@@ -2,7 +2,7 @@ package dev.enthusiastdev.netinspector.core.model.wifi
 
 import kotlin.math.abs
 
-/** improvement-ideas.md #6 - a persisted `ScanObservationEntity` projected down to just the
+/** ideas.md #6 - a persisted `ScanObservationEntity` projected down to just the
  * fields the diff cares about. [band]/[security]/[standard] stay as the entity's raw stored
  * strings rather than parsed back into [Band]/[SecurityType]/[WifiStandard] - the diff only
  * ever needs equality on them, so parsing would add a failure mode (an unparseable stored
@@ -40,7 +40,7 @@ data class ScanSessionDiff(
     val unchangedCount: Int,
 )
 
-/** improvement-ideas.md #6 - pure diff between two scan sessions, keyed by [ObservedAp.bssid],
+/** ideas.md #6 - pure diff between two scan sessions, keyed by [ObservedAp.bssid],
  * same associate-by-key/set-difference shape `diffLanPresence` (lan package) uses.
  *
  * [notableRssiDeltaDbm] exists because ordinary scan-to-scan RSSI jitter - every AP moves a

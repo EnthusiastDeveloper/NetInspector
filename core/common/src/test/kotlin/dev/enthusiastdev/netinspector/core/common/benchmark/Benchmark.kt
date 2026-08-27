@@ -3,7 +3,7 @@ package dev.enthusiastdev.netinspector.core.common.benchmark
 import java.io.File
 
 /**
- * improvement-ideas.md #32 - a minimal wall-clock benchmark harness for the LAN sweep
+ * ideas.md #32 - a minimal wall-clock benchmark harness for the LAN sweep
  * pipeline's pure logic. Deliberately hand-rolled rather than JMH or kotlinx-benchmark: see
  * docs/adr/0010-hand-rolled-benchmark-harness.md for why. This is intentionally duplicated
  * (not shared via a project dependency) in every module with a `*Benchmark.kt` file -

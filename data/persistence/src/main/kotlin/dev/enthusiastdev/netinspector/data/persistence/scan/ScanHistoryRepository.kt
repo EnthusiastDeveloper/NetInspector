@@ -55,7 +55,7 @@ class DefaultScanHistoryRepository
             }
         }
 
-        /** improvement-ideas.md #11 - a notable capability change is only detected when
+        /** ideas.md #11 - a notable capability change is only detected when
          * [existing] already carries a captured baseline ([KnownApEntity.toBaseline] returns
          * non-null); a brand-new BSSID or a pre-migration row with no baseline just records one
          * silently, per [KnownApEntity]'s doc comment. */
@@ -112,7 +112,7 @@ class DefaultScanHistoryRepository
     }
 
 /** Null when this row has no captured capability baseline yet (a brand-new BSSID, or a row
- * written before improvement-ideas.md #11's migration) - see [KnownApEntity]'s doc comment. */
+ * written before ideas.md #11's migration) - see [KnownApEntity]'s doc comment. */
 private fun KnownApEntity.toBaseline(): ApCapabilitySnapshot? {
     val security = security ?: return null
     val standard = standard ?: return null

@@ -173,7 +173,7 @@ class ThroughputViewModel
         /** design §5.1 - RSSI comes from the `NetworkCallback` stream, the authoritative source
          * for the *connected* network (scan results are for other networks only); channel
          * congestion comes from `WifiScanRepository`'s scan state instead, since that's the only
-         * source with visibility into neighbouring APs at all (improvement-ideas.md #31's
+         * source with visibility into neighbouring APs at all (ideas.md #31's
          * correlation differentiator). */
         private fun currentCorrelation(): WifiCorrelationSnapshot? {
             val connection = latestConnection.value ?: return null

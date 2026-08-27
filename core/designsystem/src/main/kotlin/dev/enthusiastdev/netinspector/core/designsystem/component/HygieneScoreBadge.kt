@@ -17,7 +17,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 
 /**
- * docs/improvement-ideas.md #1 - a compact "is this okay?" readout: a colored number (expected
+ * docs/ideas.md #1 - a compact "is this okay?" readout: a colored number (expected
  * 0..100, but not clamped here) plus a short label describing what it means. Like [InfoRow], it
  * only renders what it's given - [score]'s scale and [label]'s wording are entirely the
  * caller's concern, so this stays reusable for any 0..100 score, not just the hygiene one.

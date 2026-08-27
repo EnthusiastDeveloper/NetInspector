@@ -6,7 +6,7 @@ import java.net.Inet4Address
  * Android blocks reading the ARP table on an unrooted device (C-01). The one exception is a
  * host that answers a NetBIOS NBSTAT query - its response's STATISTICS field carries the
  * adapter's real MAC (RFC 1002 §4.2.18), independent of the blocked ARP table (docs/
- * device-identification-ideas.md A3) - so this is populated for NetBIOS-observed hosts only.
+ * ideas.md A3) - so this is populated for NetBIOS-observed hosts only.
  * The UI must not render an empty "MAC" row for everyone else - it shows the identification
  * signals it actually has. */
 data class Host(
@@ -23,12 +23,12 @@ data class Host(
     val rttMedianMs: Double?,
     val isGateway: Boolean,
     val isSelf: Boolean,
-    /** docs/device-identification-ideas.md D - a user-set label overriding every automated
+    /** docs/ideas.md D - a user-set label overriding every automated
      * naming signal. Never populated by [mergeObservation] (no observation source produces
      * one); the UI layer overlays it from [nicknameKey], since a nickname outlives any single
      * host record still being rebuilt sweep to sweep. */
     val nickname: String? = null,
-    /** improvement-ideas.md #24 - a user-set flag meaning "this host is expected to come and
+    /** ideas.md #24 - a user-set flag meaning "this host is expected to come and
      * go" (a laptop that sleeps, a phone that leaves and returns home), so the periodic
      * background sweep's vanish/reappear alerts skip it. Same overlay mechanism as [nickname]:
      * never populated by [mergeObservation], joined in by the UI layer from [nicknameKey]. */
@@ -37,7 +37,7 @@ data class Host(
 
 /** design §11.3 - hostname precedence for the primary display name; every variant stays
  * visible (with its source) on the detail screen regardless of which one this picks.
- * `UPNP_HOSTS` (docs/device-identification-ideas.md C1) and `SNMP` (B1) sit alongside
+ * `UPNP_HOSTS` (docs/ideas.md C1) and `SNMP` (B1) sit alongside
  * `NETBIOS` - all three are a router/device self-reporting a name, stronger than a generic
  * reverse-DNS PTR record but not as curated as mDNS/SSDP's own friendly-name fields. */
 private val HOSTNAME_PRECEDENCE =
@@ -53,7 +53,7 @@ private val HOSTNAME_PRECEDENCE =
 val Host.primaryHostname: String?
     get() = HOSTNAME_PRECEDENCE.firstNotNullOfOrNull { hostnames[it] }
 
-/** docs/device-identification-ideas.md D - "keyed by MAC when available, or a stable IP+
+/** docs/ideas.md D - "keyed by MAC when available, or a stable IP+
  * hostname combo otherwise": [macAddress] only exists for NetBIOS-observed hosts (A3), so most
  * hosts fall back to address+hostname. Plain [address] alone isn't stable across a DHCP lease
  * change, but address+hostname together are the closest stable identity available without a

@@ -79,7 +79,7 @@
                 tools:node="remove" />
         </provider>
 
-        <!-- improvement-ideas.md #21/#22 - hands a crash report or debug-bundle zip to the
+        <!-- ideas.md #21/#22 - hands a crash report or debug-bundle zip to the
              share sheet as a content:// URI, since neither file lives somewhere another app
              can read directly. -->
         <provider

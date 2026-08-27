@@ -18,7 +18,7 @@ import java.util.zip.ZipOutputStream
 import javax.inject.Inject
 import javax.inject.Singleton
 
-/** improvement-ideas.md #22 - builds the shareable debug bundle from whatever the app already
+/** ideas.md #22 - builds the shareable debug bundle from whatever the app already
  * has live in memory (no new persisted history is introduced for this). Zips land in
  * `cacheDir`, not `filesDir`: unlike a crash report, a bundle is transient and regenerable on
  * demand, so it's fine for the OS to reclaim under storage pressure. */

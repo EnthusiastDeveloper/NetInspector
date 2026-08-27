@@ -2,7 +2,7 @@ package dev.enthusiastdev.netinspector.core.model.lan
 
 /** design §8.3 - where one piece of evidence about a host came from. `GATEWAY` and `SELF`
  * are the two "known hosts" design §8.2 calls guaranteed-correct, not really probes.
- * `UPNP_HOSTS` (docs/device-identification-ideas.md C1) is the router reporting *another*
+ * `UPNP_HOSTS` (docs/ideas.md C1) is the router reporting *another*
  * host's entry from its own table, not that host's own direct response - grouped with the
  * other announcement-only sources below, same as `NETBIOS` despite also carrying a real MAC.
  * `SNMP` (B1) and `TLS` (B3) are direct per-host responses, but Stage C only ever queries
