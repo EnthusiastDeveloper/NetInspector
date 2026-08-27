@@ -68,9 +68,14 @@ fun ScoreChip(
     }
 }
 
-/** Bands at 70/50, the same poor/fair/good split the RssiGauge uses. */
+/**
+ * The band colour for a 0..100 score - green at/above 70, amber 50..69, red below, the same
+ * poor/fair/good split the RssiGauge uses. Public so callers that build their own score
+ * treatment (an animated badge, a tinted container) read a score the same way [ScoreBadge] and
+ * [ScoreChip] do rather than picking their own thresholds.
+ */
 @Composable
-private fun scoreColor(score: Int): Color =
+fun scoreColor(score: Int): Color =
     when {
         score >= GOOD_THRESHOLD -> MaterialTheme.colorScheme.primary
         score >= FAIR_THRESHOLD -> Color(0xFFB8860B) // amber - distinct from the theme's error/primary hues

@@ -1,5 +1,6 @@
 package dev.enthusiastdev.netinspector.ui.screens.devices
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -23,6 +24,11 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -32,6 +38,7 @@ import dev.enthusiastdev.netinspector.core.model.lan.Host
 import dev.enthusiastdev.netinspector.core.model.lan.HostConfidence
 import dev.enthusiastdev.netinspector.core.model.lan.HygieneScore
 import dev.enthusiastdev.netinspector.core.model.lan.SweepProgress
+import kotlinx.coroutines.delay
 
 /**
  * The device count, the tap-through [HygieneBadge] and the scan control, all on one row.
@@ -41,6 +48,10 @@ import dev.enthusiastdev.netinspector.core.model.lan.SweepProgress
  * [FilledTonalButton] with a radar glyph: still clearly the primary action, but toned down from
  * the old high-emphasis filled pill so it sits with the muted toolbar below rather than shouting
  * over it.
+ *
+ * For the ~1.8s after a scan finishes the badge expands to a one-line summary; the device count
+ * animates out for that window so the wider pill fits a narrow window without shoving the scan
+ * button off-screen.
  */
 @Composable
 internal fun DevicesSummaryRow(
@@ -52,16 +63,37 @@ internal fun DevicesSummaryRow(
     onCancel: () -> Unit,
     onHygieneClick: () -> Unit,
 ) {
+    val scanning = progress.isRunning
+    var justResolved by remember { mutableStateOf(false) }
+    var wasScanning by remember { mutableStateOf(scanning) }
+    LaunchedEffect(scanning, hygiene) {
+        if (wasScanning && !scanning && hygiene != null) justResolved = true
+        wasScanning = scanning
+    }
+    LaunchedEffect(justResolved) {
+        if (justResolved) {
+            delay(HYGIENE_REVEAL_MILLIS)
+            justResolved = false
+        }
+    }
+
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(text = "$hostCount devices", style = MaterialTheme.typography.titleMedium)
-            hygiene?.let { HygieneBadge(score = it, onClick = onHygieneClick) }
+            AnimatedVisibility(visible = !justResolved) {
+                Text(text = "$hostCount devices", style = MaterialTheme.typography.titleMedium, maxLines = 1)
+            }
+            HygieneBadge(
+                score = hygiene,
+                scanning = scanning,
+                expanded = justResolved,
+                onClick = onHygieneClick,
+            )
             Spacer(modifier = Modifier.weight(1f))
-            if (progress.isRunning) {
+            if (scanning) {
                 OutlinedButton(onClick = onCancel) { Text("Cancel") }
             } else {
                 ScanButton(onClick = onScan, enabled = isConnected)
@@ -73,7 +105,7 @@ internal fun DevicesSummaryRow(
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-        } else if (progress.isRunning) {
+        } else if (scanning) {
             val fraction =
                 if (progress.addressesTotal > 0) progress.addressesProbed / progress.addressesTotal.toFloat() else 0f
             LinearProgressIndicator(progress = { fraction }, modifier = Modifier.fillMaxWidth())
@@ -85,6 +117,9 @@ internal fun DevicesSummaryRow(
         }
     }
 }
+
+/** Duration of the post-scan badge reveal, shared with [HygieneBadge]'s expanded state. */
+private const val HYGIENE_REVEAL_MILLIS = 1800L
 
 @Composable
 private fun ScanButton(
@@ -98,7 +133,8 @@ private fun ScanButton(
     ) {
         Icon(Icons.Filled.Radar, contentDescription = null, modifier = Modifier.size(ButtonDefaults.IconSize))
         Spacer(modifier = Modifier.width(ButtonDefaults.IconSpacing))
-        Text("Scan")
+        // softWrap off so a transient width squeeze can never wrap this to "S/c/a/n".
+        Text("Scan", maxLines = 1, softWrap = false)
     }
 }
 

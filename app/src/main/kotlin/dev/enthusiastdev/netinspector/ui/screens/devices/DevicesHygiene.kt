@@ -1,5 +1,15 @@
 package dev.enthusiastdev.netinspector.ui.screens.devices
 
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -13,6 +23,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -21,57 +32,158 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import dev.enthusiastdev.netinspector.core.designsystem.component.ScoreBadge
 import dev.enthusiastdev.netinspector.core.designsystem.component.ScoreChip
+import dev.enthusiastdev.netinspector.core.designsystem.component.scoreColor
 import dev.enthusiastdev.netinspector.core.model.lan.HygieneFinding
 import dev.enthusiastdev.netinspector.core.model.lan.HygieneScore
 import dev.enthusiastdev.netinspector.core.model.lan.allFlaggedPorts
 import dev.enthusiastdev.netinspector.core.model.lan.portRisk
+import kotlin.math.roundToInt
 
 /**
  * docs/ideas.md #1 - the network-wide read, compressed to a tap-through badge that
- * rides in [DevicesSummaryRow] next to the device count.
+ * rides in [DevicesSummaryRow] next to the device count. The full score / rating / per-host
+ * remediation detail lives one tap away in [NetworkHygieneDetailsDialog].
  *
- * It used to be a full card in a second column beside the list controls (score, rating, summary,
- * "tap for what to fix"). All of that detail now lives one tap away in
- * [NetworkHygieneDetailsDialog]; the badge itself carries just the coloured [ScoreChip], the
- * rating word and a chevron. The chevron plus the [Surface] `onClick` ripple and button role are
- * what mark it as tappable rather than a static readout.
+ * Three visual states:
+ * - **Checking** ([scanning] with no prior result): a neutral pill that breathes, so "ports not
+ *   looked at yet" reads differently from "looked, found nothing" - previously both were blank.
+ * - **Resolved**: a pill tinted by the score band (green / amber / red at 70 / 50), the number
+ *   counting up to its value and the tint crossfading to match.
+ * - **Just resolved** ([expanded], the ~1.8s after a scan finishes): the pill widens to show
+ *   the rating and a one-line summary with a deeper wash and a slight pop, then folds back.
+ *   [DevicesSummaryRow] owns that timer and hides the device count for its duration so the
+ *   wider pill has room on a narrow window.
  *
- * It is still scored over *every* discovered host, not just the ones the confidence filter is
- * currently showing (see [networkHygieneScore]) - network hygiene is a property of the network,
- * not of the current view of it.
+ * A rescan keeps showing the previous resolved score (gently pulsing) and animates it to the
+ * new value when the scan lands, so a newly opened risky port visibly drags the number down.
+ *
+ * Scored over *every* discovered host, not the confidence-filtered view (see
+ * [networkHygieneScore]) - hygiene is a property of the network, not the current view of it.
  */
 @Composable
 internal fun HygieneBadge(
-    score: HygieneScore,
+    score: HygieneScore?,
+    scanning: Boolean,
+    expanded: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val description =
-        "Network hygiene ${score.value}, ${score.rating.label()}. ${score.findingsSummary()}. Tap for details."
+    var lastResolved by remember { mutableStateOf(score.takeUnless { scanning }) }
+    LaunchedEffect(scanning, score) {
+        if (!scanning) lastResolved = score
+    }
+
+    val shown = if (scanning) lastResolved else score
+    when {
+        scanning && lastResolved == null -> CheckingHygieneBadge(modifier)
+        shown != null -> ResolvedHygieneBadge(shown, scanning, expanded, onClick, modifier)
+        else -> Unit
+    }
+}
+
+@Composable
+private fun CheckingHygieneBadge(modifier: Modifier = Modifier) {
+    val breathe by
+        rememberInfiniteTransition(label = "hygiene-checking").animateFloat(
+            initialValue = 0.45f,
+            targetValue = 1f,
+            animationSpec = infiniteRepeatable(tween(900), RepeatMode.Reverse),
+            label = "hygiene-checking-alpha",
+        )
     Surface(
-        onClick = onClick,
         shape = MaterialTheme.shapes.small,
         color = MaterialTheme.colorScheme.surfaceVariant,
-        modifier = modifier.semantics { contentDescription = description },
+        modifier = modifier.semantics { contentDescription = "Checking network hygiene" },
     ) {
         Row(
-            modifier = Modifier.heightIn(min = 36.dp).padding(start = 4.dp, end = 8.dp),
+            modifier = Modifier.heightIn(min = 36.dp).padding(horizontal = 10.dp).alpha(breathe),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(6.dp),
         ) {
-            ScoreChip(score = score.value)
-            Text(text = score.rating.label(), style = MaterialTheme.typography.labelLarge)
+            Icon(
+                Icons.Filled.Shield,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(16.dp),
+            )
+            Text(
+                "Checking ports…",
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
+}
+
+@Composable
+private fun ResolvedHygieneBadge(
+    score: HygieneScore,
+    scanning: Boolean,
+    expanded: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val counter = remember { Animatable(0f) }
+    LaunchedEffect(score.value) {
+        counter.animateTo(score.value.toFloat(), tween(600, easing = FastOutSlowInEasing))
+    }
+    val shownValue = counter.value.roundToInt()
+
+    val band by animateColorAsState(scoreColor(shownValue), tween(500), label = "hygiene-band")
+    val pop by animateFloatAsState(if (expanded) 1.04f else 1f, tween(400), label = "hygiene-pop")
+    val pulse by
+        rememberInfiniteTransition(label = "hygiene-pulse").animateFloat(
+            initialValue = if (scanning) 0.6f else 1f,
+            targetValue = 1f,
+            animationSpec = infiniteRepeatable(tween(950), RepeatMode.Reverse),
+            label = "hygiene-pulse-alpha",
+        )
+    val description =
+        "Network hygiene ${score.value}, ${score.rating.label()}. ${score.findingsSummary()}. Tap for details."
+
+    Surface(
+        onClick = onClick,
+        shape = MaterialTheme.shapes.small,
+        color = band.copy(alpha = if (expanded) 0.26f else 0.14f),
+        modifier = modifier.scale(pop).semantics { contentDescription = description },
+    ) {
+        Row(
+            modifier =
+                Modifier
+                    .heightIn(min = 36.dp)
+                    .padding(start = 4.dp, end = 8.dp)
+                    .alpha(pulse)
+                    .animateContentSize(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            ScoreChip(score = shownValue)
+            Text(
+                text =
+                    if (expanded) {
+                        "${score.rating.label()} · ${score.badgeSummary()}"
+                    } else {
+                        score.rating.label()
+                    },
+                style = MaterialTheme.typography.labelLarge,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
             Icon(
                 imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
                 contentDescription = null,
@@ -81,6 +193,11 @@ internal fun HygieneBadge(
         }
     }
 }
+
+/** A shorter summary than [HygieneScore.findingsSummary] for the brief expanded badge, where
+ * the row is competing with the device count and the scan button for width. */
+private fun HygieneScore.badgeSummary(): String =
+    if (findings.isEmpty()) "no risks found" else "${findings.size} to review"
 
 /** The full checklist, on demand - the score, its summary and the per-host remediation rows
  * that the compact [HygieneBadge] leaves out. [onHostClick] (docs/ideas.md #3) lets
