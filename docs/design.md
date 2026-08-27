@@ -919,7 +919,7 @@ Driven by `WindowSizeClass` from `androidx.compose.material3.adaptive`, using
 |---|---|---|---|
 | Compact | Phone portrait | Bottom bar | Single pane |
 | Medium | Phone landscape, small tablet, unfolded inner display | Navigation rail | Single pane, wider gutters |
-| Expanded | Tablet, large unfolded display | Navigation rail | Two panes where the screen has a list-detail shape |
+| Expanded | Tablet, large unfolded display | Navigation rail | Single full-width pane (the list-detail screens are push-navigated, not split - see the implementation note below) |
 
 Implementation notes:
 
@@ -935,13 +935,17 @@ Implementation notes:
   Letting the labels wrap to two lines instead both looked broken and cost a row of
   content height.
 - **`ListDetailPaneScaffold`** for the two screens that are genuinely list-detail: the AP
-  list → AP detail, and the host list → host detail. Two panes show at once only on a real
-  tablet or an unfolded foldable (`sw >= 600dp`); everywhere else, including a phone held in
-  landscape, it stays a single full-width pane with push navigation. The stock directive
-  splits on any "expanded" *current* width, which on a landscape phone just leaves the list
-  at half width with an empty pane beside it - `listDetailPaneDirective()` gates on the
-  shortest-width qualifier instead. This is the single biggest usability win and the main
-  reason to do this early.
+  list → AP detail, and the host list → host detail. `rememberListDetailNavigator()` pins
+  the scaffold to a single full-width pane on every device: a full-width list, push
+  navigation into a full-width detail. The stock directive splits into two panes on any
+  "expanded" width (a landscape phone, a foldable, a tablet), but with nothing selected
+  that leaves the list at its ~360dp preferred width with a large empty pane beside it -
+  about a third of the window on a big tablet - and switching to two panes only once a row
+  is opened does not make the scaffold re-expand the list, because its animated state is
+  seeded once and does not re-seek when the directive changes under it. A genuine two-pane
+  list/detail for tablets and foldables is worth doing as its own focused change; the
+  scaffold is still the right primitive, it just needs its state re-seeded (or the
+  navigator rebuilt with the correct destination history) on the single↔two-pane boundary.
   The pane selection is part of the tab's saved state, so `restoreState` on a bottom-nav
   tab switch would bring back a stale host detail. Reaching the Devices tab from the nav
   bar (or the dashboard shortcut) raises a one-shot flag on its back-stack entry that

@@ -18,7 +18,6 @@ import androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi
 import androidx.compose.material3.adaptive.layout.AnimatedPane
 import androidx.compose.material3.adaptive.layout.ListDetailPaneScaffoldRole
 import androidx.compose.material3.adaptive.navigation.NavigableListDetailPaneScaffold
-import androidx.compose.material3.adaptive.navigation.rememberListDetailPaneScaffoldNavigator
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -37,7 +36,7 @@ import dev.enthusiastdev.netinspector.core.model.lan.Host
 import dev.enthusiastdev.netinspector.core.model.lan.HostConfidence
 import dev.enthusiastdev.netinspector.core.model.lan.HygieneScore
 import dev.enthusiastdev.netinspector.core.model.lan.networkHygieneScore
-import dev.enthusiastdev.netinspector.ui.adaptive.listDetailPaneDirective
+import dev.enthusiastdev.netinspector.ui.adaptive.rememberListDetailNavigator
 import kotlinx.coroutines.launch
 
 @Composable
@@ -138,7 +137,7 @@ private fun DevicesContent(
     // (Activity recreation discards non-saveable Compose state, unlike ViewModel state).
     var viewMode by rememberSaveable { mutableStateOf(DevicesViewMode.LIST) }
 
-    val navigator = rememberListDetailPaneScaffoldNavigator<String>(scaffoldDirective = listDetailPaneDirective())
+    val navigator = rememberListDetailNavigator<String>()
     val coroutineScope = rememberCoroutineScope()
     BackHandler(enabled = navigator.canNavigateBack()) {
         coroutineScope.launch { navigator.navigateBack() }

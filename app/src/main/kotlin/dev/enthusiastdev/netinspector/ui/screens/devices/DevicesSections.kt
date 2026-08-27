@@ -32,6 +32,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.unit.dp
 import dev.enthusiastdev.netinspector.core.model.lan.Host
@@ -49,9 +50,10 @@ import kotlinx.coroutines.delay
  * the old high-emphasis filled pill so it sits with the muted toolbar below rather than shouting
  * over it.
  *
- * For the ~1.8s after a scan finishes the badge expands to a one-line summary; the device count
- * animates out for that window so the wider pill fits a narrow window without shoving the scan
- * button off-screen.
+ * For the ~1.8s after a scan finishes the badge expands to a one-line summary. On a narrow
+ * window the device count animates out for that beat so the wider pill does not shove the scan
+ * button off-screen; once the row has room to spare (a landscape phone, a foldable inner
+ * screen, a tablet) the count just stays put and the pill grows into the slack.
  */
 @Composable
 internal fun DevicesSummaryRow(
@@ -76,6 +78,8 @@ internal fun DevicesSummaryRow(
             justResolved = false
         }
     }
+    val roomyRow = LocalConfiguration.current.screenWidthDp >= WIDE_SUMMARY_ROW_DP
+    val showCount = roomyRow || !justResolved
 
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Row(
@@ -83,7 +87,7 @@ internal fun DevicesSummaryRow(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            AnimatedVisibility(visible = !justResolved) {
+            AnimatedVisibility(visible = showCount) {
                 Text(text = "$hostCount devices", style = MaterialTheme.typography.titleMedium, maxLines = 1)
             }
             HygieneBadge(
@@ -120,6 +124,10 @@ internal fun DevicesSummaryRow(
 
 /** Duration of the post-scan badge reveal, shared with [HygieneBadge]'s expanded state. */
 private const val HYGIENE_REVEAL_MILLIS = 1800L
+
+/** At or above this window width the summary row has room for the expanded hygiene pill without
+ * hiding the device count. Below it (a phone in portrait) the count animates out for the beat. */
+private const val WIDE_SUMMARY_ROW_DP = 520
 
 @Composable
 private fun ScanButton(

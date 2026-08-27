@@ -18,7 +18,6 @@ import androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi
 import androidx.compose.material3.adaptive.layout.AnimatedPane
 import androidx.compose.material3.adaptive.layout.ListDetailPaneScaffoldRole
 import androidx.compose.material3.adaptive.navigation.NavigableListDetailPaneScaffold
-import androidx.compose.material3.adaptive.navigation.rememberListDetailPaneScaffoldNavigator
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -29,7 +28,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import dev.enthusiastdev.netinspector.data.persistence.diagnostics.DiagnosticRunEntity
-import dev.enthusiastdev.netinspector.ui.adaptive.listDetailPaneDirective
+import dev.enthusiastdev.netinspector.ui.adaptive.rememberListDetailNavigator
 import kotlinx.coroutines.launch
 
 @Composable
@@ -64,7 +63,7 @@ fun DiagnosticHistoryScreen(
     onExportCsv: () -> Unit = {},
     onExportJson: () -> Unit = {},
 ) {
-    val navigator = rememberListDetailPaneScaffoldNavigator<Long>(scaffoldDirective = listDetailPaneDirective())
+    val navigator = rememberListDetailNavigator<Long>()
     val coroutineScope = rememberCoroutineScope()
     BackHandler(enabled = navigator.canNavigateBack()) {
         coroutineScope.launch { navigator.navigateBack() }
