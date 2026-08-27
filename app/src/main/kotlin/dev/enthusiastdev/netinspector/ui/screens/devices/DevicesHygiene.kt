@@ -10,8 +10,10 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -19,6 +21,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
@@ -41,15 +44,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import dev.enthusiastdev.netinspector.core.designsystem.component.ScoreBadge
-import dev.enthusiastdev.netinspector.core.designsystem.component.ScoreChip
 import dev.enthusiastdev.netinspector.core.designsystem.component.scoreColor
 import dev.enthusiastdev.netinspector.core.model.lan.HygieneFinding
-import dev.enthusiastdev.netinspector.core.model.lan.HygieneRating
 import dev.enthusiastdev.netinspector.core.model.lan.HygieneScore
 import dev.enthusiastdev.netinspector.core.model.lan.allFlaggedPorts
 import dev.enthusiastdev.netinspector.core.model.lan.portRisk
@@ -144,11 +146,7 @@ private fun ResolvedHygieneBadge(
         counter.animateTo(score.value.toFloat(), tween(600, easing = FastOutSlowInEasing))
     }
     val shownValue = counter.value.roundToInt()
-    // The rating word tracks the counting number so a mid-count frame is never "46 · Excellent":
-    // number, word and colour all climb through the bands together and land together.
-    val shownRating = HygieneRating.forValue(shownValue).label()
-
-    val band by animateColorAsState(scoreColor(shownValue), tween(500), label = "hygiene-band")
+    val band = animatedBandColor(score.value)
     val pop by animateFloatAsState(if (expanded) 1.04f else 1f, tween(400), label = "hygiene-pop")
     val pulse by
         rememberInfiniteTransition(label = "hygiene-pulse").animateFloat(
@@ -176,9 +174,16 @@ private fun ResolvedHygieneBadge(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(6.dp),
         ) {
-            ScoreChip(score = shownValue)
+            HygieneScoreChip(value = shownValue, color = band)
+            val riskCount = score.findings.size
+            val label =
+                when {
+                    !expanded -> score.rating.label()
+                    riskCount == 0 -> "${score.rating.label()} · no risks found"
+                    else -> "${score.rating.label()} · $riskCount to review"
+                }
             Text(
-                text = if (expanded) "$shownRating · ${score.badgeSummary()}" else shownRating,
+                text = label,
                 style = MaterialTheme.typography.labelLarge,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
@@ -193,10 +198,37 @@ private fun ResolvedHygieneBadge(
     }
 }
 
-/** A shorter summary than [HygieneScore.findingsSummary] for the brief expanded badge, where
- * the row is competing with the device count and the scan button for width. */
-private fun HygieneScore.badgeSummary(): String =
-    if (findings.isEmpty()) "no risks found" else "${findings.size} to review"
+/**
+ * Neutral grey on the first frame, then a single crossfade to [finalScore]'s band colour -
+ * never a flash through the tiers as the counting number crosses them. The first-frame flag is
+ * needed because `animateColorAsState` otherwise starts at its first target with no animation.
+ */
+@Composable
+private fun animatedBandColor(finalScore: Int): Color {
+    var revealed by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) { revealed = true }
+    val neutral = MaterialTheme.colorScheme.onSurfaceVariant
+    val color by
+        animateColorAsState(
+            targetValue = if (revealed) scoreColor(finalScore) else neutral,
+            animationSpec = tween(700),
+            label = "hygiene-band",
+        )
+    return color
+}
+
+@Composable
+private fun HygieneScoreChip(
+    value: Int,
+    color: Color,
+) {
+    Box(
+        modifier = Modifier.size(32.dp).background(color.copy(alpha = 0.18f), CircleShape),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text("$value", style = MaterialTheme.typography.labelLarge, color = color)
+    }
+}
 
 /** The full checklist, on demand - the score, its summary and the per-host remediation rows
  * that the compact [HygieneBadge] leaves out. [onHostClick] (docs/ideas.md #3) lets
