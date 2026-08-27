@@ -910,11 +910,13 @@ Implementation notes:
   automatically from the window size class. This is close to free and removes the most
   visible "phone app stretched sideways" tell. Two local adjustments sit on top of the
   stock mapping. A short window (landscape phone) is forced to the rail regardless of
-  width. And the bottom bar keeps its labels on one line by shrinking the label text just
-  enough for the widest one ("Connection") to fit its slot, falling back to icons only
-  when even that shrink would drop below ~80% of the normal size, which is where a narrow
-  screen combined with a high UI text scale (§11.5) lands. Letting the labels wrap to two
-  lines instead both looked broken and cost a row of content height.
+  width. And the six bottom-bar labels are kept short (the Connection screen's nav label
+  is "Link", not "Connection") so they fit one line and scale with the UI text setting
+  (§11.5) untouched at a normal width; for the extremes (a very narrow window, the top of
+  the scale range) a fallback shrinks the label text just enough for the widest to still
+  fit, then drops to icons only once that shrink would go below ~80% of normal size.
+  Letting the labels wrap to two lines instead both looked broken and cost a row of
+  content height.
 - **`ListDetailPaneScaffold`** for the two screens that are genuinely list-detail: the AP
   list → AP detail, and the host list → host detail. On expanded width both panes show at
   once; on compact it degrades to the standard push navigation with correct back

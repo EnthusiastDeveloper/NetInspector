@@ -55,7 +55,10 @@ val topLevelDestinations: List<TopLevelDestination> =
         TopLevelDestination(DashboardRoute, R.string.destination_dashboard, Icons.Filled.Home) {
             it.isInHierarchy<DashboardRoute>()
         },
-        TopLevelDestination(ConnectionRoute, R.string.destination_connection, Icons.Filled.NetworkWifi) {
+        // nav_connection ("Link"), not destination_connection ("Connection"): the shorter label
+        // keeps all six nav items on one line and scaling with the UI text setting on a narrow
+        // window. The screen itself still titles the section "Connection".
+        TopLevelDestination(ConnectionRoute, R.string.nav_connection, Icons.Filled.NetworkWifi) {
             it.isInHierarchy<ConnectionRoute>()
         },
         TopLevelDestination(WifiRoute, R.string.destination_wifi, Icons.Filled.Wifi) {

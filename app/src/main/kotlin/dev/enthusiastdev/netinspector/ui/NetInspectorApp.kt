@@ -131,12 +131,13 @@ private fun navigationSuiteLayoutType(): NavigationSuiteType {
 }
 
 /**
- * The six destination labels ("Connection" is the long one) wrap to two lines in the bottom bar
- * on a narrow window or at a high UI text scale, which both looks broken and steals a row of
- * content height. To keep every label on one line this shrinks the label text just enough for
- * the widest one to fit its slot, and only when even that shrink would push the text below
- * [MIN_BOTTOM_NAV_LABEL_SCALE] of its normal size does it give up and return `null`, meaning the
- * bar should show icons alone. On a normal-width phone at 100% nothing is shrunk.
+ * A bottom-nav label that does not fit its slot wraps to two lines, which looks broken and
+ * steals a row of content height. The nav labels are deliberately kept short ("Link", not
+ * "Connection") so at a normal width they fit and scale with the UI text setting untouched.
+ * This is the safety net for the extremes (a very narrow window, or the top of the scale
+ * range): it shrinks the label text just enough for the widest one to still fit on one line,
+ * and only when even that shrink would push the text below [MIN_BOTTOM_NAV_LABEL_SCALE] of its
+ * normal size does it give up and return `null`, meaning the bar should show icons alone.
  */
 @Composable
 private fun fittedBottomNavLabelStyle(): TextStyle? {
