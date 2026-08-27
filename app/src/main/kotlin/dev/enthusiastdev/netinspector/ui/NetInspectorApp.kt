@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffold
@@ -25,7 +26,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.navigation.NavDestination
@@ -79,9 +83,17 @@ fun NetInspectorApp() {
             val navController = rememberNavController()
             val currentDestination = navController.currentBackStackEntryAsState().value?.destination
 
+            val layoutType = navigationSuiteLayoutType()
+            // Only the bottom bar splits its width six ways and stacks the label under the icon,
+            // so it is the one layout where a label can outgrow its slot. The rail and drawer
+            // give each label its own row and keep it. (bottomNavLabelsFit stays an
+            // unconditional call so it is not a composable invoked only on some recompositions.)
+            val labelsFit = bottomNavLabelsFit()
+            val labelled = layoutType != NavigationSuiteType.NavigationBar || labelsFit
+
             NavigationSuiteScaffold(
-                navigationSuiteItems = { navigationItems(navController, currentDestination) },
-                layoutType = navigationSuiteLayoutType(),
+                navigationSuiteItems = { navigationItems(navController, currentDestination, labelled) },
+                layoutType = layoutType,
             ) {
                 AppNavHost(navController)
             }
@@ -111,16 +123,48 @@ private fun navigationSuiteLayoutType(): NavigationSuiteType {
     }
 }
 
+/**
+ * The six destination labels ("Connection" is the long one) wrap to two lines in the bottom bar
+ * once the UI scale is high enough, or on a narrow screen, which both looks broken and steals
+ * vertical space from content. When even one label no longer fits its slot on a single line the
+ * whole bar drops to icons only, keeping the row one line tall and every item consistent.
+ */
+@Composable
+private fun bottomNavLabelsFit(): Boolean {
+    val configuration = LocalConfiguration.current
+    val density = LocalDensity.current
+    val measurer = rememberTextMeasurer()
+    val style = MaterialTheme.typography.labelMedium
+    val labels = topLevelDestinations.map { stringResource(it.labelRes) }
+    return remember(configuration.screenWidthDp, density.density, density.fontScale, labels) {
+        val slotWidthPx =
+            with(density) { (configuration.screenWidthDp.dp / topLevelDestinations.size).toPx() }
+        // NavigationBarItem keeps a little breathing room on each side of the label.
+        val availablePx = slotWidthPx - with(density) { BOTTOM_NAV_LABEL_SLACK.toPx() }
+        labels.all { label ->
+            measurer.measure(label, style, softWrap = false, maxLines = 1).size.width <= availablePx
+        }
+    }
+}
+
+private val BOTTOM_NAV_LABEL_SLACK = 8.dp
+
 private fun NavigationSuiteScope.navigationItems(
     navController: NavHostController,
     currentDestination: NavDestination?,
+    labelled: Boolean,
 ) {
     topLevelDestinations.forEach { destination ->
         item(
             selected = destination.isSelected(currentDestination),
             onClick = { navController.navigateToTopLevel(destination.route) },
             icon = { Icon(destination.icon, contentDescription = null) },
-            label = { Text(stringResource(destination.labelRes)) },
+            label =
+                if (labelled) {
+                    { Text(stringResource(destination.labelRes), maxLines = 1, softWrap = false) }
+                } else {
+                    null
+                },
         )
     }
 }
