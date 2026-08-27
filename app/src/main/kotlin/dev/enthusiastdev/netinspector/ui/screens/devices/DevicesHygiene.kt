@@ -49,6 +49,7 @@ import dev.enthusiastdev.netinspector.core.designsystem.component.ScoreBadge
 import dev.enthusiastdev.netinspector.core.designsystem.component.ScoreChip
 import dev.enthusiastdev.netinspector.core.designsystem.component.scoreColor
 import dev.enthusiastdev.netinspector.core.model.lan.HygieneFinding
+import dev.enthusiastdev.netinspector.core.model.lan.HygieneRating
 import dev.enthusiastdev.netinspector.core.model.lan.HygieneScore
 import dev.enthusiastdev.netinspector.core.model.lan.allFlaggedPorts
 import dev.enthusiastdev.netinspector.core.model.lan.portRisk
@@ -143,6 +144,9 @@ private fun ResolvedHygieneBadge(
         counter.animateTo(score.value.toFloat(), tween(600, easing = FastOutSlowInEasing))
     }
     val shownValue = counter.value.roundToInt()
+    // The rating word tracks the counting number so a mid-count frame is never "46 · Excellent":
+    // number, word and colour all climb through the bands together and land together.
+    val shownRating = HygieneRating.forValue(shownValue).label()
 
     val band by animateColorAsState(scoreColor(shownValue), tween(500), label = "hygiene-band")
     val pop by animateFloatAsState(if (expanded) 1.04f else 1f, tween(400), label = "hygiene-pop")
@@ -174,12 +178,7 @@ private fun ResolvedHygieneBadge(
         ) {
             ScoreChip(score = shownValue)
             Text(
-                text =
-                    if (expanded) {
-                        "${score.rating.label()} · ${score.badgeSummary()}"
-                    } else {
-                        score.rating.label()
-                    },
+                text = if (expanded) "$shownRating · ${score.badgeSummary()}" else shownRating,
                 style = MaterialTheme.typography.labelLarge,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
