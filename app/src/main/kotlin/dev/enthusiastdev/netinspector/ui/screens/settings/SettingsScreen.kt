@@ -170,8 +170,12 @@ private fun AppearanceSection(
                     selected = mode == uiState.themeMode,
                     onClick = { onThemeModeChange(mode) },
                     shape = SegmentedButtonDefaults.itemShape(index = index, count = ThemeMode.entries.size),
+                    // The default selected-check icon is dropped so the short labels here still
+                    // fit without ellipsis once scaled - the filled container already marks
+                    // the selection.
+                    icon = {},
                 ) {
-                    Text(mode.label())
+                    SegmentLabel(mode.label())
                 }
             }
         }
@@ -182,8 +186,9 @@ private fun AppearanceSection(
                     selected = unit == uiState.rssiDisplayUnit,
                     onClick = { onRssiDisplayUnitChange(unit) },
                     shape = SegmentedButtonDefaults.itemShape(index = index, count = RssiDisplayUnit.entries.size),
+                    icon = {},
                 ) {
-                    Text(if (unit == RssiDisplayUnit.DBM) "dBm" else "Percent")
+                    SegmentLabel(if (unit == RssiDisplayUnit.DBM) "dBm" else "Percent")
                 }
             }
         }
