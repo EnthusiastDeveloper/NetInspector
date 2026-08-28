@@ -1,7 +1,6 @@
 package dev.enthusiastdev.netinspector.ui.screens.connection
 
 import android.Manifest
-import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -19,6 +18,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import dev.enthusiastdev.netinspector.core.designsystem.util.findActivity
 
 // minSdk 33 (design §0) means POST_NOTIFICATIONS is a runtime permission on every supported
 // level - shared by every screen that needs to know whether the continuous-monitoring
@@ -39,7 +39,10 @@ internal fun NotificationAccessButton(
     onNotificationAccessChanged: () -> Unit,
 ) {
     val context = LocalContext.current
-    val activity = context as Activity
+    // findActivity(), not `context as Activity`: this composable renders inside a
+    // ModalBottomSheet, whose LocalContext is the sheet window's ContextThemeWrapper rather
+    // than the Activity, so the cast threw ClassCastException and took the app down.
+    val activity = context.findActivity()
     var hasRequestedPermission by rememberSaveable { mutableStateOf(false) }
 
     val permissionLauncher =

@@ -2,10 +2,12 @@ package dev.enthusiastdev.netinspector.ui.screens.settings
 
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.rememberScrollState
@@ -17,15 +19,24 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
+import androidx.compose.material3.Slider
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.LifecycleResumeEffect
@@ -35,6 +46,8 @@ import dev.enthusiastdev.netinspector.core.model.diagnostics.PortScanPresetKind
 import dev.enthusiastdev.netinspector.core.model.diagnostics.PortSelection
 import dev.enthusiastdev.netinspector.core.model.settings.RssiDisplayUnit
 import dev.enthusiastdev.netinspector.core.model.settings.ThemeMode
+import dev.enthusiastdev.netinspector.data.persistence.preferences.AppSettingsRepository
+import kotlin.math.roundToInt
 
 /** The Settings tab's entry point: binds [SettingsViewModel] to [SettingsScreen]. Named
  * `*Destination` to match the other top-level destinations in `NetInspectorApp`, and to leave the
@@ -68,6 +81,7 @@ fun SettingsDestination(
         onCrashReportingToggle = viewModel::setCrashReportingEnabled,
         onExportCrashReport = viewModel::exportCrashReport,
         onExportDebugBundle = viewModel::exportDebugBundle,
+        onUiFontScaleChange = viewModel::setUiFontScale,
         modifier = modifier,
     )
 }
@@ -90,6 +104,7 @@ fun SettingsScreen(
     onCrashReportingToggle: (Boolean) -> Unit,
     onExportCrashReport: () -> Unit,
     onExportDebugBundle: () -> Unit,
+    onUiFontScaleChange: (Float) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     LazyColumn(
@@ -106,6 +121,7 @@ fun SettingsScreen(
             )
         }
         item { AppearanceSection(uiState, onThemeModeChange, onRssiDisplayUnitChange) }
+        item { DisplayScaleSection(uiState.uiFontScale, onUiFontScaleChange) }
         item {
             RetentionSection(uiState, onScanRetentionChange, onDiagnosticRetentionChange)
         }
@@ -155,8 +171,12 @@ private fun AppearanceSection(
                     selected = mode == uiState.themeMode,
                     onClick = { onThemeModeChange(mode) },
                     shape = SegmentedButtonDefaults.itemShape(index = index, count = ThemeMode.entries.size),
+                    // The default selected-check icon is dropped so the short labels here still
+                    // fit without ellipsis once scaled - the filled container already marks
+                    // the selection.
+                    icon = {},
                 ) {
-                    Text(mode.label())
+                    SegmentLabel(mode.label())
                 }
             }
         }
@@ -167,8 +187,9 @@ private fun AppearanceSection(
                     selected = unit == uiState.rssiDisplayUnit,
                     onClick = { onRssiDisplayUnitChange(unit) },
                     shape = SegmentedButtonDefaults.itemShape(index = index, count = RssiDisplayUnit.entries.size),
+                    icon = {},
                 ) {
-                    Text(if (unit == RssiDisplayUnit.DBM) "dBm" else "Percent")
+                    SegmentLabel(if (unit == RssiDisplayUnit.DBM) "dBm" else "Percent")
                 }
             }
         }
@@ -182,6 +203,53 @@ private fun ThemeMode.label(): String =
         ThemeMode.DARK -> "Dark"
         ThemeMode.AMOLED -> "AMOLED"
     }
+
+/** docs/ideas.md #36. The slider drags a local [previewScale] rather than writing to
+ * [AppSettingsRepository] on every drag tick - that would mean a DataStore write per pixel of
+ * drag, and would only reflect back into this composable after a full write/read/recompose
+ * round trip through [SettingsViewModel]. `onValueChangeFinished` is where the drag's final
+ * value actually gets persisted (and, via MainActivity's app-root `CompositionLocalProvider`,
+ * takes over the whole app's `fontScale`). The preview card below is re-densitied to
+ * [previewScale] directly so it tracks the drag in real time regardless of that round trip. */
+@Composable
+private fun DisplayScaleSection(
+    uiFontScale: Float,
+    onUiFontScaleChange: (Float) -> Unit,
+) {
+    var previewScale by remember(uiFontScale) { mutableFloatStateOf(uiFontScale) }
+    InfoCard(title = "Text & UI scale") {
+        Text(
+            "Scales text and UI sizing across the whole app, independent of the system's " +
+                "accessibility font size setting.",
+            style = MaterialTheme.typography.bodySmall,
+        )
+        Slider(
+            value = previewScale,
+            onValueChange = { previewScale = it },
+            onValueChangeFinished = { onUiFontScaleChange(previewScale) },
+            valueRange = AppSettingsRepository.MIN_UI_FONT_SCALE..AppSettingsRepository.MAX_UI_FONT_SCALE,
+            steps = 8,
+            modifier = Modifier.fillMaxWidth(),
+        )
+        Text(
+            "${(previewScale * 100).roundToInt()}%",
+            style = MaterialTheme.typography.labelLarge,
+        )
+        val baseDensity = LocalDensity.current
+        CompositionLocalProvider(LocalDensity provides Density(baseDensity.density, previewScale)) {
+            Surface(
+                tonalElevation = 2.dp,
+                shape = MaterialTheme.shapes.small,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Column(modifier = Modifier.padding(12.dp)) {
+                    Text("Kitchen AP-42", style = MaterialTheme.typography.titleMedium)
+                    Text("192.168.1.42  ·  -52 dBm", style = MaterialTheme.typography.bodyMedium)
+                }
+            }
+        }
+    }
+}
 
 @Composable
 private fun RetentionSection(
@@ -285,12 +353,15 @@ internal fun AlertToggleRow(
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
         // labelLarge, not bodyMedium - matches the "Theme"/"Default preset for new scans"
         // style other sections use for a control's own name, so it reads as a label for the
         // switch next to it rather than a continuation of whatever description text precedes it.
-        Text(label, style = MaterialTheme.typography.labelLarge)
+        // weight(1f) so a long label (e.g. the Devices "Known device ..." row) wraps in the
+        // space left of the switch instead of running under it on a narrow screen.
+        Text(label, style = MaterialTheme.typography.labelLarge, modifier = Modifier.weight(1f))
         Switch(checked = checked, onCheckedChange = onCheckedChange)
     }
 }

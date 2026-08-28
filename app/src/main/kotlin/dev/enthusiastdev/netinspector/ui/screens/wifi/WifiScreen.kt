@@ -20,7 +20,6 @@ import androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi
 import androidx.compose.material3.adaptive.layout.AnimatedPane
 import androidx.compose.material3.adaptive.layout.ListDetailPaneScaffoldRole
 import androidx.compose.material3.adaptive.navigation.NavigableListDetailPaneScaffold
-import androidx.compose.material3.adaptive.navigation.rememberListDetailPaneScaffoldNavigator
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -44,6 +43,7 @@ import dev.enthusiastdev.netinspector.core.designsystem.adaptive.rememberDeviceP
 import dev.enthusiastdev.netinspector.core.designsystem.adaptive.translatedTo
 import dev.enthusiastdev.netinspector.core.model.wifi.Band
 import dev.enthusiastdev.netinspector.core.model.wifi.InformationElementSummary
+import dev.enthusiastdev.netinspector.ui.adaptive.rememberListDetailNavigator
 import kotlinx.coroutines.launch
 
 @Composable
@@ -114,7 +114,7 @@ private fun WifiContent(
         return
     }
 
-    val navigator = rememberListDetailPaneScaffoldNavigator<String>()
+    val navigator = rememberListDetailNavigator<String>()
     val coroutineScope = rememberCoroutineScope()
     BackHandler(enabled = navigator.canNavigateBack()) {
         coroutineScope.launch { navigator.navigateBack() }

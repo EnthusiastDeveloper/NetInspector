@@ -18,7 +18,6 @@ import androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi
 import androidx.compose.material3.adaptive.layout.AnimatedPane
 import androidx.compose.material3.adaptive.layout.ListDetailPaneScaffoldRole
 import androidx.compose.material3.adaptive.navigation.NavigableListDetailPaneScaffold
-import androidx.compose.material3.adaptive.navigation.rememberListDetailPaneScaffoldNavigator
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -34,6 +33,7 @@ import dev.enthusiastdev.netinspector.core.designsystem.component.InfoCard
 import dev.enthusiastdev.netinspector.core.designsystem.component.InfoRow
 import dev.enthusiastdev.netinspector.data.persistence.scan.KnownApEntity
 import dev.enthusiastdev.netinspector.data.persistence.scan.RssiHistoryPoint
+import dev.enthusiastdev.netinspector.ui.adaptive.rememberListDetailNavigator
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.launch
 
@@ -71,7 +71,7 @@ fun ScanHistoryScreen(
     onExportCsv: () -> Unit = {},
     onExportJson: () -> Unit = {},
 ) {
-    val navigator = rememberListDetailPaneScaffoldNavigator<String>()
+    val navigator = rememberListDetailNavigator<String>()
     val coroutineScope = rememberCoroutineScope()
     BackHandler(enabled = navigator.canNavigateBack()) {
         coroutineScope.launch { navigator.navigateBack() }

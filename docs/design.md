@@ -277,7 +277,24 @@ Both checks are re-evaluated on `ON_RESUME`, since granting via the system Setti
 dashboard and the Wi-Fi screen each run this flow independently (separate cards, separate
 `ON_RESUME` checks) even though they end up checking the same permission - a grant on one
 screen unblocks the other the next time its own check runs, but there's no cross-screen
-signal that forces an immediate refresh.
+signal that forces an immediate refresh. That same `ON_RESUME` re-check is what makes the
+flow survive Android auto-resetting an unused runtime permission: the capability state
+recomputes on the next resume, the gating card/toggle reappears, and the request runs
+again. No permission is assumed to still be held just because it was granted once.
+
+Two implementation traps in this flow, both fixed:
+
+- The request buttons need the host `Activity` (for `shouldShowRequestPermissionRationale`
+  and the app-settings intent). `LocalContext.current as Activity` works in the page body
+  but throws `ClassCastException` inside a `Dialog`/`ModalBottomSheet`/`Popup`, where
+  `LocalContext` is that window's `ContextThemeWrapper` - the notification-access button
+  lives in a bottom sheet and crashed the app on a fresh install. Use
+  `Context.findActivity()` (walks `baseContext`) instead of casting.
+- Starting the monitoring foreground service can still fail below the permission gate
+  (OEM background-start limits, a foreground-service permission reset after install).
+  `MonitoringController.start()` and `MonitoringService.onStartCommand` catch
+  `IllegalStateException`/`SecurityException` and bail out quietly rather than crash;
+  `MonitoringService.isRunning` stays the source of truth, so the toggle just stays off.
 
 ---
 
@@ -862,7 +879,7 @@ what earn the dataset choice day to day.
 > tab-separated layout.
 
 DataStore (Proto) holds preferences: scan cadence, sweep concurrency and timeouts, port
-presets, theme, units, and the one-time scanning acknowledgement flag.
+presets, theme, units, UI text/scale, and the one-time scanning acknowledgement flag.
 
 Export: scan sessions and diagnostic runs export to CSV and JSON via `ACTION_CREATE_DOCUMENT`.
 No storage permissions needed.
@@ -902,17 +919,38 @@ Driven by `WindowSizeClass` from `androidx.compose.material3.adaptive`, using
 |---|---|---|---|
 | Compact | Phone portrait | Bottom bar | Single pane |
 | Medium | Phone landscape, small tablet, unfolded inner display | Navigation rail | Single pane, wider gutters |
-| Expanded | Tablet, large unfolded display | Navigation rail | Two panes where the screen has a list-detail shape |
+| Expanded | Tablet, large unfolded display | Navigation rail | Single full-width pane (the list-detail screens are push-navigated, not split - see the implementation note below) |
 
 Implementation notes:
 
 - **`NavigationSuiteScaffold`** switches between bottom bar and navigation rail
   automatically from the window size class. This is close to free and removes the most
-  visible "phone app stretched sideways" tell.
+  visible "phone app stretched sideways" tell. Two local adjustments sit on top of the
+  stock mapping. A short window (landscape phone) is forced to the rail regardless of
+  width. And the six bottom-bar labels are kept short (the Connection screen's nav label
+  is "Link", not "Connection") so they fit one line and scale with the UI text setting
+  (§11.5) untouched at a normal width; for the extremes (a very narrow window, the top of
+  the scale range) a fallback shrinks the label text just enough for the widest to still
+  fit, then drops to icons only once that shrink would go below ~80% of normal size.
+  Letting the labels wrap to two lines instead both looked broken and cost a row of
+  content height.
 - **`ListDetailPaneScaffold`** for the two screens that are genuinely list-detail: the AP
-  list → AP detail, and the host list → host detail. On expanded width both panes show at
-  once; on compact it degrades to the standard push navigation with correct back
-  behaviour. This is the single biggest usability win and the main reason to do this early.
+  list → AP detail, and the host list → host detail. `rememberListDetailNavigator()` pins
+  the scaffold to a single full-width pane on every device: a full-width list, push
+  navigation into a full-width detail. The stock directive splits into two panes on any
+  "expanded" width (a landscape phone, a foldable, a tablet), but with nothing selected
+  that leaves the list at its ~360dp preferred width with a large empty pane beside it -
+  about a third of the window on a big tablet - and switching to two panes only once a row
+  is opened does not make the scaffold re-expand the list, because its animated state is
+  seeded once and does not re-seek when the directive changes under it. A genuine two-pane
+  list/detail for tablets and foldables is worth doing as its own focused change; the
+  scaffold is still the right primitive, it just needs its state re-seeded (or the
+  navigator rebuilt with the correct destination history) on the single↔two-pane boundary.
+  The pane selection is part of the tab's saved state, so `restoreState` on a bottom-nav
+  tab switch would bring back a stale host detail. Reaching the Devices tab from the nav
+  bar (or the dashboard shortcut) raises a one-shot flag on its back-stack entry that
+  collapses the detail back to the list. The "run this tool on this host" deep links skip
+  that flag, since their up arrow is meant to return to exactly that detail.
 - **The channel graph is the standout beneficiary.** It is a frequency-axis chart squeezed
   into ~380 dp on a phone; in landscape it gets roughly triple the horizontal space, which
   is exactly the axis that carries information. The `Canvas` must derive label density and
@@ -998,6 +1036,37 @@ Given the accuracy priority, the UI has explicit conventions:
 Before the first LAN sweep, a one-time dialog states plainly that active host discovery
 and port scanning should only be run against networks the user owns or administers, and
 requires explicit acknowledgement. Stored in DataStore. Not skippable, not repeated.
+
+### 11.5 UI text/scale
+
+docs/ideas.md #36 - surfaced after simulating several screen densities with `wm
+density` during Phase 4 verification, where a smaller density read noticeably better for
+this app's information-dense screens (Devices list, network map) than the default. Rather
+than only being reachable through the system's own accessibility font-size setting (which
+applies to every app, not just this one), a first-party slider on the Settings screen
+scales the app on its own, stored via `AppSettingsRepository.uiFontScale` the same
+DataStore-backed way `themeMode` is.
+
+Applied once, at the app root (`MainActivity`, wrapping `NetInspectorApp()`): a
+`CompositionLocalProvider(LocalDensity provides ...)` multiplies the persisted scale onto
+whatever `fontScale` is already in effect, so it composes with (rather than replaces) the
+system accessibility setting, and every screen picks it up with no per-screen code. Only
+`fontScale` is touched, not `density` - this scales text and the many layouts whose sizing
+follows text metrics, without changing raw dp measurements app-wide.
+
+Clamped to `[0.85, 1.3]` (`AppSettingsRepository.MIN_UI_FONT_SCALE` /
+`MAX_UI_FONT_SCALE`), default `1.0`. `NetworkMapLayout.kt`'s `nodeScaleFor` shrinks map
+nodes to as low as `MIN_NODE_SCALE` (0.5) before that screen's own radial-packing logic
+keeps them tap-able at high spoke counts - a floor that exists for a purpose-built
+per-screen scale with dedicated compensating logic behind it, not a general scale applied
+uniformly with none. The chosen range stays well clear of it, and the upper bound mirrors
+roughly where Android's own accessibility font-size slider sits before layouts generally
+need dedicated large-text handling of their own.
+
+The Settings screen's slider drags a local preview value and only commits (persists, and
+therefore rescales the whole app) on release, rather than writing to DataStore on every
+drag tick; a preview card re-densitied to the in-drag value tracks the drag in real time
+regardless.
 
 ---
 

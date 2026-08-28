@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
 import androidx.compose.material3.adaptive.navigationsuite.NavigationSuiteScaffold
@@ -25,7 +26,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.navigation.NavDestination
@@ -79,9 +84,23 @@ fun NetInspectorApp() {
             val navController = rememberNavController()
             val currentDestination = navController.currentBackStackEntryAsState().value?.destination
 
+            val layoutType = navigationSuiteLayoutType()
+            // Only the bottom bar splits its width six ways and stacks the label under the icon,
+            // so it is the one layout where a label can outgrow its slot. The rail and drawer
+            // give each label its own row and always keep the stock style. (fittedBottomNavLabelStyle
+            // stays an unconditional call so it is never a composable invoked only on some
+            // recompositions.)
+            val fittedLabelStyle = fittedBottomNavLabelStyle()
+            val labelStyle =
+                if (layoutType == NavigationSuiteType.NavigationBar) {
+                    fittedLabelStyle
+                } else {
+                    MaterialTheme.typography.labelMedium
+                }
+
             NavigationSuiteScaffold(
-                navigationSuiteItems = { navigationItems(navController, currentDestination) },
-                layoutType = navigationSuiteLayoutType(),
+                navigationSuiteItems = { navigationItems(navController, currentDestination, labelStyle) },
+                layoutType = layoutType,
             ) {
                 AppNavHost(navController)
             }
@@ -111,16 +130,58 @@ private fun navigationSuiteLayoutType(): NavigationSuiteType {
     }
 }
 
+/**
+ * A bottom-nav label that does not fit its slot wraps to two lines, which looks broken and
+ * steals a row of content height. The nav labels are deliberately kept short ("Link", not
+ * "Connection") so at a normal width they fit and scale with the UI text setting untouched.
+ * This is the safety net for the extremes (a very narrow window, or the top of the scale
+ * range): it shrinks the label text just enough for the widest one to still fit on one line,
+ * and only when even that shrink would push the text below [MIN_BOTTOM_NAV_LABEL_SCALE] of its
+ * normal size does it give up and return `null`, meaning the bar should show icons alone.
+ */
+@Composable
+private fun fittedBottomNavLabelStyle(): TextStyle? {
+    val configuration = LocalConfiguration.current
+    val density = LocalDensity.current
+    val measurer = rememberTextMeasurer()
+    val baseStyle = MaterialTheme.typography.labelMedium
+    val labels = topLevelDestinations.map { stringResource(it.labelRes) }
+    return remember(configuration.screenWidthDp, density.density, density.fontScale, labels) {
+        val slotWidthPx =
+            with(density) { (configuration.screenWidthDp.dp / topLevelDestinations.size).toPx() }
+        // NavigationBarItem keeps a little breathing room on each side of the label.
+        val availablePx = slotWidthPx - with(density) { BOTTOM_NAV_LABEL_SLACK.toPx() }
+        val widestPx =
+            labels.maxOf { measurer.measure(it, baseStyle, softWrap = false, maxLines = 1).size.width }
+        when {
+            widestPx <= availablePx -> baseStyle
+            availablePx / widestPx >= MIN_BOTTOM_NAV_LABEL_SCALE ->
+                baseStyle.copy(fontSize = baseStyle.fontSize * (availablePx / widestPx))
+            else -> null
+        }
+    }
+}
+
+private val BOTTOM_NAV_LABEL_SLACK = 8.dp
+
+/** Below this fraction of the normal label size the text is too small to bother with, so the
+ * bottom bar switches to icons only instead. */
+private const val MIN_BOTTOM_NAV_LABEL_SCALE = 0.8f
+
 private fun NavigationSuiteScope.navigationItems(
     navController: NavHostController,
     currentDestination: NavDestination?,
+    labelStyle: TextStyle?,
 ) {
     topLevelDestinations.forEach { destination ->
         item(
             selected = destination.isSelected(currentDestination),
             onClick = { navController.navigateToTopLevel(destination.route) },
             icon = { Icon(destination.icon, contentDescription = null) },
-            label = { Text(stringResource(destination.labelRes)) },
+            label =
+                labelStyle?.let { style ->
+                    { Text(stringResource(destination.labelRes), style = style, maxLines = 1, softWrap = false) }
+                },
         )
     }
 }
@@ -137,7 +198,17 @@ private fun NavHostController.navigateToTopLevel(route: Any) {
         // stack instead of landing on ToolsHomeRoute.
         restoreState = route != ToolsRoute
     }
+    // Reaching the Devices tab this way should land on the scan-results list, not the host
+    // detail that happened to be open when the tab was last left (restoreState brings that
+    // detail back with the rest of the tab's state). The tool deep links that must return to
+    // that detail go through navigateToToolDeepLink instead and never raise this flag.
+    if (route == DevicesRoute) {
+        currentBackStackEntry?.savedStateHandle?.set(RESET_DEVICE_SELECTION_KEY, true)
+    }
 }
+
+/** SavedStateHandle key on the Devices back-stack entry - see [navigateToTopLevel]. */
+private const val RESET_DEVICE_SELECTION_KEY = "devices_reset_selection"
 
 @Composable
 private fun AppNavHost(navController: NavHostController) {
@@ -155,8 +226,14 @@ private fun AppNavHost(navController: NavHostController) {
         }
         composable<ConnectionRoute> { ConnectionDestination() }
         composable<WifiRoute> { WifiDestination() }
-        composable<DevicesRoute> {
+        composable<DevicesRoute> { backStackEntry ->
+            val resetSelectionRequested by
+                backStackEntry.savedStateHandle
+                    .getStateFlow(RESET_DEVICE_SELECTION_KEY, false)
+                    .collectAsState()
             DevicesDestination(
+                resetSelectionRequested = resetSelectionRequested,
+                onSelectionReset = { backStackEntry.savedStateHandle[RESET_DEVICE_SELECTION_KEY] = false },
                 onPingHost = { target -> navController.navigateToToolDeepLink(PingToolRoute(target)) },
                 onTracerouteHost = { target -> navController.navigateToToolDeepLink(TracerouteToolRoute(target)) },
                 onPortScanHost = { target -> navController.navigateToToolDeepLink(PortScannerToolRoute(target)) },
@@ -230,6 +307,8 @@ private fun WifiDestination() {
 
 @Composable
 private fun DevicesDestination(
+    resetSelectionRequested: Boolean,
+    onSelectionReset: () -> Unit,
     onPingHost: (String) -> Unit,
     onTracerouteHost: (String) -> Unit,
     onPortScanHost: (String) -> Unit,
@@ -239,6 +318,8 @@ private fun DevicesDestination(
     val devicesUiState by devicesViewModel.uiState.collectAsState()
     DevicesScreen(
         uiState = devicesUiState,
+        resetSelectionRequested = resetSelectionRequested,
+        onSelectionReset = onSelectionReset,
         onScan = devicesViewModel::onScanRequested,
         onCancel = devicesViewModel::cancelSweep,
         onAcknowledgeAndScan = devicesViewModel::acknowledgeAndStartSweep,

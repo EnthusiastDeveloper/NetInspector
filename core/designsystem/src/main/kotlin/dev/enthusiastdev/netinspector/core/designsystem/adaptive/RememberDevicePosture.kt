@@ -1,6 +1,5 @@
 package dev.enthusiastdev.netinspector.core.designsystem.adaptive
 
-import android.app.Activity
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.State
 import androidx.compose.runtime.remember
@@ -9,6 +8,7 @@ import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import dev.enthusiastdev.netinspector.core.designsystem.util.findActivity
 
 /**
  * Raw fold posture for the current activity, in window coordinates. Callers that draw a split
@@ -19,7 +19,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
  */
 @Composable
 fun rememberDevicePosture(): State<DevicePosture> {
-    val activity = LocalContext.current as Activity
+    val activity = LocalContext.current.findActivity()
     return remember(activity) { activity.devicePostureFlow() }
         .collectAsStateWithLifecycle(initialValue = DevicePosture.Normal)
 }

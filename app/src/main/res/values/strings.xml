@@ -8,6 +8,10 @@
 
     <string name="destination_dashboard">Home</string>
     <string name="destination_connection">Connection</string>
+    <!-- Bottom-nav label for the Connection screen. Shorter than the screen's own "Connection"
+         title so all six nav labels fit one line on a narrow window and track the UI text scale
+         instead of being pinned by the longest label. -->
+    <string name="nav_connection">Link</string>
     <string name="destination_wifi">Wi-Fi</string>
     <string name="destination_devices">Devices</string>
     <string name="destination_tools">Tools</string>

@@ -120,6 +120,8 @@ class SettingsViewModel
                         autoScanIntervalMinutes = autoScan.intervalMinutes,
                         alertOnLanHostChanges = autoScan.alertOnLanHostChanges,
                     )
+                }.combine(appSettingsRepository.uiFontScale) { state, uiFontScale ->
+                    state.copy(uiFontScale = uiFontScale)
                 }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SettingsUiState())
 
         fun setThemeMode(mode: ThemeMode) {
@@ -193,6 +195,22 @@ class SettingsViewModel
 
         fun setAlertOnLanHostChanges(enabled: Boolean) {
             viewModelScope.launch { autoScanSettingsRepository.setAlertOnLanHostChanges(enabled) }
+        }
+
+        /** docs/ideas.md #36 - the slider's own `valueRange` already keeps in-drag values
+         * within bounds, but the write path is clamped too, same reasoning as
+         * [setRssiAlertThresholdDbm]: a bad value written some other way (e.g. a future restore
+         * of an out-of-range backup) must not carry through into the composition-wide fontScale
+         * every screen inherits. */
+        fun setUiFontScale(scale: Float) {
+            viewModelScope.launch {
+                appSettingsRepository.setUiFontScale(
+                    scale.coerceIn(
+                        AppSettingsRepository.MIN_UI_FONT_SCALE,
+                        AppSettingsRepository.MAX_UI_FONT_SCALE,
+                    ),
+                )
+            }
         }
 
         fun setCrashReportingEnabled(enabled: Boolean) {
