@@ -136,6 +136,12 @@ class DeviceHintHeuristicsTest {
     }
 
     @Test
+    fun `mdnsServiceHint tolerates the stray leading dot NsdServiceInfo sometimes returns`() {
+        val hint = mdnsServiceHint("._hap._tcp", emptyMap())
+        assertThat(hint?.label).isEqualTo("HomeKit accessory")
+    }
+
+    @Test
     fun `mdnsServiceHint returns null for an unrecognized service type`() {
         assertThat(mdnsServiceHint("_unknown._tcp", emptyMap())).isNull()
         assertThat(mdnsServiceHint(null, emptyMap())).isNull()
@@ -192,5 +198,20 @@ class DeviceHintHeuristicsTest {
                 tlsCertificateCommonName = "Synology Inc.",
             )
         assertThat(hint?.label).isEqualTo("Synology DSM 7")
+    }
+
+    @Test
+    fun `WELL_KNOWN_MDNS_SERVICE_TYPES covers every type this file can turn into a hint`() {
+        assertThat(WELL_KNOWN_MDNS_SERVICE_TYPES)
+            .containsAtLeastElementsIn(
+                listOf(
+                    "_airplay._tcp",
+                    "_raop._tcp",
+                    "_googlecast._tcp",
+                    "_esphome._tcp",
+                    "_ipp._tcp",
+                    "_device-info._tcp",
+                ),
+            )
     }
 }

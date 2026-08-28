@@ -127,12 +127,14 @@ fun tlsCertificateDeviceHint(commonName: String?): DeviceHint? {
  * string in a well-known TXT key ([Certainty.CONFIRMED], self-reported exactly like A1's UPnP
  * fields) if present, else a generic label purely from the service type ([Certainty.LIKELY],
  * the same tier as [portSignatureHint] - advertising `_airplay._tcp` is as strong a signal as
- * a specific open port, but not as strong as a device naming its own model). */
+ * a specific open port, but not as strong as a device naming its own model). Tolerates a
+ * leading and/or trailing dot on [serviceType] - DNS's own optional root-label dot, and (docs/
+ * ideas.md A5) a stray leading dot `NsdServiceInfo` carries on some Android versions. */
 fun mdnsServiceHint(
     serviceType: String?,
     txtRecords: Map<String, String>,
 ): DeviceHint? {
-    val type = serviceType?.trimEnd('.') ?: return null
+    val type = serviceType?.trim('.') ?: return null
     return mdnsTxtModelHint(type, txtRecords) ?: mdnsServiceTypeHint(type)
 }
 
@@ -189,3 +191,14 @@ private val MDNS_SERVICE_TYPE_LABELS =
         IPP_SERVICE to "Network printer",
         PRINTER_SERVICE to "Network printer",
     )
+
+/** docs/ideas.md A5 - every mDNS service type this file knows how to turn into a
+ * [DeviceHint], plus [APPLE_DEVICE_INFO_SERVICE] (a hint source but not itself a
+ * [MDNS_SERVICE_TYPE_LABELS] entry). `MdnsProbe` browses this list directly rather than relying
+ * solely on the `_services._dns-sd._udp` meta-query to learn it exists: that meta-query is
+ * genuinely optional in DNS-SD and a real, common gap in practice - many embedded mDNS
+ * responders (ESPHome, ad hoc `avahi-publish-service` records, even some commercial TVs'
+ * AirPlay stacks) answer a direct browse for their own service type but never register the
+ * meta-query's browse-domain PTR, so relying on the meta-query alone silently finds nothing on
+ * those networks. */
+val WELL_KNOWN_MDNS_SERVICE_TYPES: Set<String> = MDNS_SERVICE_TYPE_LABELS.keys + APPLE_DEVICE_INFO_SERVICE

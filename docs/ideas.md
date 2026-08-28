@@ -554,11 +554,11 @@ reopened by any idea below. Android 10+ blocks reading the ARP table for any unr
 non-system app, with no supported workaround. `Host.macAddress` and `Host.vendor` exist in
 the model and stay `null` for most hosts by design so a future rooted/privileged build
 could populate them without a model change, but that is out of scope for the current
-unrooted target, per the "Root support: None" fixed decision in `docs/README.md`. Items A3
-and C1 below are real but partial exceptions: they recover a MAC from an application-layer
-payload the app already legitimately receives (NetBIOS NBSTAT, a router's own UPnP `Hosts:1`
-service), not from the kernel ARP table, so they don't need root or a raw socket and don't
-reopen C-01.
+unrooted target, per the "Root support: None" fixed decision in `docs/README.md`. Items A3,
+A4, and C1 below are real but partial exceptions: they recover a MAC from an application-layer
+payload the app already legitimately receives (NetBIOS NBSTAT, an AirPlay/RAOP mDNS record, a
+router's own UPnP `Hosts:1` service), not from the kernel ARP table, so they don't need root or
+a raw socket and don't reopen C-01.
 
 ---
 
@@ -631,6 +631,71 @@ planned for `:data:persistence`) lands.
   resource so the module's "no `android.*` imports" rule still holds
 - Update the "why no MAC address?" detail-screen copy (`DevicesDetailCards.kt`) to actually
   render a MAC/vendor when one is present, instead of asserting it's always unavailable
+
+---
+
+### A4. Extract a real MAC address from AirPlay/RAOP mDNS records
+**Status:** Implemented
+
+Two Apple/Bonjour conventions self-report a device's real MAC through mDNS, the same
+application-layer-payload loophole A3 uses for NetBIOS: AirPlay's `_airplay._tcp` TXT record
+carries a `deviceid` key that *is* the MAC in standard colon notation, and AirPlay-audio's
+older `_raop._tcp` convention names the whole service instance `AABBCCDDEEFF@Speaker Name` -
+the twelve hex characters ahead of the `@` are the MAC, undelimited. `MdnsProbe.kt` already
+resolves both service types (for A2's device hints); this only adds the MAC extraction on top,
+at no extra probing cost. Coverage is narrow (Apple TVs, HomePods, AirPlay speakers, and other
+AirPlay-audio receivers), the same kind of partial exception A3 is for Windows/Samba.
+
+**Requirements:**
+- A pure `airplayMacAddress(serviceType, serviceName, txtRecords)` function in `MdnsProbe.kt`,
+  `internal` for unit testing without an `NsdManager`
+- Reuse `HostObservation.macAddress`/`vendor` (already carried by A3) and `VendorLookup`
+- Update the "why no MAC address?" detail-screen copy to mention this second exception
+  alongside NetBIOS
+
+---
+
+### A5. Fall back to well-known mDNS service types when the DNS-SD meta-query goes unanswered
+**Status:** Implemented
+
+`MdnsProbe.discoverServiceTypes()` learned which service types exist on the network solely
+from a `_services._dns-sd._udp` meta-query (RFC 6763 §9's browse-domain enumeration), on the
+assumption that any responder worth knowing about would answer it. In practice that meta-query
+is optional and inconsistently implemented: on-device testing against a real home network found
+it returning *zero* results network-wide - not for one flaky device, but for every responder,
+including a long-standing commercial TV's AirPlay service and an ESPHome sensor - even though
+both answer a direct browse for their own specific type without hesitation. Relying on the
+meta-query alone meant Stage A's entire mDNS probe was silently contributing nothing on that
+network: no service records, no device hints (Chromecast/HomeKit/ESPHome/etc.), and none of
+A2's or A4's MAC/model extraction, for any host.
+
+The fix keeps the meta-query (still useful for services outside the curated set) but unions it
+with `WELL_KNOWN_MDNS_SERVICE_TYPES` - every type `DeviceHintHeuristics.kt` already knows how to
+interpret - so those types get browsed directly regardless of whether the meta-query answers.
+Since `discoverServicesOfType` calls all run concurrently and per-type budget is floor-clamped
+(`MIN_PER_TYPE_BUDGET_MS`), adding ~16 always-browsed types costs no real wall-clock time: the
+floor, not a shrinking per-type share, already governs Stage A's duration once there are more
+than a handful of types in play.
+
+**Requirements:**
+- A public `WELL_KNOWN_MDNS_SERVICE_TYPES` set in `DeviceHintHeuristics.kt`, built from
+  `MDNS_SERVICE_TYPE_LABELS.keys` plus `APPLE_DEVICE_INFO_SERVICE` (a hint source not itself a
+  label-table entry)
+- `MdnsProbe.discover()` unions the meta-query's result with that set before browsing, instead
+  of returning early when the meta-query comes back empty
+
+This fix surfaced a second, independent latent bug once mDNS Stage A actually started finding
+real services: `NsdServiceInfo.serviceType` from `onServiceResolved` carries a stray leading dot
+on some Android versions (a long-standing `NsdManager` quirk - `._raop._tcp` instead of
+`_raop._tcp`), on top of DNS's own optional trailing root-label dot. Every exact-match consumer
+(`mdnsServiceHint` from A2, `airplayMacAddress` from A4) was comparing against the un-normalized
+string and silently matching nothing - both had shipped with only trailing-dot tolerance
+(`trimEnd('.')`), never exercised against a real leading-dot value because A5's own bug meant
+Stage A rarely found anything to expose it. Fixed by normalizing once at the source
+(`MdnsProbe.toObservation()`, `serviceType?.trim('.')`) so every consumer - the hint lookup, the
+MAC extraction, the raw value shown on the detail screen's Discovered Services card - sees the
+same clean type, plus defensive `trim('.')` (was `trimEnd('.')`) in both pure functions
+themselves.
 
 ---
 
