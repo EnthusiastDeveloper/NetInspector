@@ -764,6 +764,23 @@ dependency for one feature.
 
 Reverse lookups build the `in-addr.arpa` name and issue a PTR query.
 
+Because the tool has two genuinely different query paths (the system resolver by default, a
+raw socket for a user-chosen server), the results panel shows two separate indicators rather
+than collapsing them into one value:
+
+- **Registered on device** - what `ConnectivityManager` reports as configured, enumerated
+  across *all* current networks (`getAllNetworks()`, not just the active one - Wi-Fi and
+  cellular can both be up at once, the foldable/dual-network case), one entry per Wi-Fi/
+  cellular/Ethernet network with its IPv4 servers, IPv6 servers, and Private DNS status
+  (`LinkProperties.isPrivateDnsActive()`/`getPrivateDnsServerName()`) shown separately.
+- **Used for this lookup** - the literal destination this specific query targeted, plus a
+  flag for whether that address appears anywhere in "registered on device." The system
+  resolver path shows no guessed address (design §11.3 - `DnsResolver`'s actual destination
+  isn't observable from the app); the raw-socket path shows the exact address:port and the
+  match flag, since that destination is exactly what the code was told to send to. See
+  `docs/adr/c-20-private-dns-strict-mode-and-raw-sockets.md` for whether Private DNS strict
+  mode affects that raw socket the same way it affects the system resolver.
+
 ### 9.5 Port scanner
 
 TCP connect scan - SYN scanning needs raw sockets and is therefore impossible here, which
@@ -1122,3 +1139,4 @@ Recorded so they are decisions rather than surprises. Full detail in
 | SYN scanning | Impossible | Connect scan, labelled as such |
 | Traceroute error queue | Uncertain via `Os` API | Spike S-02; ping-binary fallback |
 | IPv6 | Display only | Stated in the UI; active tooling is IPv4 |
+| DNS "used for lookup" via system resolver | Literal destination not observable from the app | No guessed address shown (design §11.3); the raw-socket custom-server path shows the real address instead |

@@ -17,6 +17,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.Button
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -30,9 +31,12 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import dev.enthusiastdev.netinspector.core.designsystem.component.InfoCard
 import dev.enthusiastdev.netinspector.core.designsystem.component.InfoRow
+import dev.enthusiastdev.netinspector.core.model.connection.NetworkTransport
 import dev.enthusiastdev.netinspector.core.model.diagnostics.DnsQueryOutcome
 import dev.enthusiastdev.netinspector.core.model.diagnostics.DnsRecord
 import dev.enthusiastdev.netinspector.core.model.diagnostics.DnsRecordType
+import dev.enthusiastdev.netinspector.core.model.diagnostics.QueriedDnsServer
+import dev.enthusiastdev.netinspector.core.model.diagnostics.RegisteredDnsNetwork
 
 @Composable
 fun DnsRoute(
@@ -62,7 +66,32 @@ fun DnsScreen(
     Box(modifier = modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
         Column(modifier = Modifier.fillMaxHeight().widthIn(max = 600.dp)) {
             DnsForm(uiState, onNameChange, onRecordTypeChange, onCustomServerChange, onRunQuery)
-            DnsResults(uiState.outcome)
+            if (uiState.registeredNetworks.isNotEmpty()) {
+                DnsRegisteredServersCard(
+                    networks = uiState.registeredNetworks,
+                    modifier = Modifier.padding(horizontal = 16.dp),
+                )
+            }
+            DnsResults(uiState.outcome, uiState.queriedServer, uiState.activeTransportAtQuery)
+        }
+    }
+}
+
+/** design §9.4 - "registered on device": what the OS itself has configured, per active
+ * network. Shown independently of [DnsResults] since it's a device-level fact, not a lookup
+ * result - visible before the first query and unaffected by whether one succeeded. */
+@Composable
+private fun DnsRegisteredServersCard(
+    networks: List<RegisteredDnsNetwork>,
+    modifier: Modifier = Modifier,
+) {
+    InfoCard(title = "Registered on device", modifier = modifier) {
+        networks.forEachIndexed { index, network ->
+            if (index > 0) HorizontalDivider()
+            Text(text = network.transport.label(), style = MaterialTheme.typography.titleSmall)
+            InfoRow("IPv4", network.ipv4Servers.addressListLabel())
+            InfoRow("IPv6", network.ipv6Servers.addressListLabel())
+            InfoRow("Private DNS", network.privateDnsLabel())
         }
     }
 }
@@ -113,20 +142,26 @@ private fun DnsForm(
 }
 
 @Composable
-private fun ColumnScope.DnsResults(outcome: DnsQueryOutcome?) {
+private fun ColumnScope.DnsResults(
+    outcome: DnsQueryOutcome?,
+    queriedServer: QueriedDnsServer?,
+    activeTransportAtQuery: NetworkTransport?,
+) {
     when (outcome) {
         is DnsQueryOutcome.Error ->
-            Text(
-                text = outcome.message,
-                color = MaterialTheme.colorScheme.error,
-                modifier = Modifier.padding(horizontal = 16.dp),
-            )
+            Column(modifier = Modifier.padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                if (queriedServer != null) QueriedDnsServerCard(queriedServer, activeTransportAtQuery)
+                Text(text = outcome.message, color = MaterialTheme.colorScheme.error)
+            }
         is DnsQueryOutcome.Success ->
             LazyColumn(
                 modifier = Modifier.weight(1f).fillMaxWidth(),
                 contentPadding = PaddingValues(16.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
+                if (queriedServer != null) {
+                    item { QueriedDnsServerCard(queriedServer, activeTransportAtQuery) }
+                }
                 item {
                     InfoCard(title = "Query time") {
                         InfoRow("Elapsed", "%.1f ms".format(outcome.queryTimeMs))
@@ -140,6 +175,46 @@ private fun ColumnScope.DnsResults(outcome: DnsQueryOutcome?) {
                 }
             }
         null -> {}
+    }
+}
+
+/** design §9.4 - "used for this lookup": the literal destination this specific query targeted,
+ * as opposed to [DnsRegisteredServersCard]'s device-level configuration. */
+@Composable
+private fun QueriedDnsServerCard(
+    queriedServer: QueriedDnsServer,
+    activeTransportAtQuery: NetworkTransport?,
+) {
+    InfoCard(title = "Used for this lookup") {
+        when (queriedServer) {
+            is QueriedDnsServer.Explicit -> {
+                InfoRow("Server", "${queriedServer.address.hostAddress}:${queriedServer.port}")
+                InfoRow("Active network", activeTransportAtQuery?.label() ?: "Unknown")
+                Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
+                    Text("Matches registered", style = MaterialTheme.typography.bodyMedium)
+                    Text(
+                        text = if (queriedServer.matchesRegistered) "Yes" else "No (custom server)",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color =
+                            if (queriedServer.matchesRegistered) {
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                            } else {
+                                MaterialTheme.colorScheme.tertiary
+                            },
+                    )
+                }
+            }
+            QueriedDnsServer.SystemResolver -> {
+                InfoRow("Server", "System resolver")
+                Text(
+                    text =
+                        "The exact destination isn't observable from the app - see the " +
+                            "\"Registered on device\" card above for what's configured.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
     }
 }
 
