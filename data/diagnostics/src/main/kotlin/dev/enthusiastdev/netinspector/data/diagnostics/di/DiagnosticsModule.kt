@@ -5,7 +5,9 @@ import dagger.Module
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
 import dev.enthusiastdev.netinspector.data.diagnostics.dns.DefaultDnsRepository
+import dev.enthusiastdev.netinspector.data.diagnostics.dns.DefaultRegisteredDnsServersRepository
 import dev.enthusiastdev.netinspector.data.diagnostics.dns.DnsRepository
+import dev.enthusiastdev.netinspector.data.diagnostics.dns.RegisteredDnsServersRepository
 import dev.enthusiastdev.netinspector.data.diagnostics.httpinspect.DefaultHttpInspectorRepository
 import dev.enthusiastdev.netinspector.data.diagnostics.httpinspect.HttpInspectorRepository
 import dev.enthusiastdev.netinspector.data.diagnostics.icmp.DefaultPingRepository
@@ -36,6 +38,12 @@ abstract class DiagnosticsModule {
     @Binds
     @Singleton
     abstract fun bindDnsRepository(impl: DefaultDnsRepository): DnsRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindRegisteredDnsServersRepository(
+        impl: DefaultRegisteredDnsServersRepository,
+    ): RegisteredDnsServersRepository
 
     @Binds
     @Singleton

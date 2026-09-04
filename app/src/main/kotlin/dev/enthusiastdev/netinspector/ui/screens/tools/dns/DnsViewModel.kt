@@ -6,6 +6,8 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import dev.enthusiastdev.netinspector.core.model.diagnostics.DnsQueryOutcome
 import dev.enthusiastdev.netinspector.core.model.diagnostics.DnsRecordType
 import dev.enthusiastdev.netinspector.data.diagnostics.dns.DnsRepository
+import dev.enthusiastdev.netinspector.data.diagnostics.dns.RegisteredDnsServersRepository
+import dev.enthusiastdev.netinspector.data.diagnostics.dns.queriedDnsServerOf
 import dev.enthusiastdev.netinspector.data.diagnostics.dns.reverseDnsName
 import dev.enthusiastdev.netinspector.data.persistence.diagnostics.DiagnosticRunRecord
 import dev.enthusiastdev.netinspector.data.persistence.diagnostics.DiagnosticRunRepository
@@ -29,12 +31,21 @@ class DnsViewModel
     @Inject
     constructor(
         private val dnsRepository: DnsRepository,
+        private val registeredDnsServersDataSource: RegisteredDnsServersRepository,
         private val diagnosticRunRepository: DiagnosticRunRepository,
     ) : ViewModel() {
         private val _uiState = MutableStateFlow(DnsUiState())
         val uiState: StateFlow<DnsUiState> = _uiState.asStateFlow()
 
         private var queryJob: Job? = null
+
+        init {
+            refreshRegisteredNetworks()
+        }
+
+        private fun refreshRegisteredNetworks() {
+            _uiState.update { it.copy(registeredNetworks = registeredDnsServersDataSource.snapshot()) }
+        }
 
         fun updateName(value: String) {
             _uiState.update { it.copy(name = value) }
@@ -59,21 +70,36 @@ class DnsViewModel
             queryJob?.cancel()
             queryJob =
                 viewModelScope.launch {
-                    _uiState.update { it.copy(isRunning = true, outcome = null) }
+                    refreshRegisteredNetworks()
+                    _uiState.update {
+                        it.copy(isRunning = true, outcome = null, queriedServer = null, activeTransportAtQuery = null)
+                    }
                     val startedAtMillis = System.currentTimeMillis()
                     val server = state.customServer.trim()
+                    val serverAddress =
+                        if (server.isEmpty()) null else runCatching { InetAddress.getByName(server) }.getOrNull()
                     val outcome =
-                        if (server.isEmpty()) {
-                            dnsRepository.querySystemResolver(queryName, state.recordType)
-                        } else {
-                            val serverAddress = runCatching { InetAddress.getByName(server) }.getOrNull()
-                            if (serverAddress == null) {
-                                DnsQueryOutcome.Error("Could not resolve server \"$server\"")
-                            } else {
-                                dnsRepository.queryServer(serverAddress, queryName, state.recordType)
-                            }
+                        when {
+                            server.isEmpty() -> dnsRepository.querySystemResolver(queryName, state.recordType)
+                            serverAddress == null -> DnsQueryOutcome.Error("Could not resolve server \"$server\"")
+                            else -> dnsRepository.queryServer(serverAddress, queryName, state.recordType)
                         }
-                    _uiState.update { it.copy(isRunning = false, outcome = outcome) }
+                    // Only record what was actually queried - a server that failed to resolve
+                    // was never sent anything, so there's nothing to show as "used."
+                    val queriedServer =
+                        if (server.isEmpty() || serverAddress != null) {
+                            queriedDnsServerOf(serverAddress, _uiState.value.registeredNetworks)
+                        } else {
+                            null
+                        }
+                    _uiState.update {
+                        it.copy(
+                            isRunning = false,
+                            outcome = outcome,
+                            queriedServer = queriedServer,
+                            activeTransportAtQuery = registeredDnsServersDataSource.activeTransport(),
+                        )
+                    }
                     diagnosticRunRepository.record(
                         DiagnosticRunRecord(
                             toolType = DiagnosticToolType.DNS_LOOKUP.name,
