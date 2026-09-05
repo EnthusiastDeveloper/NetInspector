@@ -201,6 +201,75 @@ class DeviceHintHeuristicsTest {
     }
 
     @Test
+    fun `httpServerHint reads Apache's parenthetical OS suffix at CONFIRMED certainty`() {
+        val hint = httpServerHint(listOf(port(80, "http", "Server: Apache/2.4.52 (Ubuntu); Title: It works!")))
+        assertThat(hint?.label).isEqualTo("Ubuntu")
+        assertThat(hint?.certainty).isEqualTo(Certainty.CONFIRMED)
+    }
+
+    @Test
+    fun `httpServerHint maps an IIS version to its Windows release at LIKELY certainty`() {
+        val hint = httpServerHint(listOf(port(80, "http", "Server: Microsoft-IIS/10.0")))
+        assertThat(hint?.label).isEqualTo("Windows 10 / Server 2016+")
+        assertThat(hint?.certainty).isEqualTo(Certainty.LIKELY)
+    }
+
+    @Test
+    fun `httpServerHint ignores an unrecognized Apache OS suffix and an unmapped IIS version`() {
+        assertThat(httpServerHint(listOf(port(80, "http", "Server: Apache/2.4.52 (Custom Build)")))).isNull()
+        assertThat(httpServerHint(listOf(port(80, "http", "Server: Microsoft-IIS/99.9")))).isNull()
+    }
+
+    @Test
+    fun `httpServerHint returns null when no port has a banner`() {
+        assertThat(httpServerHint(listOf(port(80, "http", null)))).isNull()
+        assertThat(httpServerHint(emptyList())).isNull()
+    }
+
+    @Test
+    fun `ssdpServerHint reads the OS token from the Microsoft-Windows convention`() {
+        val hint = ssdpServerHint("Microsoft-Windows/10.0 UPnP/1.0 UPnP-Device-Host/1.0")
+        assertThat(hint?.label).isEqualTo("Windows 10.0")
+        assertThat(hint?.certainty).isEqualTo(Certainty.CONFIRMED)
+    }
+
+    @Test
+    fun `ssdpServerHint reads the OS token from the plain Linux convention`() {
+        val hint = ssdpServerHint("Linux/3.10.0 UPnP/1.0 MiniDLNA/1.2.1")
+        assertThat(hint?.label).isEqualTo("Linux 3.10.0")
+    }
+
+    @Test
+    fun `ssdpServerHint returns null for an unrecognized or absent SERVER header`() {
+        assertThat(ssdpServerHint("MiniUPnPd/2.1 UPnP/1.1")).isNull()
+        assertThat(ssdpServerHint(null)).isNull()
+    }
+
+    @Test
+    fun `smbDialectHint maps a negotiated dialect to a Windows-version range at LIKELY certainty`() {
+        val hint = smbDialectHint(0x0302)
+        assertThat(hint?.label).isEqualTo("Windows 8.1+ / Server 2012 R2+ era")
+        assertThat(hint?.certainty).isEqualTo(Certainty.LIKELY)
+        assertThat(hint?.basis).contains("Samba")
+    }
+
+    @Test
+    fun `smbDialectHint returns null for an unmapped dialect revision`() {
+        assertThat(smbDialectHint(0x0311)).isNull()
+    }
+
+    @Test
+    fun `deviceHintFor prefers a specific SMB dialect hint over the generic port signature`() {
+        val hint =
+            deviceHintFor(
+                openPorts = listOf(port(445), port(139)),
+                icmpReplyTtl = null,
+                smbDialectRevision = 0x0210,
+            )
+        assertThat(hint?.label).isEqualTo("Windows 7 / Server 2008 R2 era")
+    }
+
+    @Test
     fun `WELL_KNOWN_MDNS_SERVICE_TYPES covers every type this file can turn into a hint`() {
         assertThat(WELL_KNOWN_MDNS_SERVICE_TYPES)
             .containsAtLeastElementsIn(

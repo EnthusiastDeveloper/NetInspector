@@ -22,7 +22,12 @@ import javax.inject.Inject
  * B, bounded to [HOST_CONCURRENCY] hosts at once - Stage C's targets are a small, already-known
  * subset of the subnet, not the full address space Stage B swept, so it needs nowhere near
  * Stage B's 64-way concurrency.
+ *
+ * Each dependency is an independent, unrelated probe run concurrently in [enrichOne] - a flat
+ * constructor is the natural shape here, not something a grouping collaborator would improve,
+ * `@Suppress`d below rather than added purely to satisfy the linter.
  */
+@Suppress("LongParameterList")
 class HostEnricher
     @Inject
     constructor(
@@ -31,6 +36,7 @@ class HostEnricher
         private val icmpTtlProbe: IcmpSweepProbe,
         private val snmpProbe: SnmpProbe,
         private val tlsCertificateProbe: TlsCertificateProbe,
+        private val smbNegotiateProbe: SmbNegotiateProbe,
         private val clock: Clock,
     ) {
         suspend fun enrich(
@@ -61,25 +67,30 @@ class HostEnricher
             val ttlJob = async(Dispatchers.IO) { resolveTtl(host) }
             val snmpJob = async(Dispatchers.IO) { snmpProbe.query(address, SNMP_TIMEOUT_MS) }
             val tlsJob = async(Dispatchers.IO) { tlsCertificateProbe.subjectCommonName(address, TLS_TIMEOUT_MS) }
+            val smbJob = async(Dispatchers.IO) { smbNegotiateProbe.negotiateDialect(address, SMB_TIMEOUT_MS) }
 
             val hostname = hostnameJob.await()
             val openPorts = portsJob.await()
             val icmpReplyTtl = ttlJob.await()
             val snmpResult = snmpJob.await()
             val tlsCommonName = tlsJob.await()
+            val smbDialect = smbJob.await()
             val hasNothing =
                 hostname == null &&
                     openPorts.isEmpty() &&
                     icmpReplyTtl == null &&
                     snmpResult == null &&
-                    tlsCommonName == null
+                    tlsCommonName == null &&
+                    smbDialect == null
             if (hasNothing) return@coroutineScope
-            val deviceHint = deviceHintFor(openPorts, icmpReplyTtl, snmpResult?.sysDescr, tlsCommonName)
+            val deviceHint = deviceHintFor(openPorts, icmpReplyTtl, snmpResult?.sysDescr, tlsCommonName, smbDialect)
 
             onObservation(
                 HostObservation(
                     address = address,
-                    evidence = reverseDnsEvidence(hostname) + snmpEvidence(snmpResult) + tlsEvidence(tlsCommonName),
+                    evidence =
+                        reverseDnsEvidence(hostname) + snmpEvidence(snmpResult) +
+                            tlsEvidence(tlsCommonName) + smbEvidence(smbDialect),
                     hostnames = hostnames(hostname, snmpResult),
                     openPorts = openPorts,
                     deviceHint = deviceHint,
@@ -103,6 +114,12 @@ class HostEnricher
         private fun tlsEvidence(commonName: String?): List<Evidence> {
             if (commonName == null) return emptyList()
             return listOf(Evidence(EvidenceSource.TLS, clock.instant(), detail = commonName))
+        }
+
+        private fun smbEvidence(dialectRevision: Int?): List<Evidence> {
+            if (dialectRevision == null) return emptyList()
+            val dialect = "0x%04X".format(dialectRevision)
+            return listOf(Evidence(EvidenceSource.SMB, clock.instant(), detail = "negotiated dialect $dialect"))
         }
 
         /** A single retry - under Stage C's [HOST_CONCURRENCY]-way concurrent burst (each host
@@ -152,5 +169,6 @@ class HostEnricher
             const val TTL_TIMEOUT_MS = 1_000
             const val SNMP_TIMEOUT_MS = 800
             const val TLS_TIMEOUT_MS = 1_500
+            const val SMB_TIMEOUT_MS = 800
         }
     }
