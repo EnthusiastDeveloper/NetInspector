@@ -4,18 +4,23 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
@@ -26,7 +31,10 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import dev.enthusiastdev.netinspector.core.designsystem.component.InfoCard
@@ -63,35 +71,23 @@ fun DnsScreen(
     onRunQuery: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val focusManager = LocalFocusManager.current
+    // Drop the soft keyboard before the results render - otherwise the freshly-appended cards
+    // land behind the IME and the screen looks like it did nothing (the original bug report).
+    val runQuery = {
+        focusManager.clearFocus()
+        onRunQuery()
+    }
     Box(modifier = modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
         Column(modifier = Modifier.fillMaxHeight().widthIn(max = 600.dp)) {
-            DnsForm(uiState, onNameChange, onRecordTypeChange, onCustomServerChange, onRunQuery)
-            if (uiState.registeredNetworks.isNotEmpty()) {
-                DnsRegisteredServersCard(
-                    networks = uiState.registeredNetworks,
-                    modifier = Modifier.padding(horizontal = 16.dp),
-                )
-            }
-            DnsResults(uiState.outcome, uiState.queriedServer, uiState.activeTransportAtQuery)
-        }
-    }
-}
-
-/** design §9.4 - "registered on device": what the OS itself has configured, per active
- * network. Shown independently of [DnsResults] since it's a device-level fact, not a lookup
- * result - visible before the first query and unaffected by whether one succeeded. */
-@Composable
-private fun DnsRegisteredServersCard(
-    networks: List<RegisteredDnsNetwork>,
-    modifier: Modifier = Modifier,
-) {
-    InfoCard(title = "Registered on device", modifier = modifier) {
-        networks.forEachIndexed { index, network ->
-            if (index > 0) HorizontalDivider()
-            Text(text = network.transport.label(), style = MaterialTheme.typography.titleSmall)
-            InfoRow("IPv4", network.ipv4Servers.addressListLabel())
-            InfoRow("IPv6", network.ipv6Servers.addressListLabel())
-            InfoRow("Private DNS", network.privateDnsLabel())
+            DnsForm(uiState, onNameChange, onRecordTypeChange, onCustomServerChange, runQuery)
+            // One scroll container for the "Registered on device" card and every result row.
+            // The registered card is variable height (one entry per active Wi-Fi/cellular/
+            // Ethernet network - three or more on a phone with two SIMs up), so it can't sit in
+            // a fixed region above the results without pushing them off a short screen entirely.
+            // imePadding keeps the last rows scrollable clear of the keyboard while a field is
+            // focused.
+            DnsResults(uiState, modifier = Modifier.weight(1f).fillMaxWidth().imePadding())
         }
     }
 }
@@ -115,6 +111,10 @@ private fun DnsForm(
                 onValueChange = onNameChange,
                 label = { Text(nameLabel) },
                 singleLine = true,
+                // Uri type: no autocapitalisation or autocorrect, which on some keyboards
+                // mangle a typed hostname (a trailing space inserted after every dot).
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri, imeAction = ImeAction.Search),
+                keyboardActions = KeyboardActions(onSearch = { onRunQuery() }),
                 modifier = Modifier.weight(1f),
             )
             Button(onClick = onRunQuery) { Text("Query") }
@@ -124,6 +124,8 @@ private fun DnsForm(
             onValueChange = onCustomServerChange,
             label = { Text("Server (blank = system resolver)") },
             singleLine = true,
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri, imeAction = ImeAction.Search),
+            keyboardActions = KeyboardActions(onSearch = { onRunQuery() }),
             modifier = Modifier.fillMaxWidth(),
         )
         Row(
@@ -142,39 +144,78 @@ private fun DnsForm(
 }
 
 @Composable
-private fun ColumnScope.DnsResults(
-    outcome: DnsQueryOutcome?,
-    queriedServer: QueriedDnsServer?,
-    activeTransportAtQuery: NetworkTransport?,
+private fun DnsResults(
+    uiState: DnsUiState,
+    modifier: Modifier = Modifier,
 ) {
-    when (outcome) {
+    LazyColumn(
+        modifier = modifier,
+        contentPadding = PaddingValues(16.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        if (uiState.registeredNetworks.isNotEmpty()) {
+            item(key = "registered") { DnsRegisteredServersCard(uiState.registeredNetworks) }
+        }
+        if (uiState.isRunning) {
+            item(key = "running") {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+                    Text("Querying...", style = MaterialTheme.typography.bodyMedium)
+                }
+            }
+        }
+        dnsOutcomeItems(uiState)
+    }
+}
+
+private fun LazyListScope.dnsOutcomeItems(uiState: DnsUiState) {
+    val queriedServer = uiState.queriedServer
+    if (queriedServer != null) {
+        item(key = "queried") { QueriedDnsServerCard(queriedServer, uiState.activeTransportAtQuery) }
+    }
+    when (val outcome = uiState.outcome) {
         is DnsQueryOutcome.Error ->
-            Column(modifier = Modifier.padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                if (queriedServer != null) QueriedDnsServerCard(queriedServer, activeTransportAtQuery)
+            item(key = "error") {
                 Text(text = outcome.message, color = MaterialTheme.colorScheme.error)
             }
-        is DnsQueryOutcome.Success ->
-            LazyColumn(
-                modifier = Modifier.weight(1f).fillMaxWidth(),
-                contentPadding = PaddingValues(16.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                if (queriedServer != null) {
-                    item { QueriedDnsServerCard(queriedServer, activeTransportAtQuery) }
-                }
-                item {
-                    InfoCard(title = "Query time") {
-                        InfoRow("Elapsed", "%.1f ms".format(outcome.queryTimeMs))
-                        InfoRow("Answers", "${outcome.answers.size}")
-                    }
-                }
-                if (outcome.answers.isEmpty()) {
-                    item { Text("No records returned", style = MaterialTheme.typography.bodyMedium) }
-                } else {
-                    items(outcome.answers) { record -> DnsRecordRow(record) }
+        is DnsQueryOutcome.Success -> {
+            item(key = "queryTime") {
+                InfoCard(title = "Query time") {
+                    InfoRow("Elapsed", "%.1f ms".format(outcome.queryTimeMs))
+                    InfoRow("Answers", "${outcome.answers.size}")
                 }
             }
+            if (outcome.answers.isEmpty()) {
+                item(key = "noRecords") {
+                    Text("No records returned", style = MaterialTheme.typography.bodyMedium)
+                }
+            } else {
+                items(outcome.answers) { record -> DnsRecordRow(record) }
+            }
+        }
         null -> {}
+    }
+}
+
+/** design §9.4 - "registered on device": what the OS itself has configured, per active
+ * network. Shown independently of the lookup result since it's a device-level fact - visible
+ * before the first query and unaffected by whether one succeeded. */
+@Composable
+private fun DnsRegisteredServersCard(
+    networks: List<RegisteredDnsNetwork>,
+    modifier: Modifier = Modifier,
+) {
+    InfoCard(title = "Registered on device", modifier = modifier) {
+        networks.forEachIndexed { index, network ->
+            if (index > 0) HorizontalDivider()
+            Text(text = network.transport.label(), style = MaterialTheme.typography.titleSmall)
+            InfoRow("IPv4", network.ipv4Servers.addressListLabel())
+            InfoRow("IPv6", network.ipv6Servers.addressListLabel())
+            InfoRow("Private DNS", network.privateDnsLabel())
+        }
     }
 }
 
