@@ -768,13 +768,13 @@ Because the tool has two genuinely different query paths (the system resolver by
 raw socket for a user-chosen server), the results panel shows two separate indicators rather
 than collapsing them into one value:
 
-- **Registered on device** - what `ConnectivityManager` reports as configured, enumerated
+- **Registered DNS servers** - what `ConnectivityManager` reports as configured, enumerated
   across *all* current networks (`getAllNetworks()`, not just the active one - Wi-Fi and
   cellular can both be up at once, the foldable/dual-network case), one entry per Wi-Fi/
   cellular/Ethernet network with its IPv4 servers, IPv6 servers, and Private DNS status
   (`LinkProperties.isPrivateDnsActive()`/`getPrivateDnsServerName()`) shown separately.
 - **Used for this lookup** - the literal destination this specific query targeted, plus a
-  flag for whether that address appears anywhere in "registered on device." The system
+  flag for whether that address appears anywhere in "registered DNS servers." The system
   resolver path shows no guessed address (design §11.3 - `DnsResolver`'s actual destination
   isn't observable from the app); the raw-socket path shows the exact address:port and the
   match flag, since that destination is exactly what the code was told to send to. See

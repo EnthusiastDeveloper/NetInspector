@@ -9,7 +9,7 @@ import dev.enthusiastdev.netinspector.core.model.diagnostics.RegisteredDnsNetwor
 import javax.inject.Inject
 
 /**
- * design §9.4 - the DNS tool's "registered on device" indicator, distinct from the DNS query
+ * design §9.4 - the DNS tool's "Registered DNS servers" indicator, distinct from the DNS query
  * paths in [DnsRepository]. Unlike `data:wifi`'s `ConnectivityDataSource` (a continuous
  * Wi-Fi-only `NetworkCallback` flow, used for the live signal meter), [snapshot] and
  * [activeTransport] are one-shot reads across *all* networks - Wi-Fi, cellular and Ethernet can

@@ -81,7 +81,7 @@ fun DnsScreen(
     Box(modifier = modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
         Column(modifier = Modifier.fillMaxHeight().widthIn(max = 600.dp)) {
             DnsForm(uiState, onNameChange, onRecordTypeChange, onCustomServerChange, runQuery)
-            // One scroll container for the "Registered on device" card and every result row.
+            // One scroll container for the "Registered DNS servers" card and every result row.
             // The registered card is variable height (one entry per active Wi-Fi/cellular/
             // Ethernet network - three or more on a phone with two SIMs up), so it can't sit in
             // a fixed region above the results without pushing them off a short screen entirely.
@@ -200,7 +200,7 @@ private fun LazyListScope.dnsOutcomeItems(uiState: DnsUiState) {
     }
 }
 
-/** design §9.4 - "registered on device": what the OS itself has configured, per active
+/** design §9.4's "Registered DNS servers": what the OS itself has configured, per active
  * network. Shown independently of the lookup result since it's a device-level fact - visible
  * before the first query and unaffected by whether one succeeded. */
 @Composable
@@ -208,7 +208,7 @@ private fun DnsRegisteredServersCard(
     networks: List<RegisteredDnsNetwork>,
     modifier: Modifier = Modifier,
 ) {
-    InfoCard(title = "Registered on device", modifier = modifier) {
+    InfoCard(title = "Registered DNS servers", modifier = modifier) {
         networks.forEachIndexed { index, network ->
             if (index > 0) HorizontalDivider()
             Text(text = network.transport.label(), style = MaterialTheme.typography.titleSmall)
@@ -250,7 +250,7 @@ private fun QueriedDnsServerCard(
                 Text(
                     text =
                         "The exact destination isn't observable from the app - see the " +
-                            "\"Registered on device\" card above for what's configured.",
+                            "\"Registered DNS servers\" card above for what's configured.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
