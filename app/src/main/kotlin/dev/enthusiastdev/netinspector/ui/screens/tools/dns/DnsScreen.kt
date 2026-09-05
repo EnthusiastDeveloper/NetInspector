@@ -122,7 +122,15 @@ private fun DnsForm(
         OutlinedTextField(
             value = uiState.customServer,
             onValueChange = onCustomServerChange,
-            label = { Text("Server (blank = system resolver)") },
+            label = { Text("Server") },
+            // The placeholder says where a blank field actually sends: the active network's
+            // first registered server, or the system resolver when there isn't one to name.
+            placeholder = {
+                Text(
+                    uiState.defaultServerHint?.let { "blank = $it (first registered)" }
+                        ?: "blank = system resolver",
+                )
+            },
             singleLine = true,
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri, imeAction = ImeAction.Search),
             keyboardActions = KeyboardActions(onSearch = { onRunQuery() }),
@@ -173,8 +181,11 @@ private fun DnsResults(
 
 private fun LazyListScope.dnsOutcomeItems(uiState: DnsUiState) {
     val queriedServer = uiState.queriedServer
+    val respondedFrom = (uiState.outcome as? DnsQueryOutcome.Success)?.respondedFrom
     if (queriedServer != null) {
-        item(key = "queried") { QueriedDnsServerCard(queriedServer, uiState.activeTransportAtQuery) }
+        item(key = "queried") {
+            QueriedDnsServerCard(queriedServer, uiState.activeTransportAtQuery, respondedFrom, uiState.activePrivateDns)
+        }
     }
     when (val outcome = uiState.outcome) {
         is DnsQueryOutcome.Error ->
@@ -220,17 +231,24 @@ private fun DnsRegisteredServersCard(
 }
 
 /** design §9.4 - "used for this lookup": the literal destination this specific query targeted,
- * as opposed to [DnsRegisteredServersCard]'s device-level configuration. */
+ * as opposed to [DnsRegisteredServersCard]'s device-level configuration. [respondedFrom] is the
+ * datagram source of the reply on the raw-socket path (null for the system resolver). */
 @Composable
 private fun QueriedDnsServerCard(
     queriedServer: QueriedDnsServer,
     activeTransportAtQuery: NetworkTransport?,
+    respondedFrom: String?,
+    activePrivateDns: Boolean,
 ) {
     InfoCard(title = "Used for this lookup") {
         when (queriedServer) {
             is QueriedDnsServer.Explicit -> {
                 InfoRow("Server", "${queriedServer.address.hostAddress}:${queriedServer.port}")
+                if (queriedServer.autoSelected) {
+                    InfoRow("Chosen", "first registered server (field left blank)")
+                }
                 InfoRow("Active network", activeTransportAtQuery?.label() ?: "Unknown")
+                respondedFrom?.let { InfoRow("Replied from", it) }
                 Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
                     Text("Matches registered", style = MaterialTheme.typography.bodyMedium)
                     Text(
@@ -249,8 +267,13 @@ private fun QueriedDnsServerCard(
                 InfoRow("Server", "System resolver")
                 Text(
                     text =
-                        "The exact destination isn't observable from the app - see the " +
-                            "\"Registered DNS servers\" card above for what's configured.",
+                        if (activePrivateDns) {
+                            "Private DNS is on, so the query is encrypted and sent by the system " +
+                                "resolver; its destination isn't observable from the app."
+                        } else {
+                            "The exact destination isn't observable from the app - see the " +
+                                "\"Registered DNS servers\" card above for what's configured."
+                        },
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )

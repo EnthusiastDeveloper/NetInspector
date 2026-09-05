@@ -101,10 +101,58 @@ class DnsServerMatchingTest {
     }
 
     @Test
-    fun `queriedDnsServerOf returns SystemResolver when no explicit server was given`() {
+    fun `queriedDnsServerOf returns SystemResolver when no server was queried`() {
         val networks = listOf(registeredDnsNetworkOf(NetworkTransport.WIFI, listOf(ip("192.168.1.1")), false, null))
-        assertThat(queriedDnsServerOf(explicitServer = null, networks = networks))
+        assertThat(queriedDnsServerOf(queriedServer = null, networks = networks))
             .isEqualTo(QueriedDnsServer.SystemResolver)
+    }
+
+    @Test
+    fun `queriedDnsServerOf carries the autoSelected flag through`() {
+        val result = queriedDnsServerOf(ip("192.168.1.1"), emptyList(), autoSelected = true)
+        assertThat((result as QueriedDnsServer.Explicit).autoSelected).isTrue()
+    }
+
+    @Test
+    fun `firstRegisteredDnsServer returns the active network's first server, IPv4 preferred`() {
+        val networks =
+            listOf(
+                registeredDnsNetworkOf(NetworkTransport.CELLULAR, listOf(ip("10.0.0.1")), false, null),
+                registeredDnsNetworkOf(
+                    NetworkTransport.WIFI,
+                    listOf(ip("2001:4860:4860::8888"), ip("192.168.1.1")),
+                    false,
+                    null,
+                ),
+            )
+        assertThat(firstRegisteredDnsServer(NetworkTransport.WIFI, networks)).isEqualTo(ip("192.168.1.1"))
+    }
+
+    @Test
+    fun `firstRegisteredDnsServer falls back to IPv6 when the network has no IPv4 server`() {
+        val v6 = ip("2001:4860:4860::8888")
+        val networks = listOf(registeredDnsNetworkOf(NetworkTransport.WIFI, listOf(v6), false, null))
+        assertThat(firstRegisteredDnsServer(NetworkTransport.WIFI, networks)).isEqualTo(v6)
+    }
+
+    @Test
+    fun `firstRegisteredDnsServer returns null when Private DNS is active`() {
+        val networks =
+            listOf(registeredDnsNetworkOf(NetworkTransport.WIFI, listOf(ip("192.168.1.1")), true, "dns.google"))
+        assertThat(firstRegisteredDnsServer(NetworkTransport.WIFI, networks)).isNull()
+    }
+
+    @Test
+    fun `firstRegisteredDnsServer returns null when no network matches the active transport`() {
+        val networks = listOf(registeredDnsNetworkOf(NetworkTransport.WIFI, listOf(ip("192.168.1.1")), false, null))
+        assertThat(firstRegisteredDnsServer(NetworkTransport.CELLULAR, networks)).isNull()
+        assertThat(firstRegisteredDnsServer(null, networks)).isNull()
+    }
+
+    @Test
+    fun `firstRegisteredDnsServer returns null when the matched network has no servers`() {
+        val networks = listOf(registeredDnsNetworkOf(NetworkTransport.WIFI, emptyList(), false, null))
+        assertThat(firstRegisteredDnsServer(NetworkTransport.WIFI, networks)).isNull()
     }
 
     @Test

@@ -138,6 +138,7 @@ private fun DnsResultCard(resultJson: String) {
         } else {
             payload.answers.forEach { record -> InfoRow(record.type ?: "TYPE ${record.rawTypeCode}", record.data) }
         }
+        payload.respondedFrom?.let { InfoRow("Replied from", it) }
     }
 }
 

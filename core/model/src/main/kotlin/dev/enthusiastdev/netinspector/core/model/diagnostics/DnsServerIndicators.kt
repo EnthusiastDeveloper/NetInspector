@@ -25,6 +25,9 @@ sealed interface QueriedDnsServer {
         val address: InetAddress,
         val port: Int,
         val matchesRegistered: Boolean,
+        /** True when the server field was left blank and the app aimed the query at the first
+         * server the active network has registered, rather than the user naming one. */
+        val autoSelected: Boolean = false,
     ) : QueriedDnsServer
 
     data object SystemResolver : QueriedDnsServer

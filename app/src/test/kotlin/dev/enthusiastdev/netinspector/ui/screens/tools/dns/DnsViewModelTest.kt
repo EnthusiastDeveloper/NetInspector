@@ -9,6 +9,7 @@ import dev.enthusiastdev.netinspector.data.diagnostics.dns.DnsRepository
 import dev.enthusiastdev.netinspector.data.diagnostics.dns.RegisteredDnsServersRepository
 import dev.enthusiastdev.netinspector.data.persistence.diagnostics.DiagnosticRunRepository
 import io.mockk.coEvery
+import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.Dispatchers
@@ -65,8 +66,30 @@ class DnsViewModelTest {
         )
 
     @Test
-    fun `blank server field queries the system resolver and reports SystemResolver`() =
+    fun `blank server field targets the active network's first registered server`() =
         runTest {
+            coEvery { dnsRepository.queryServer(any(), any(), any(), any()) } returns
+                DnsQueryOutcome.Success(emptyList(), queryTimeMs = 1.0)
+            val viewModel = viewModel()
+
+            viewModel.updateName("example.com")
+            viewModel.runQuery()
+            dispatcher.scheduler.advanceUntilIdle()
+
+            val queried = viewModel.uiState.value.queriedServer
+            assertThat(queried).isInstanceOf(QueriedDnsServer.Explicit::class.java)
+            queried as QueriedDnsServer.Explicit
+            assertThat(queried.address).isEqualTo(ip("192.168.1.1"))
+            assertThat(queried.autoSelected).isTrue()
+            assertThat(queried.matchesRegistered).isTrue()
+            coVerify { dnsRepository.queryServer(ip("192.168.1.1"), any(), any(), any()) }
+        }
+
+    @Test
+    fun `blank server field falls back to the system resolver under Private DNS`() =
+        runTest {
+            every { registeredDnsServersDataSource.snapshot() } returns
+                listOf(registeredNetwork.copy(isPrivateDnsActive = true, privateDnsServerName = "dns.google"))
             coEvery { dnsRepository.querySystemResolver(any(), any()) } returns
                 DnsQueryOutcome.Success(emptyList(), queryTimeMs = 1.0)
             val viewModel = viewModel()
@@ -76,7 +99,22 @@ class DnsViewModelTest {
             dispatcher.scheduler.advanceUntilIdle()
 
             assertThat(viewModel.uiState.value.queriedServer).isEqualTo(QueriedDnsServer.SystemResolver)
-            assertThat(viewModel.uiState.value.activeTransportAtQuery).isEqualTo(NetworkTransport.WIFI)
+            coVerify(exactly = 0) { dnsRepository.queryServer(any(), any(), any(), any()) }
+        }
+
+    @Test
+    fun `blank server field falls back to the system resolver when the active network has none registered`() =
+        runTest {
+            every { registeredDnsServersDataSource.activeTransport() } returns NetworkTransport.CELLULAR
+            coEvery { dnsRepository.querySystemResolver(any(), any()) } returns
+                DnsQueryOutcome.Success(emptyList(), queryTimeMs = 1.0)
+            val viewModel = viewModel()
+
+            viewModel.updateName("example.com")
+            viewModel.runQuery()
+            dispatcher.scheduler.advanceUntilIdle()
+
+            assertThat(viewModel.uiState.value.queriedServer).isEqualTo(QueriedDnsServer.SystemResolver)
         }
 
     @Test
@@ -95,6 +133,7 @@ class DnsViewModelTest {
             assertThat(queried).isInstanceOf(QueriedDnsServer.Explicit::class.java)
             queried as QueriedDnsServer.Explicit
             assertThat(queried.address).isEqualTo(ip("8.8.8.8"))
+            assertThat(queried.autoSelected).isFalse()
             assertThat(queried.matchesRegistered).isFalse()
         }
 

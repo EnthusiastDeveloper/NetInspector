@@ -50,22 +50,40 @@ fun matchesAnyRegisteredServer(
     networks: List<RegisteredDnsNetwork>,
 ): Boolean = networks.any { queried in it.ipv4Servers || queried in it.ipv6Servers }
 
-/** Builds the "used for this lookup" indicator: `null` [explicitServer] means the query went
- * through the system resolver (the default, blank-server case in the DNS tool), which never
- * exposes its literal destination to the app - see [QueriedDnsServer.SystemResolver]'s doc. A
- * non-null [explicitServer] is the raw-socket path, where the destination is exactly what this
- * function was given, and can genuinely be checked against [networks]. */
+/** design §9.4 - the server a blank server field aims at: the first one the active network has
+ * registered (IPv4 preferred - the raw-socket path is a plain UDP datagram, no scope-id
+ * handling). `null` means fall back to the system resolver - either the active network has no
+ * registered server to point at, or Private DNS is active and a cleartext UDP/53 query would
+ * silently bypass the DoT the user configured (see
+ * `docs/adr/c-20-private-dns-strict-mode-and-raw-sockets.md`). */
+fun firstRegisteredDnsServer(
+    activeTransport: NetworkTransport?,
+    networks: List<RegisteredDnsNetwork>,
+): InetAddress? {
+    val network = networks.firstOrNull { it.transport == activeTransport } ?: return null
+    if (network.isPrivateDnsActive) return null
+    return network.ipv4Servers.firstOrNull() ?: network.ipv6Servers.firstOrNull()
+}
+
+/** Builds the "used for this lookup" indicator: `null` [queriedServer] means the query went
+ * through the system resolver, which never exposes its literal destination to the app - see
+ * [QueriedDnsServer.SystemResolver]'s doc. A non-null [queriedServer] is the raw-socket path,
+ * where the destination is exactly what this function was given and can genuinely be checked
+ * against [networks]. [autoSelected] distinguishes a server the user typed from one
+ * [firstRegisteredDnsServer] picked for a blank field. */
 fun queriedDnsServerOf(
-    explicitServer: InetAddress?,
+    queriedServer: InetAddress?,
     networks: List<RegisteredDnsNetwork>,
     port: Int = DNS_PORT,
+    autoSelected: Boolean = false,
 ): QueriedDnsServer =
-    if (explicitServer == null) {
+    if (queriedServer == null) {
         QueriedDnsServer.SystemResolver
     } else {
         QueriedDnsServer.Explicit(
-            address = explicitServer,
+            address = queriedServer,
             port = port,
-            matchesRegistered = matchesAnyRegisteredServer(explicitServer, networks),
+            matchesRegistered = matchesAnyRegisteredServer(queriedServer, networks),
+            autoSelected = autoSelected,
         )
     }

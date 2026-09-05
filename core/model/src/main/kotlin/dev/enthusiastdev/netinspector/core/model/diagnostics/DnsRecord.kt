@@ -37,6 +37,10 @@ sealed interface DnsQueryOutcome {
     data class Success(
         val answers: List<DnsRecord>,
         val queryTimeMs: Double,
+        /** The datagram source address of the reply, for the raw-socket path (normally the
+         * same server the query was sent to). `null` for the system resolver - netd never
+         * reports which upstream answered. */
+        val respondedFrom: String? = null,
     ) : DnsQueryOutcome
 
     data class Error(

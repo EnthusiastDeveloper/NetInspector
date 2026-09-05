@@ -17,6 +17,7 @@ data class DnsRunPayload(
     val queryTimeMs: Double? = null,
     val answers: List<DnsRecordDto> = emptyList(),
     val errorMessage: String? = null,
+    val respondedFrom: String? = null,
 )
 
 fun DnsQueryOutcome.toRunPayload(): DnsRunPayload =
@@ -25,6 +26,7 @@ fun DnsQueryOutcome.toRunPayload(): DnsRunPayload =
             DnsRunPayload(
                 queryTimeMs = queryTimeMs,
                 answers = answers.map { DnsRecordDto(it.name, it.type?.name, it.rawTypeCode, it.ttlSeconds, it.data) },
+                respondedFrom = respondedFrom,
             )
         is DnsQueryOutcome.Error -> DnsRunPayload(errorMessage = message)
     }
