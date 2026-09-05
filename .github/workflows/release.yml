@@ -188,6 +188,10 @@ jobs:
         with:
           name: NetInspector ${{ github.ref_name }}
           generate_release_notes: true
+          # A tag with a pre-release suffix (v0.6.0-rc.1, v0.6.0-beta.2) publishes as a
+          # GitHub pre-release: kept off "Latest", and Obtainium skips it unless a tester
+          # opts into pre-releases. A plain vX.Y.Z tag stays a normal release.
+          prerelease: ${{ contains(github.ref_name, '-') }}
           files: |
             apk/*.apk
             apk/*.sha256

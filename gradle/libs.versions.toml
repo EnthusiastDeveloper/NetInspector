@@ -5,8 +5,10 @@ kotlin = "2.1.21"
 ksp = "2.1.21-2.0.2"
 
 # App version - single source of truth for versionCode/versionName (design §0, plan Phase 0).
-appVersionCode = "6"
-appVersionName = "0.5.0"
+# versionCode is permanent and must strictly increase across every tag, pre-releases included:
+# an RC spends a code, so 0.6.0 final will be code 8.
+appVersionCode = "7"
+appVersionName = "0.6.0-rc.1"
 
 # AndroidX - pinned to the newest release that still declares minCompileSdk<=35 /
 # minAndroidGradlePluginVersion<=8.x (checked against each AAR's aar-metadata.properties;
