@@ -5,6 +5,7 @@ import dev.enthusiastdev.netinspector.core.model.lan.DiscoveredService
 import dev.enthusiastdev.netinspector.core.model.lan.Evidence
 import dev.enthusiastdev.netinspector.core.model.lan.EvidenceSource
 import dev.enthusiastdev.netinspector.core.model.lan.HostObservation
+import dev.enthusiastdev.netinspector.core.model.lan.ssdpServerHint
 import dev.enthusiastdev.netinspector.core.model.lan.upnpDeviceHint
 import dev.enthusiastdev.netinspector.data.lan.upnp.UpnpHostsProbe
 import kotlinx.coroutines.Dispatchers
@@ -139,7 +140,11 @@ class SsdpProbe
                                 modelName = locationInfo?.modelName,
                             ),
                         ),
-                    deviceHint = upnpDeviceHint(locationInfo?.manufacturer, locationInfo?.modelName),
+                    deviceHint =
+                        listOfNotNull(
+                            upnpDeviceHint(locationInfo?.manufacturer, locationInfo?.modelName),
+                            ssdpServerHint(server),
+                        ).minByOrNull { it.certainty },
                 )
             val hostsEndpoint =
                 if (locationInfo?.hostsControlUrl != null && locationInfo.hostsServiceType != null) {

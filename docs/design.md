@@ -529,18 +529,24 @@ stays null for most hosts, so a future rooted or privileged build can populate i
 model change. The UI does not show an empty "MAC" row; it shows the identification signals it
 actually has.
 
-**One narrow, deliberate exception** (docs/ideas.md A3): a host that
+**Two narrow, deliberate exceptions** (docs/ideas.md A3): a host that
 answers a NetBIOS NBSTAT query includes its adapter's real MAC in the response's STATISTICS
 field (RFC 1002 §4.2.18) - an application-layer payload the app is already receiving
 legitimately, not the ARP table. `NetBiosProbe` extracts it and runs it through the OUI table
 below. Coverage is limited to hosts that speak NetBIOS (mostly Windows/Samba, some NAS/print
 servers), so this doesn't change the blanket statement above for the general case.
 
+Separately, `MdnsProbe` extracts a MAC from two Apple/Bonjour conventions it already resolves:
+`_airplay._tcp`'s `deviceid` TXT key *is* the MAC in colon notation, and `_raop._tcp`
+(AirPlay-audio) names its service instance `AABBCCDDEEFF@Speaker Name` - the twelve hex
+characters ahead of the `@`. Coverage is limited to Apple/AirPlay-ecosystem devices, the same
+kind of narrow exception NetBIOS is for Windows/Samba.
+
 One place OUI lookup *does* work reliably: **BSSIDs from Wi-Fi scan results are real MAC
 addresses**, so access point vendor identification is fully supported. The bundled OUI
 database (`VendorLookup`, in `:core:common` so both `:data:wifi` and `:data:lan` can reach it
 without violating the "data modules never depend on each other" rule in §2.1) earns its keep
-there, and now also serves the NetBIOS-derived MACs above - with the caveat that its
+there, and now also serves the NetBIOS- and AirPlay/RAOP-derived MACs above - with the caveat that its
 AP-oriented vendor scope means client-device NIC vendors often won't resolve.
 
 ### 8.2 Three-stage pipeline
@@ -553,7 +559,7 @@ confirmed hosts only.
 
 | Probe | Mechanism | Yields |
 |---|---|---|
-| mDNS | `NsdManager` browse, plus a meta-query for `_services._dns-sd._udp` to enumerate service types before browsing each | Hostnames, service types, device models (Apple, printers, Chromecast, NAS) |
+| mDNS | `NsdManager` browse: a meta-query for `_services._dns-sd._udp` to enumerate service types, unioned with a well-known-type list (docs/ideas.md A5) since the meta-query is an optional DNS-SD feature many responders don't implement | Hostnames, service types, device models (Apple, printers, Chromecast, NAS); real MAC for AirPlay/RAOP devices (§8.1) |
 | SSDP | UDP M-SEARCH ×3 to `239.255.255.250:1900`, `ST: ssdp:all`, MX 2 | `SERVER`, `LOCATION`; fetching the LOCATION XML yields `friendlyName`, `manufacturer`, `modelName` |
 | UPnP IGD Hosts | SOAP `GetHostNumberOfEntries`/`GetGenericHostEntry` against a router advertising `urn:schemas-upnp-org:service:Hosts:1` in its SSDP device description (docs/ideas.md C1) | Real MAC and hostname for every LAN host the router knows about, coverage permitting |
 | NetBIOS | UDP node-status query to the broadcast address on port 137 | Windows/Samba names and workgroup |
@@ -1140,7 +1146,7 @@ Recorded so they are decisions rather than surprises. Full detail in
 
 | Capability | Degradation | Mitigation |
 |---|---|---|
-| LAN host MAC / vendor | Unavailable | Identification via mDNS/SSDP/NetBIOS/ports/TTL |
+| LAN host MAC / vendor | Unavailable for most hosts | NetBIOS/AirPlay-RAOP self-reported MAC (§8.1); otherwise identification via mDNS/SSDP/ports/TTL |
 | Own device MAC | Returns `02:00:00:00:00:00` | Not displayed |
 | Scan refresh rate | 4 per 2 min | Passive harvesting; dev-options detection; visible countdown |
 | Background scanning | 1 per 30 min, stops in Doze | Continuous monitoring is foreground-service-only and says so |

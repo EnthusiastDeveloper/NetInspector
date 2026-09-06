@@ -4,10 +4,12 @@ import android.content.Context
 import android.net.nsd.NsdManager
 import android.net.nsd.NsdServiceInfo
 import dagger.hilt.android.qualifiers.ApplicationContext
+import dev.enthusiastdev.netinspector.core.common.vendor.VendorLookup
 import dev.enthusiastdev.netinspector.core.model.lan.DiscoveredService
 import dev.enthusiastdev.netinspector.core.model.lan.Evidence
 import dev.enthusiastdev.netinspector.core.model.lan.EvidenceSource
 import dev.enthusiastdev.netinspector.core.model.lan.HostObservation
+import dev.enthusiastdev.netinspector.core.model.lan.WELL_KNOWN_MDNS_SERVICE_TYPES
 import dev.enthusiastdev.netinspector.core.model.lan.mdnsServiceHint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.async
@@ -33,6 +35,12 @@ import kotlin.coroutines.resume
  * guessing from a hardcoded list. `resolveService` calls are serialised (design's own risk
  * note: "historically flaky across OEMs") since issuing overlapping resolves is a known
  * source of silent failures on some `NsdManager` implementations.
+ *
+ * docs/ideas.md A5 - the meta-query is unioned with [WELL_KNOWN_MDNS_SERVICE_TYPES] rather than
+ * trusted alone: it's genuinely optional in DNS-SD, and a real, common gap - many embedded mDNS
+ * responders answer a direct browse for their own service type but never register the
+ * meta-query's browse-domain PTR, so a network full of such devices would otherwise make Stage
+ * A's mDNS probe silently find nothing at all.
  */
 class MdnsProbe
     @Inject
@@ -47,9 +55,12 @@ class MdnsProbe
             budgetMs: Long = TYPE_DISCOVERY_BUDGET_MS + PER_TYPE_BUDGET_MS * MAX_TYPES_ASSUMED,
         ): List<HostObservation> {
             val manager = nsdManager ?: return emptyList()
-            val serviceTypes = discoverServiceTypes(manager)
-            if (serviceTypes.isEmpty()) return emptyList()
+            val serviceTypes = (discoverServiceTypes(manager) + WELL_KNOWN_MDNS_SERVICE_TYPES).distinct()
 
+            // design §8.2 - floor-clamped, so adding the well-known types (comfortably more
+            // than MAX_TYPES_ASSUMED) doesn't starve any single type's browse window; every
+            // type still browses concurrently, so this floor - not the shrinking share - is
+            // what actually governs Stage A's wall-clock time in practice.
             val perTypeBudget =
                 ((budgetMs - TYPE_DISCOVERY_BUDGET_MS) / serviceTypes.size).coerceAtLeast(MIN_PER_TYPE_BUDGET_MS)
             return coroutineScope {
@@ -177,21 +188,31 @@ class MdnsProbe
         private fun NsdServiceInfo.toObservation(): HostObservation? {
             val address = host as? Inet4Address ?: return null
             val txtRecords = decodeTxtRecords()
+            // `NsdServiceInfo.serviceType` from `onServiceResolved` carries a stray leading dot
+            // on some Android versions (a long-standing NsdManager quirk, e.g. "._raop._tcp"
+            // instead of "_raop._tcp") on top of DNS's own optional trailing root-label dot.
+            // Normalized once here so every consumer - the hint lookup, the MAC extraction, and
+            // the raw value shown on the detail screen's Discovered Services card - sees the
+            // same clean type rather than each having to defend against the platform quirk.
+            val normalizedServiceType = serviceType?.trim('.')
+            val macAddress = airplayMacAddress(normalizedServiceType, serviceName, txtRecords)
             return HostObservation(
                 address = address,
-                evidence = listOf(Evidence(EvidenceSource.MDNS, clock.instant(), detail = serviceType)),
+                evidence = listOf(Evidence(EvidenceSource.MDNS, clock.instant(), detail = normalizedServiceType)),
                 hostnames = serviceName?.let { mapOf(EvidenceSource.MDNS to it) } ?: emptyMap(),
                 services =
                     listOf(
                         DiscoveredService(
                             source = EvidenceSource.MDNS,
-                            serviceType = serviceType,
+                            serviceType = normalizedServiceType,
                             name = serviceName,
                             detail = null,
                             txtRecords = txtRecords,
                         ),
                     ),
-                deviceHint = mdnsServiceHint(serviceType, txtRecords),
+                deviceHint = mdnsServiceHint(normalizedServiceType, txtRecords),
+                macAddress = macAddress,
+                vendor = macAddress?.let(VendorLookup::vendorFor),
             )
         }
 
@@ -211,3 +232,39 @@ class MdnsProbe
             const val MAX_TXT_VALUE_CHARS = 200
         }
     }
+
+/**
+ * design §8.1 (extension to docs/ideas.md A3) - two Apple/Bonjour conventions leak a device's
+ * real MAC through mDNS despite the ARP table being blocked (C-01), the device's own
+ * self-reported identifier rather than an inference, same standing as NetBIOS's STATISTICS
+ * field: AirPlay's `_airplay._tcp` TXT record carries a `deviceid` key that *is* the MAC in
+ * standard colon notation, and AirPlay-audio's older `_raop._tcp` convention names the whole
+ * service instance `AABBCCDDEEFF@Speaker Name` - the twelve hex characters ahead of the `@`
+ * are the MAC, undelimited. Coverage is limited to Apple/AirPlay-ecosystem devices, the same
+ * kind of narrow exception NetBIOS is for Windows/Samba. `internal` so [MdnsProbeTest] can
+ * exercise the parsing without an `NsdManager`. Tolerates a leading and/or trailing dot on
+ * [serviceType] (DNS's own optional root-label dot, and a stray leading dot `NsdServiceInfo`
+ * carries on some Android versions) even though the call site already normalizes - a pure
+ * function shouldn't assume every caller remembers to.
+ */
+internal fun airplayMacAddress(
+    serviceType: String?,
+    serviceName: String?,
+    txtRecords: Map<String, String>,
+): String? =
+    when (serviceType?.trim('.')) {
+        AIRPLAY_SERVICE_TYPE -> txtRecords[AIRPLAY_DEVICE_ID_TXT_KEY]?.uppercase()?.takeIf(COLON_MAC_REGEX::matches)
+        RAOP_SERVICE_TYPE ->
+            serviceName
+                ?.let { RAOP_MAC_PREFIX_REGEX.find(it)?.groupValues?.get(1) }
+                ?.uppercase()
+                ?.chunked(2)
+                ?.joinToString(":")
+        else -> null
+    }
+
+private const val AIRPLAY_SERVICE_TYPE = "_airplay._tcp"
+private const val RAOP_SERVICE_TYPE = "_raop._tcp"
+private const val AIRPLAY_DEVICE_ID_TXT_KEY = "deviceid"
+private val COLON_MAC_REGEX = Regex("^[0-9A-F]{2}(:[0-9A-F]{2}){5}$")
+private val RAOP_MAC_PREFIX_REGEX = Regex("^([0-9A-Fa-f]{12})@")

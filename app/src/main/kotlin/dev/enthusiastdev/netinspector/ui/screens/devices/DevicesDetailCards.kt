@@ -83,10 +83,12 @@ private fun MacAddressRow(host: Host) {
                 Text(
                     "Android 10 and later block apps from reading the device's ARP table, so " +
                         "there is usually no way to learn another host's MAC address without root. " +
-                        "The one exception is a device that answers a NetBIOS query (mostly " +
-                        "Windows PCs and some NAS/print servers) - its MAC arrives in that reply " +
-                        "instead. Otherwise this device is identified by what it announces (mDNS, " +
-                        "SSDP, NetBIOS), its open ports, and its reverse-DNS name.",
+                        "Two narrow exceptions exist: a device that answers a NetBIOS query " +
+                        "(mostly Windows PCs and some NAS/print servers) includes its MAC in " +
+                        "that reply, and an AirPlay or AirPlay-audio device (Apple TV, HomePod, " +
+                        "AirPlay speakers) reports its own MAC through mDNS. Otherwise this " +
+                        "device is identified by what it announces (mDNS, SSDP, NetBIOS), its " +
+                        "open ports, and its reverse-DNS name.",
                 )
             },
             confirmButton = { TextButton(onClick = { showExplanation = false }) { Text("Got it") } },
@@ -151,16 +153,29 @@ internal fun DevicesDetailEvidenceCard(host: Host) {
     InfoCard(title = "Evidence") {
         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
             host.evidence.sortedByDescending { it.observedAt }.forEach { evidence ->
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text(
-                        evidence.source.label(),
-                        style = MaterialTheme.typography.bodyMedium,
-                        modifier =
-                            Modifier
-                                .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(4.dp))
-                                .padding(horizontal = 6.dp, vertical = 2.dp),
-                    )
-                    Text(evidence.observedAt.asClockTime(), style = MaterialTheme.typography.bodySmall)
+                Column {
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        Text(
+                            evidence.source.label(),
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier =
+                                Modifier
+                                    .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(4.dp))
+                                    .padding(horizontal = 6.dp, vertical = 2.dp),
+                        )
+                        Text(evidence.observedAt.asClockTime(), style = MaterialTheme.typography.bodySmall)
+                    }
+                    // A self-reported string (SNMP sysDescr, TLS cert CN, an mDNS service
+                    // type) that would otherwise only surface indirectly via DeviceHint - and
+                    // not at all when a more certain hint wins deviceHintFor's ranking (see
+                    // DeviceHintHeuristics.kt).
+                    evidence.detail?.let { detail ->
+                        Text(
+                            detail,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
                 }
             }
         }

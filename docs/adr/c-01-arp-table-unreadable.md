@@ -17,11 +17,15 @@ NetBIOS, open-port fingerprints, and ICMP reply TTL for OS class. `Host.macAddre
 remains in the model as a nullable field so a privileged build could populate it later.
 The UI omits the field rather than showing it empty.
 
-**Narrow exception (docs/ideas.md A3)** A host that answers a NetBIOS
+**Narrow exceptions (docs/ideas.md A3)** A host that answers a NetBIOS
 NBSTAT query carries its real MAC in the response's STATISTICS field (RFC 1002 §4.2.18) - an
 application-layer payload, not the blocked ARP table - so `NetBiosProbe` populates
-`Host.macAddress` for those hosts specifically. This doesn't reopen the constraint generally:
-it only covers hosts that speak NetBIOS (mostly Windows/Samba, some NAS/print servers).
+`Host.macAddress` for those hosts specifically. Separately, an AirPlay or AirPlay-audio (RAOP)
+device self-reports its MAC through mDNS - `_airplay._tcp`'s `deviceid` TXT key is the MAC
+outright, and `_raop._tcp` names its service instance `AABBCCDDEEFF@Speaker Name` - so
+`MdnsProbe` populates `Host.macAddress` for those hosts too. Neither reopens the constraint
+generally: coverage is limited to hosts that speak NetBIOS (mostly Windows/Samba, some NAS/print
+servers) or advertise AirPlay (Apple TVs, HomePods, AirPlay speakers).
 
 **Do not attempt** raw `AF_PACKET` sockets (needs `CAP_NET_RAW`), `ip neigh` via shell
 (needs root), or `NetworkInterface.getHardwareAddress()` on foreign interfaces (returns
