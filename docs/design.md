@@ -764,6 +764,31 @@ dependency for one feature.
 
 Reverse lookups build the `in-addr.arpa` name and issue a PTR query.
 
+A blank server field aims the query at the active network's first registered server (raw
+socket, so the "used for this lookup" panel can name a concrete destination and a "replied
+from" address) rather than the opaque system resolver. It falls back to the system resolver
+only when there is no such server or Private DNS is active - a cleartext UDP/53 query would
+then either have nowhere to go or would silently bypass the DoT the user configured
+(`docs/adr/c-20-private-dns-strict-mode-and-raw-sockets.md`). A typed server is always used
+as-is. `InetAddress.getByName` backs the field, so a hostname (`dns.google`), IPv4, or IPv6
+literal all work.
+
+The results panel shows two separate indicators rather than collapsing them into one value:
+
+- **Registered DNS servers** - what `ConnectivityManager` reports as configured, enumerated
+  across *all* current networks (`getAllNetworks()`, not just the active one - Wi-Fi and
+  cellular can both be up at once, the foldable/dual-network case), one entry per Wi-Fi/
+  cellular/Ethernet network with its IPv4 servers, IPv6 servers, and Private DNS status
+  (`LinkProperties.isPrivateDnsActive()`/`getPrivateDnsServerName()`) shown separately. The
+  server-field placeholder names the first of these (or "system resolver" when a blank field
+  falls back).
+- **Used for this lookup** - the literal destination this specific query targeted, whether it
+  was auto-selected for a blank field, the datagram source the reply came from, and a flag for
+  whether that address appears anywhere in "registered DNS servers." The system resolver path
+  shows no guessed address (design §11.3 - `DnsResolver`'s actual destination isn't observable
+  from the app, and under Private DNS the panel says so explicitly); the raw-socket path shows
+  the exact address:port, since that destination is exactly what the code was told to send to.
+
 ### 9.5 Port scanner
 
 TCP connect scan - SYN scanning needs raw sockets and is therefore impossible here, which
@@ -1122,3 +1147,4 @@ Recorded so they are decisions rather than surprises. Full detail in
 | SYN scanning | Impossible | Connect scan, labelled as such |
 | Traceroute error queue | Uncertain via `Os` API | Spike S-02; ping-binary fallback |
 | IPv6 | Display only | Stated in the UI; active tooling is IPv4 |
+| DNS "used for lookup" via system resolver | Literal destination not observable from the app | No guessed address shown (design §11.3); the raw-socket custom-server path shows the real address instead |

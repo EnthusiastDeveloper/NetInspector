@@ -98,7 +98,7 @@ class DefaultDnsRepository
                         val packet = DatagramPacket(buffer, buffer.size)
                         socket.receive(packet)
 
-                        toOutcome(packet.data.copyOf(packet.length), queryId, startNanos)
+                        toOutcome(packet.data.copyOf(packet.length), queryId, startNanos, packet.address?.hostAddress)
                     }
                 } catch (ignored: SocketTimeoutException) {
                     DnsQueryOutcome.Error("no response from $server within ${timeoutMs}ms")
@@ -111,13 +111,14 @@ class DefaultDnsRepository
             response: ByteArray,
             queryId: Int,
             startNanos: Long,
+            respondedFrom: String? = null,
         ): DnsQueryOutcome {
             if (response.isEmpty()) return DnsQueryOutcome.Error("no response")
             val records =
                 DnsWireCodec.parseResponse(response, queryId)
                     ?: return DnsQueryOutcome.Error("malformed response")
             val elapsedMs = (System.nanoTime() - startNanos) / 1_000_000.0
-            return DnsQueryOutcome.Success(records, elapsedMs)
+            return DnsQueryOutcome.Success(records, elapsedMs, respondedFrom)
         }
 
         private companion object {
